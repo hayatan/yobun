@@ -31,4 +31,4 @@ ENV PORT 8080
 
 # 実行コマンド（Litestreamとバックエンドを同時起動）
 # CMD ["litestream", "replicate", "--exec", "node /app/server.js"]
-CMD ["node" "/app/sample.js"]
+CMD ["node /app/sample.js"]
