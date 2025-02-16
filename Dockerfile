@@ -1,5 +1,5 @@
 # ベースイメージを軽量なNode.js公式イメージに変更
-FROM node:18-slim
+FROM node:23-slim
 
 # 必要なツールのインストール
 RUN apt-get update && apt-get install -y \
