@@ -21,6 +21,15 @@ app.get('/run-scrape', async (req, res) => {
     }
 });
 
+// スクレイピング実行エンドポイント
+app.get('/', async (req, res) => {
+    try {
+        res.status(200).send('yobun running...');
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+});
+
 // サーバー起動
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, async () => {
