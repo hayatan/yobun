@@ -26,5 +26,8 @@ VOLUME /data
 # Litestreamの設定ファイルを配置
 COPY litestream.yml /etc/litestream.yml
 
+# 環境変数PORTを設定（デフォルトは8080）
+ENV PORT 8080
+
 # 実行コマンド（Litestreamとバックエンドを同時起動）
 CMD ["litestream", "replicate", "--exec", "node /app/server.js"]
