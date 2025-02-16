@@ -2,4 +2,4 @@ dbs:
   - path: /data/local_db.sqlite
     replicas:
       - type: gcs
-        path: youbun-sqlite/sqlite-backup
+        path: youbun-sqlite
