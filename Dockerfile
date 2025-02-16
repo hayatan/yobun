@@ -1,5 +1,5 @@
-# ベースイメージ
-FROM ubuntu:20.04
+# ベースイメージを軽量なNode.js公式イメージに変更
+FROM node:18-slim
 
 # 必要なツールのインストール
 RUN apt-get update && apt-get install -y \
@@ -12,15 +12,18 @@ RUN curl -L https://github.com/benbjohnson/litestream/releases/latest/download/l
     -o /usr/local/bin/litestream && \
     chmod +x /usr/local/bin/litestream
 
-# バックエンドアプリケーションのセットアップ
+# 作業ディレクトリの設定
 WORKDIR /app
-COPY . /app
-RUN npm install
+
+# アプリケーションコードをコピー
+COPY package*.json ./
+RUN npm install --production
+COPY . .
 
 # SQLiteデータファイルを保存するディレクトリ
 VOLUME /data
 
-# Litestreamの設定ファイル
+# Litestreamの設定ファイルを配置
 COPY litestream.yml /etc/litestream.yml
 
 # 実行コマンド（Litestreamとバックエンドを同時起動）
