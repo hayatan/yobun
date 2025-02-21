@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
-const { restoreSQLite } = require('./src/app');
+const { bigQuery } = require('./bigquery');
+const { db, restoreSQLite } = require('./sqlite');
+const { runScrape } = require('./src/app');
 
 const app = express();
 
@@ -12,8 +14,7 @@ app.get('/health', (req, res) => {
 // スクレイピング実行エンドポイント
 app.get('/run-scrape', async (req, res) => {
     try {
-        const { runScrape } = require('./src/app');
-        await runScrape();
+        await runScrape(bigQuery, db);
         res.status(200).send('スクレイピング処理が完了しました。');
     } catch (error) {
         console.error('スクレイピング処理中にエラーが発生しました:', error);
