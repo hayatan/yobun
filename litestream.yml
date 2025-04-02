@@ -2,4 +2,5 @@ dbs:
   - path: /data/db.sqlite
     replicas:
       - type: gcs
-        path: youbun-sqlite
+        bucket: youbun-sqlite
+        path: db.sqlite
