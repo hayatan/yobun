@@ -61,6 +61,7 @@ const saveDiffData = async (db, data) => {
 };
 
 const isDiffDataExists = async (db, date, hole) => {
+    await createScrapedDataTableIfNotExists(db);
     return new Promise((resolve, reject) => {
         const query = `
             SELECT COUNT(*) as count
@@ -80,6 +81,7 @@ const isDiffDataExists = async (db, date, hole) => {
 };
 
 const getDiffData = async (db, date, hole) => {
+    await createScrapedDataTableIfNotExists(db);
     return new Promise((resolve, reject) => {
         const query = `
             SELECT *
@@ -99,6 +101,7 @@ const getDiffData = async (db, date, hole) => {
 };
 
 const getDiffDataDate = async (db, date) => {
+    await createScrapedDataTableIfNotExists(db);
     return new Promise((resolve, reject) => {
         const query = `
             SELECT *
