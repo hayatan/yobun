@@ -1,5 +1,5 @@
 dbs:
-  - path: /data/local_db.sqlite
+  - path: /data/db.sqlite
     replicas:
       - type: gcs
         path: youbun-sqlite
