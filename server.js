@@ -31,6 +31,37 @@ app.get('/', async (req, res) => {
     }
 });
 
+app.get('/test-write', async (req, res) => {
+    try {
+        db.exec(`
+        CREATE TABLE IF NOT EXISTS test (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          message TEXT
+        );
+        `);
+
+        db.exec(`
+        INSERT INTO test (message) VALUES ('妹が作ったデータです♥');
+        `);
+
+        const rows = db.all("SELECT * FROM test");
+        res.json(rows);
+    } catch (err) {
+        console.error("やらかしたわね…", err);
+        res.status(500).send("ちょっと失敗したかも…💦");
+    }
+});
+
+app.get('/test-read', async (req, res) => {
+    try {
+        const rows = db.all("SELECT * FROM test");
+        res.json(rows);
+    } catch (err) {
+        console.error("読めなかったんだけど！？💢", err);
+        res.status(500).send("読み込み失敗…妹のせいじゃないんだからねっ！");
+    }
+});
+
 // サーバー起動
 const PORT = 8080;
 app.listen(PORT, async () => {
