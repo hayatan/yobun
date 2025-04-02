@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Litestreamのインストール
-RUN curl -L https://github.com/benbjohnson/litestream/releases/latest/download/litestream-linux-amd64 \
-    -o /usr/local/bin/litestream && \
-    chmod +x /usr/local/bin/litestream
+ADD https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-amd64.tar.gz litestream.tar.gz
+RUN tar -xzf litestream.tar.gz -C /usr/local/bin/
+RUN chmod +x /usr/local/bin/litestream
 
 # 作業ディレクトリの設定
 WORKDIR /app
