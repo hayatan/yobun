@@ -30,4 +30,4 @@ COPY litestream.yml /etc/litestream.yml
 ENV PORT 8080
 
 # 実行コマンド（Litestreamとバックエンドを同時起動）
-CMD ["node", "/app/server.js"]
+CMD ["litestream", "replicate", "--exec", "node /app/server.js"]
