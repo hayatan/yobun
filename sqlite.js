@@ -12,17 +12,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-// SQLiteの復元処理
-const restoreSQLite = async () => {
-    try {
-        console.log('GCSバックアップからSQLiteを復元中...');
-        execSync(`litestream restore -o ${dbPath} youbun-sqlite/sqlite-backup`);
-        console.log('SQLiteデータベースを復元しました。');
-    } catch (err) {
-        console.log('復元失敗。新しいデータベースを使用します。');
-    }
-};
-
 module.exports = {
     db,
     restoreSQLite,

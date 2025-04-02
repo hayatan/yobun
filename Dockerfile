@@ -29,5 +29,9 @@ COPY litestream.yml /etc/litestream.yml
 # 条件付きで初期DBコピー
 RUN test -f /app/data/db.sqlite && cp /app/data/db.sqlite /tmp/db.sqlite || echo "No local DB found, skipping copy"
 
-# 実行コマンド（Litestreamとバックエンドを同時起動）
-CMD ["sh", "-c", "litestream replicate --exec 'node /app/server.js'"]
+# 実行スクリプトをコピーして、エントリポイントに
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# CMDを美しく！✨
+CMD ["/app/entrypoint.sh"]
