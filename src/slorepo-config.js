@@ -29,12 +29,12 @@ module.exports = {
             code: 'e382b8e383a5e383a9e382afe78e8be5ad90e5ba97code'
         },
         {
-            name: "ビッグアップル秋葉原店",
-            code: 'e38393e38383e382b0e382a2e38383e38397e383abefbc8ee7a78be89189e58e9fe5ba97code'
-        },
-        {
             name: "エスパス上野本館",
             code: 'e382a8e382b9e38391e382b9e697a5e68b93e4b88ae9878ee69cace9a4a8code'
+        },
+        {
+            name: "メッセ竹の塚",
+            code: 'e383a1e38383e382bbe7abb9e381aee5a19ae5ba97code'
         },
     ]
 };

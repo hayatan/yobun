@@ -3,8 +3,7 @@ const config = require('./slorepo-config');
 
 module.exports = scrapeSlotDataByMachine;
 
-async function scrapeSlotDataByMachine(date, holeCode) {
-    const interval = 100;
+async function scrapeSlotDataByMachine(date, holeCode, interval = 3000) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 

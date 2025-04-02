@@ -6,7 +6,6 @@ const runScrape = async (bigquery, db, startDate) => {
     const tableIdPrefix = 'data_';
 
     startDate = startDate ? new Date(startDate) : new Date().setDate(new Date().getDate() - 3);
-     // 現在日時の3日前を設定
     const endDate = new Date();
 
     console.log('スクレイピング処理を開始します...');
