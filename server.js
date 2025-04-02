@@ -31,20 +31,24 @@ app.get('/', async (req, res) => {
     }
 });
 
+// Promise 化するわよっ！
+const execAsync = util.promisify(db.exec).bind(db);
+const allAsync = util.promisify(db.all).bind(db);
+
 app.get('/test-write', async (req, res) => {
     try {
-        db.exec(`
-        CREATE TABLE IF NOT EXISTS test (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          message TEXT
-        );
+        await execAsync(`
+            CREATE TABLE IF NOT EXISTS test (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT
+            );
         `);
 
-        db.exec(`
-        INSERT INTO test (message) VALUES ('妹が作ったデータです♥');
+        await execAsync(`
+            INSERT INTO test (message) VALUES ('妹が作ったデータです♥');
         `);
 
-        const rows = db.all("SELECT * FROM test");
+        const rows = await allAsync("SELECT * FROM test");
         res.json(rows);
     } catch (err) {
         console.error("やらかしたわね…", err);
@@ -54,7 +58,7 @@ app.get('/test-write', async (req, res) => {
 
 app.get('/test-read', async (req, res) => {
     try {
-        const rows = db.all("SELECT * FROM test");
+        const rows = await allAsync("SELECT * FROM test");
         res.json(rows);
     } catch (err) {
         console.error("読めなかったんだけど！？💢", err);
