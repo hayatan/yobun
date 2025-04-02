@@ -1,6 +1,6 @@
 dbs:
-  - path: /data/db.sqlite
+  - path: /tmp/db.sqlite
     replicas:
       - type: gcs
         bucket: youbun-sqlite
-        path: db.sqlite
+        path: db.replica

@@ -1,5 +1,6 @@
 # ベースイメージを軽量なNode.js公式イメージに変更
 FROM node:23-slim
+ENV SQLITE_DB_PATH=/tmp/db.sqlite
 
 # 必要なツールのインストール
 RUN apt-get update && apt-get install -y \
@@ -22,14 +23,11 @@ COPY package*.json ./
 RUN npm install --production
 COPY . .
 
-# SQLiteデータファイルを保存するディレクトリ
-VOLUME /data
-
 # Litestreamの設定ファイルを配置
 COPY litestream.yml /etc/litestream.yml
 
-# 環境変数PORTを設定（デフォルトは8080）
-ENV PORT 8080
+# 条件付きで初期DBコピー
+RUN test -f /app/data/db.sqlite && cp /app/data/db.sqlite /tmp/db.sqlite || echo "No local DB found, skipping copy"
 
 # 実行コマンド（Litestreamとバックエンドを同時起動）
 CMD ["sh", "-c", "litestream replicate --exec 'node /app/server.js'"]

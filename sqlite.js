@@ -1,9 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const { execSync } = require('child_process');
 require('dotenv').config();
+const dbPath = process.env.SQLITE_DB_PATH;
 
 // SQLiteデータベースの設定
-const dbPath = process.env.LOCAL_SQL_DATABASE_PATH ? process.env.LOCAL_SQL_DATABASE_PATH : '/data/db.sqlite';
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('SQLiteデータベース接続エラー:', err);

@@ -71,5 +71,9 @@ app.get('/test-read', async (req, res) => {
 const PORT = 8080;
 app.listen(PORT, async () => {
     console.log(`サーバーがポート ${PORT} で起動しました。`);
-    await restoreSQLite(); // 起動時にSQLiteを復元
+    if (process.env.NODE_ENV === 'development') {
+        console.log('開発環境で起動中...');
+    } else {
+        await restoreSQLite(); // 起動時にSQLiteを復元
+    }
 });
