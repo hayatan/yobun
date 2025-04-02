@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const { bigQuery } = require('./bigquery');
-const { db, restoreSQLite } = require('./sqlite');
+const { db } = require('./sqlite');
 const { runScrape } = require('./src/app');
 const util = require('util');
 
