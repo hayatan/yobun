@@ -17,11 +17,13 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
     for (const date of dateRange) {
         for (const hole of config.holes) {
             try {
-                updateProgress(
-                    completedTasks,
-                    totalTasks,
-                    `[${date}][${hole.name}] 処理中...`
-                );
+                if (typeof updateProgress === 'function') {
+                    updateProgress(
+                        completedTasks,
+                        totalTasks,
+                        `[${date}][${hole.name}] 処理中...`
+                    );
+                }
 
                 const exists = await sqlite.isDiffDataExists(db, date, hole.name);
                 if (!exists) {
@@ -42,18 +44,22 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                 }
 
                 completedTasks++;
-                updateProgress(
-                    completedTasks,
-                    totalTasks,
-                    `[${date}][${hole.name}] 完了`
-                );
+                if (typeof updateProgress === 'function') {
+                    updateProgress(
+                        completedTasks,
+                        totalTasks,
+                        `[${date}][${hole.name}] 完了`
+                    );
+                }
             } catch (err) {
                 console.error(`処理エラー (${date} - ${hole.name}): ${err.message}`);
-                updateProgress(
-                    completedTasks,
-                    totalTasks,
-                    `[${date}][${hole.name}] エラー: ${err.message}`
-                );
+                if (typeof updateProgress === 'function') {
+                    updateProgress(
+                        completedTasks,
+                        totalTasks,
+                        `[${date}][${hole.name}] エラー: ${err.message}`
+                    );
+                }
                 throw err;
             }
         }
