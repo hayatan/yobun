@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
-import config from './slorepo-config.js';
+import config from '../../config/slorepo-config.js';
+import { cleanNumber, calculateMaxMY, calculateMaxMDia } from '../../util/slorepo.js';
 
 export default async function scrapeSlotDataByMachine(date, holeCode, interval = 3000) {
     const hole = config.holes.find(h => h.code === holeCode);
@@ -167,29 +168,4 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
 
         return rows;
     }, date, holeName, machineName);
-}
-
-// 数値の整形
-function cleanNumber(value) {
-    return parseInt(value.replace(/,/g, '').replace(/^\+/, ''));
-}
-
-// 最大MYの計算
-function calculateMaxMY(graphData) {
-    let maxMY = 0, minVal = 0;
-    graphData.forEach(value => {
-        maxMY = Math.max(maxMY, value - minVal);
-        minVal = Math.min(minVal, value);
-    });
-    return maxMY;
-}
-
-// 最大MDiaの計算
-function calculateMaxMDia(graphData) {
-    let maxMDia = 0, maxVal = 0;
-    graphData.forEach(value => {
-        maxMDia = Math.max(maxMDia, maxVal - value);
-        maxVal = Math.max(maxVal, value);
-    });
-    return maxMDia;
-}
+} 

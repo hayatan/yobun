@@ -1,8 +1,8 @@
-import slorepo from './slorepo.js'; // スクレイピング関数
-import config from './slorepo-config.js'; // ホールの設定
-import util from './util/common.js'; // 日付生成などのユーティリティ
-import sqlite from './db/sqlite/operations.js'; // SQLite関連の関数
-import { saveToBigQuery, getBigQueryRowCount, getTable } from './db/bigquery/operations.js'; // BigQuery関連の関数
+import scrapeSlotDataByMachine from './scraper.js';
+import config from '../../config/slorepo-config.js';
+import util from '../../util/common.js';
+import sqlite from '../../db/sqlite/operations.js';
+import { saveToBigQuery, getBigQueryRowCount, getTable } from '../../db/bigquery/operations.js';
 
 // メイン処理
 const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate, updateProgress = () => {}) => {
@@ -29,7 +29,7 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
 
                 const exists = await sqlite.isDiffDataExists(db, date, hole.name);
                 if (!exists) {
-                    const data = await slorepo(date, hole.code);
+                    const data = await scrapeSlotDataByMachine(date, hole.code);
                     await sqlite.saveDiffData(db, data);
                 }
 
@@ -67,4 +67,4 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
     }
 };
 
-export default scrape;
+export default scrape; 

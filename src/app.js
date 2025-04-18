@@ -1,4 +1,4 @@
-import scrape from './scrape.js';
+import scrape from './services/slorepo/index.js';
 
 // スクレイピング実行処理
 export const runScrape = async (bigquery, db, updateProgress) => {
