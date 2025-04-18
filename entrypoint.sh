@@ -13,4 +13,4 @@ else
 fi
 
 echo "🚀 Litestreamでレプリケーション＋アプリ起動"
-exec litestream replicate --exec "node /app/server.js"
+exec litestream replicate --exec "npm run start"

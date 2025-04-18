@@ -24,12 +24,12 @@ help:
 # ローカル開発用
 run-dev: $(ENV_DEV)
 	cp $(ENV_DEV) $(ENV)
-	node index.js
-	
+	npm run dev
+
 # ローカル開発用
 run-server-dev: $(ENV_DEV)
 	cp $(ENV_DEV) $(ENV)
-	node server.js
+	npm run dev:server
 
 # Dockerビルド
 build:

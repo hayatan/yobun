@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
-import bigquery from './src/db/bigquery/init.js';
-import db from './src/db/sqlite/init.js';
-import { runScrape } from './src/app.js';
+import bigquery from './db/bigquery/init.js';
+import db from './db/sqlite/init.js';
+import { runScrape } from './app.ts';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import util from './util/common.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +16,18 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 
 // スクレイピングの状態管理
-let scrapingState = {
+interface ScrapingState {
+    isRunning: boolean;
+    startTime: Date | null;
+    progress: {
+        current: number;
+        total: number;
+        message: string;
+    };
+    lastError: string | null;
+}
+
+let scrapingState: ScrapingState = {
     isRunning: false,
     startTime: null,
     progress: {
@@ -27,12 +39,12 @@ let scrapingState = {
 };
 
 // スクレイピングの状態を更新する関数
-const updateScrapingState = (updates) => {
+const updateScrapingState = (updates: Partial<ScrapingState>): void => {
     scrapingState = { ...scrapingState, ...updates };
 };
 
 // スクレイピングの進捗を更新する関数
-const updateProgress = (current, total, message) => {
+const updateProgress = (current: number, total: number, message: string): void => {
     scrapingState.progress = { current, total, message };
 };
 
@@ -63,7 +75,8 @@ app.post('/pubsub', express.json(), async (req, res) => {
         });
 
         // 非同期でスクレイピングを実行
-        runScrape(bigquery, db, updateProgress)
+        const { startDate, endDate } = util.getDefaultDateRange();
+        runScrape(bigquery, db, startDate, endDate, updateProgress)
             .then(() => {
                 updateScrapingState({
                     isRunning: false,
@@ -99,14 +112,14 @@ app.get('/', (req, res) => {
 });
 
 // Promise 化するわよっ！
-const execAsync = (sql) => new Promise((resolve, reject) => {
+const execAsync = (sql: string): Promise<void> => new Promise((resolve, reject) => {
     db.exec(sql, (err) => {
         if (err) reject(err);
         else resolve();
     });
 });
 
-const allAsync = (sql) => new Promise((resolve, reject) => {
+const allAsync = (sql: string): Promise<any[]> => new Promise((resolve, reject) => {
     db.all(sql, (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
@@ -151,4 +164,4 @@ app.listen(PORT, async () => {
     if (process.env.NODE_ENV === 'development') {
         console.log('開発環境で起動中...');
     }
-});
+}); 

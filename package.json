@@ -4,7 +4,11 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "npx ts-node src/index.ts",
+    "dev:server": "npx ts-node src/server.ts",
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",

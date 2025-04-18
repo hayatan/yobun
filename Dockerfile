@@ -67,6 +67,9 @@ COPY package*.json ./
 RUN npm install --production
 COPY . .
 
+# TypeScriptのビルドを実行
+RUN npm run build
+
 # Litestreamの設定ファイルを配置
 COPY litestream.yml /etc/litestream.yml
 
@@ -82,5 +85,5 @@ RUN chmod +x /app/entrypoint.sh \
 # ユーザーを切り替え
 USER yobunuser
 
-# CMDを美しく！✨
-CMD ["/app/entrypoint.sh"]
+# エントリーポイントを設定
+ENTRYPOINT ["/app/entrypoint.sh"]

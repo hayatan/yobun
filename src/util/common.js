@@ -1,26 +1,34 @@
 // 開始日から終了日までの日付を生成
-const generateDateRange = (startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const dateArray = [];
+export function generateDateRange(startDate, endDate) {
+    const dates = [];
+    let currentDate = new Date(startDate);
   
-    while (start <= end) {
-      // フォーマットを 'YYYY-MM-DD' にする
-      const year = start.getFullYear();
-      const month = String(start.getMonth() + 1).padStart(2, '0');
-      const day = String(start.getDate()).padStart(2, '0');
-  
-      dateArray.push(`${year}-${month}-${day}`);
-      start.setDate(start.getDate() + 1); // 次の日に進む
+    while (currentDate <= new Date(endDate)) {
+      dates.push(formatDate(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
     }
   
-    return dateArray;
+    return dates;
 };
 
 // 指定した時間だけ待機
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const formatUrlDate = (date) => date.replace(/[-/]/g, '');
+export function formatUrlDate(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+function formatDate(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 // データのバリデーション
 const validateDiffData = (data) => {
@@ -53,12 +61,20 @@ const formatDiffData = (data) => {
     }))
 };
 
+export function getDefaultDateRange() {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    const endDate = new Date();
+    return { startDate, endDate };
+}
+
 const util = {
     generateDateRange,
     delay,
     validateDiffData,
     formatDiffData,
     formatUrlDate,
+    getDefaultDateRange,
 };
 
 export default util;
