@@ -6,19 +6,82 @@ import { runScrape } from './src/app.js';
 
 const app = express();
 
+// スクレイピングの状態管理
+let scrapingState = {
+    isRunning: false,
+    startTime: null,
+    progress: {
+        current: 0,
+        total: 0,
+        message: ''
+    },
+    lastError: null
+};
+
+// スクレイピングの状態を更新する関数
+const updateScrapingState = (updates) => {
+    scrapingState = { ...scrapingState, ...updates };
+};
+
+// スクレイピングの進捗を更新する関数
+const updateProgress = (current, total, message) => {
+    scrapingState.progress = { current, total, message };
+};
+
 // ヘルスチェックエンドポイント
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
-// スクレイピング実行エンドポイント
-app.get('/run-scrape', async (req, res) => {
+// スクレイピングの状態を取得するエンドポイント
+app.get('/status', (req, res) => {
+    res.json(scrapingState);
+});
+
+// Pub/Subメッセージを処理するエンドポイント
+app.post('/pubsub', express.json(), async (req, res) => {
+    if (scrapingState.isRunning) {
+        return res.status(409).json({ 
+            error: 'スクレイピングは既に実行中です',
+            status: scrapingState
+        });
+    }
+
     try {
-        await runScrape(bigquery, db);
-        res.status(200).send('スクレイピング処理が完了しました。');
+        updateScrapingState({
+            isRunning: true,
+            startTime: new Date(),
+            lastError: null
+        });
+
+        // 非同期でスクレイピングを実行
+        runScrape(bigquery, db, updateProgress)
+            .then(() => {
+                updateScrapingState({
+                    isRunning: false,
+                    progress: { current: 0, total: 0, message: '完了' }
+                });
+            })
+            .catch(error => {
+                updateScrapingState({
+                    isRunning: false,
+                    lastError: error.message
+                });
+            });
+
+        res.status(202).json({ 
+            message: 'スクレイピングを開始しました',
+            status: scrapingState
+        });
     } catch (error) {
-        console.error('スクレイピング処理中にエラーが発生しました:', error);
-        res.status(500).send('スクレイピング処理中にエラーが発生しました。');
+        updateScrapingState({
+            isRunning: false,
+            lastError: error.message
+        });
+        res.status(500).json({ 
+            error: 'スクレイピングの開始に失敗しました',
+            status: scrapingState
+        });
     }
 });
 
