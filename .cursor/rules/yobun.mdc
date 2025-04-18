@@ -60,11 +60,11 @@ alwaysApply: true
 ### 2.4 ログ出力
 - 日付とホール名を明示的に表示
   ```javascript
-  console.log(`[${date}][${hole.name}] 処理を開始します...`);
+  console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} を処理中...`);
   ```
 - エラーメッセージは具体的に記述
   ```javascript
-  console.error(`[${date}][${hole.name}] エラーが発生しました: ${error.message}`);
+  console.error(`[${date}][${hole.name}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${url}`);
   ```
 
 ### 2.5 設定管理
@@ -87,17 +87,15 @@ alwaysApply: true
 
 ### 2.6 データベース操作
 - SQLiteとBigQueryの操作を分離
-- トランザクション処理を実装
+- トランザクション処理はPromiseベースで実装
   ```javascript
   const saveData = async (db, data) => {
     return new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('BEGIN TRANSACTION');
-        // データ保存処理
-        db.run('COMMIT', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('BEGIN TRANSACTION');
+      // データ保存処理
+      db.run('COMMIT', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
   };
@@ -155,7 +153,7 @@ alwaysApply: true
 - 環境依存の値は設定ファイルに分離
 - 設定は明確な構造化を行う
   ```javascript
-  module.exports = {
+  export default {
     holes: [
       {
         name: "店舗名",
@@ -173,7 +171,13 @@ alwaysApply: true
 
 ### 6.2 ログフォーマット
 - 日時、処理内容、対象を明確に記載
+  ```javascript
+  console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} を処理中...`);
+  ```
 - エラーログは具体的な情報を含める
+  ```javascript
+  console.error(`[${date}][${hole.name}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${url}`);
+  ```
 
 ## 7. インフラストラクチャ
 ### 7.1 実行環境
