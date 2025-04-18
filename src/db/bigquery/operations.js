@@ -150,14 +150,14 @@ const getSavedHoles = async (table) => {
     }
 };
 
-const getBigQueryRowCount = async (table) => {
+const getBigQueryRowCount = async (table, hole) => {
     try {
         const projectId = table.dataset.projectId;
         const datasetId = table.dataset.id;
         const tableId = table.id;
         console.log(`テーブル ${tableId} の行数取得中...`);
         const [rows] = await table.query({
-            query: `SELECT COUNT(*) as count FROM \`${projectId}.${datasetId}.${tableId}\``,
+            query: `SELECT COUNT(*) as count FROM (SELECT id FROM \`${projectId}.${datasetId}.${tableId}\` WHERE hole = '${hole}' GROUP BY id)`,
             useLegacySql: false
         });
         return rows[0].count;

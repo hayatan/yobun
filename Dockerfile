@@ -10,67 +10,43 @@ ENV YOBUNUSER_UID=${HOST_UID}
 # 必要なツールのインストール
 RUN apt-get update && apt-get install -y \
     sqlite3 \
-    curl \
-    wget \
-    gnupg \
-    ca-certificates \
+    curl
+
+# PuppeteerとChromiumに必要な依存関係のインストール
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-freefont-ttf \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
-    libc6 \
-    libcairo2 \
     libcups2 \
-    libdbus-1-3 \
-    libexpat1 \
-    libfontconfig1 \
+    libdrm2 \
     libgbm1 \
-    libgcc1 \
-    libglib2.0-0 \
     libgtk-3-0 \
     libnspr4 \
     libnss3 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libstdc++6 \
-    libx11-6 \
     libx11-xcb1 \
-    libxcb1 \
     libxcomposite1 \
-    libxcursor1 \
     libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxi6 \
     libxrandr2 \
-    libxrender1 \
-    libxss1 \
-    libxtst6 \
-    lsb-release \
     xdg-utils \
-    # Puppeteerの依存関係
-    fonts-ipafont-gothic \
-    fonts-wqy-zenhei \
-    fonts-thai-tlwg \
-    fonts-khmeros \
-    fonts-kacst \
-    fonts-freefont-ttf \
-    dbus \
-    dbus-x11 \
+    libu2f-udev \
+    libxshmfence1 \
+    libglu1-mesa \
+    chromium \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Chromeをインストール
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list && \
-    apt-get update && \
-    apt-get install -y google-chrome-stable && \
-    rm -rf /var/lib/apt/lists/*
 
 # 既存のユーザーを削除してから新しいユーザーを作成
 RUN if getent passwd node >/dev/null; then userdel -r node; fi \
     && groupadd -r yobunuser && useradd -u $YOBUNUSER_UID -rm -g yobunuser -G audio,video yobunuser \
-    && mkdir -p /home/yobunuser/Downloads \
-    && chown -R yobunuser:yobunuser /home/yobunuser
+    && mkdir -p /home/yobunuser/Downloads /app \
+    && chown -R yobunuser:yobunuser /home/yobunuser \
+    && chown -R yobunuser:yobunuser /app
 
 # Litestreamのインストール
 RUN curl -L https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-amd64.tar.gz \
@@ -78,6 +54,10 @@ RUN curl -L https://github.com/benbjohnson/litestream/releases/download/v0.3.13/
     && tar -xzf /litestream.tar.gz -C /usr/local/bin/ \
     && chmod +x /usr/local/bin/litestream \
     && rm /litestream.tar.gz
+
+# Puppeteerの設定：Chromiumのダウンロードをスキップし、インストール済みのChromiumを使用
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 
 # 作業ディレクトリの設定
 WORKDIR /app

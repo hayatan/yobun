@@ -36,7 +36,7 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                 // BigQueryに保存
                 const data = await sqlite.getDiffData(db, date, hole.name);
                 if (data.length > 0) {
-                    const bigQueryRowCount = await getBigQueryRowCount(dateTable);
+                    const bigQueryRowCount = await getBigQueryRowCount(dateTable, hole.name);
                     const sqliteRowCount = data.length;
                     console.log(`[${date}][${hole.name}] BigQuery: ${bigQueryRowCount}件 SQLite: ${sqliteRowCount}件`);
                     if (bigQueryRowCount !== sqliteRowCount) {
