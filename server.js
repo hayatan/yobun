@@ -3,8 +3,16 @@ import express from 'express';
 import bigquery from './src/db/bigquery/init.js';
 import db from './src/db/sqlite/init.js';
 import { runScrape } from './src/app.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// 静的ファイルを提供
+app.use(express.static(path.join(__dirname, 'public')));
 
 // スクレイピングの状態管理
 let scrapingState = {
@@ -86,12 +94,8 @@ app.post('/pubsub', express.json(), async (req, res) => {
 });
 
 // スクレイピング実行エンドポイント
-app.get('/', async (req, res) => {
-    try {
-        res.status(200).send('yobun running...');
-    } catch (error) {
-        res.status(500).send(error.message);
-    }
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Promise 化するわよっ！

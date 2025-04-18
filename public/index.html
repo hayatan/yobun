@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Yobun Scraper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+        }
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+            height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Yobun Scraper</h1>
+        <button id="runButton" class="button" onclick="runScrape()">スクレイピング実行</button>
+        <div id="status" class="status"></div>
+        <div id="log" class="log"></div>
+    </div>
+    <script>
+        let isRunning = false;
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const runButton = document.getElementById('runButton');
+
+        function updateStatus(status) {
+            statusDiv.innerHTML = `<strong>ステータス:</strong> ${status.isRunning ? '実行中' : '待機中'}<br>
+                <strong>開始時刻:</strong> ${status.startTime}<br>
+                <strong>進捗:</strong> ${status.progress.current}/${status.progress.total}<br>
+                <strong>メッセージ:</strong> ${status.progress.message}`;
+        }
+
+        function appendLog(message) {
+            logDiv.innerHTML += message + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function runScrape() {
+            if (isRunning) return;
+            isRunning = true;
+            runButton.disabled = true;
+            logDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/pubsub', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: '{}'
+                });
+                const data = await response.json();
+                updateStatus(data.status);
+                appendLog(data.message);
+
+                // ステータスを定期的に更新
+                const statusInterval = setInterval(async () => {
+                    try {
+                        const statusResponse = await fetch('/status');
+                        const statusData = await statusResponse.json();
+                        updateStatus(statusData);
+                        if (!statusData.isRunning) {
+                            clearInterval(statusInterval);
+                            isRunning = false;
+                            runButton.disabled = false;
+                        }
+                    } catch (error) {
+                        appendLog('ステータス取得エラー: ' + error.message);
+                        clearInterval(statusInterval);
+                        isRunning = false;
+                        runButton.disabled = false;
+                    }
+                }, 1000);
+            } catch (error) {
+                appendLog('エラー: ' + error.message);
+                isRunning = false;
+                runButton.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html> 

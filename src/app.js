@@ -1,9 +1,4 @@
 import scrape from './scrape.js';
-import util from './util/common.js';
-import sqlite from './db/sqlite/operations.js';
-import slorepo from './slorepo.js';
-import config from './slorepo-config.js';
-import { getBigQueryRowCount, saveToBigQueryReplace } from './db/bigquery/operations.js';
 
 // スクレイピング実行処理
 export const runScrape = async (bigquery, db, updateProgress) => {

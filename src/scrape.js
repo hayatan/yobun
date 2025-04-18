@@ -2,7 +2,7 @@ import slorepo from './slorepo.js'; // スクレイピング関数
 import config from './slorepo-config.js'; // ホールの設定
 import util from './util/common.js'; // 日付生成などのユーティリティ
 import sqlite from './db/sqlite/operations.js'; // SQLite関連の関数
-import { saveToBigQueryReplace, getBigQueryRowCount } from './db/bigquery/operations.js'; // BigQuery関連の関数
+import { saveToBigQuery, getBigQueryRowCount, getTable } from './db/bigquery/operations.js'; // BigQuery関連の関数
 
 // メイン処理
 const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate, updateProgress = () => {}) => {
@@ -15,6 +15,8 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
     let completedTasks = 0;
 
     for (const date of dateRange) {
+        const tableId = `${tableIdPrefix}${util.formatUrlDate(date)}`;
+        let dateTable = await getTable(bigquery, datasetId, tableId);
         for (const hole of config.holes) {
             try {
                 if (typeof updateProgress === 'function') {
@@ -32,14 +34,13 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                 }
 
                 // BigQueryに保存
-                const data = await sqlite.getDiffDataDate(db, date);
+                const data = await sqlite.getDiffData(db, date, hole.name);
                 if (data.length > 0) {
-                    const tableId = `${tableIdPrefix}${util.formatUrlDate(date)}`;
-                    const bigQueryRowCount = await getBigQueryRowCount(bigquery, datasetId, tableId);
+                    const bigQueryRowCount = await getBigQueryRowCount(dateTable);
                     const sqliteRowCount = data.length;
-
+                    console.log(`[${date}][${hole.name}] BigQuery: ${bigQueryRowCount}件 SQLite: ${sqliteRowCount}件`);
                     if (bigQueryRowCount !== sqliteRowCount) {
-                        await saveToBigQueryReplace(bigquery, datasetId, tableId, data);
+                        await saveToBigQuery(dateTable, data);
                     }
                 }
 

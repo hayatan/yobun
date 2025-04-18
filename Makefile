@@ -7,6 +7,9 @@ ENV=.env
 IMAGE_NAME=yobun-scraper
 PORT=8080
 
+# ホストのユーザーID
+HOST_UID=$(shell id -u)
+
 .PHONY: help run-dev run-server-dev run-docker build clean shell
 
 help:
@@ -30,7 +33,7 @@ run-server-dev: $(ENV_DEV)
 
 # Dockerビルド
 build:
-	docker build -t $(IMAGE_NAME) .
+	docker build --build-arg HOST_UID=$(HOST_UID) -t $(IMAGE_NAME) .
 
 # Docker実行
 run-docker: $(ENV_PROD)

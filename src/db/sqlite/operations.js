@@ -93,7 +93,7 @@ const getDiffData = async (db, date, hole) => {
                 console.error(`データ取得中にエラーが発生しました: ${err.message}`);
                 reject(err);
             } else {
-                console.log(`[${date}] データ取得結果: ${rows.length} 件`);
+                console.log(`[${date}][${hole}] データ取得結果: ${rows.length} 件`);
                 resolve(util.formatDiffData(rows));
             }
         });

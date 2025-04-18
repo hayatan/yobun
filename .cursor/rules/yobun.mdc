@@ -186,6 +186,11 @@ alwaysApply: true
   // ローカルでの実行例
   node index.js
   ```
+- サーバーの起動:
+```bash
+make build
+male run-docker
+```
 - クラウド実行: Google Cloud Runでホスト
   - Express.jsベースのWebサーバー
   - ヘルスチェックエンドポイント実装
