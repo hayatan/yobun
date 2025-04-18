@@ -1,4 +1,4 @@
-const util = require('./common');
+const util = require('../../util/common');
 
 // テーブル作成関数
 const createScrapedDataTableIfNotExists = async (db) => {

@@ -1,6 +1,6 @@
 require('dotenv').config();
-const { bigquery } = require('./bigquery');
-const { db } = require('./sqlite');
+const bigquery = require('./src/db/bigquery/init');
+const db = require('./src/db/sqlite/init');
 const { runScrape } = require('./src/app');
 
 // メイン処理

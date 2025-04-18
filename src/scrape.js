@@ -1,8 +1,8 @@
 const slorepo = require('./slorepo'); // スクレイピング関数
 const config = require('./slorepo-config'); // ホールの設定
 const util = require('./util/common'); // 日付生成などのユーティリティ
-const sqlite = require('./util/sqlite'); // SQLite関連の関数
-const bq = require('./util/bq'); // BigQuery関連の関数
+const sqlite = require('./db/sqlite/operations'); // SQLite関連の関数
+const bq = require('./db/bigquery/operations'); // BigQuery関連の関数
 
 // メイン処理
 const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate) => {
@@ -15,7 +15,7 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                 const exists = await sqlite.isDiffDataExists(db, date, hole.name);
                 if (!exists) {
                     const data = await slorepo(date, hole.code);
-                    await sqlite.saveDiffData(db,data);
+                    await sqlite.saveDiffData(db, data);
                 }
             } catch (err) {
                 console.error(`処理エラー (${date} - ${hole.name}): ${err.message}`);
@@ -25,8 +25,6 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
         // BigQueryに保存
         try {
             const data = await sqlite.getDiffDataDate(db, date); // SQLiteからデータを取得
-
-
 
             if (data.length === 0) {
                 console.log(`データが空のため、BigQueryへの保存をスキップします: ${date}`);

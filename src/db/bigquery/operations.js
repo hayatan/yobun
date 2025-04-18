@@ -1,6 +1,7 @@
-const util = require('./common');
+const util = require('../../util/common');
 
-const ensureTableExists = async (dataset, tableId) => {
+const ensureTableExists = async (bigquery, datasetId, tableId) => {
+    const dataset = bigquery.dataset(datasetId);
     const table = dataset.table(tableId);
     try {
         const [exists] = await table.exists();
@@ -63,7 +64,7 @@ async function insertWithRetry(table, formattedData, tableId) {
                 throw error;
             }
             const delay = BASE_DELAY * Math.pow(2, attempt - 1);
-            console.warn(`挿入に失敗しました。${delay}ms 後にリトライします... (試行回数: ${attempt})`);
+            console.warn(`挿入に失敗しました。${delay}ms 後にリトライします... (試行回数: ${attempt})`, error);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
@@ -80,8 +81,7 @@ const saveToBigQuery = async (bigquery, datasetId, tableId, data) => {
         throw new Error(`データが空のため、BigQueryへの保存をスキップします: ${tableId}`);
     }
 
-    const dataset = bigquery.dataset(datasetId);
-    const table = await ensureTableExists(dataset, tableId);
+    const table = await ensureTableExists(bigquery, datasetId, tableId);
 
     try {
         await insertWithRetry(table, formattedData, tableId);
