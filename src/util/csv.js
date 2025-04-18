@@ -1,9 +1,9 @@
-const util = require('./common');
-const fs = require('fs');
-const csvParser = require('csv-parser');
+import util from './common.js';
+import fs from 'fs';
+import csvParser from 'csv-parser';
 
 // CSVファイルを読み込み
-const readCSV = (fileName) => {
+export const readCSV = (fileName) => {
     console.log(`CSVファイルを読み込みます: ${fileName}`);
     return new Promise((resolve, reject) => {
         const data = [];
@@ -65,7 +65,7 @@ const saveToCSV = (data, fileName) => {
     console.log(`CSVを保存しました: ${fileName}`);
 };
 
-module.exports = {
+export {
     readCSV,
     saveToCSV,
 };

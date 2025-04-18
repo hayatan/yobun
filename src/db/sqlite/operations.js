@@ -1,4 +1,4 @@
-const util = require('../../util/common');
+import util from '../../util/common.js';
 
 // テーブル作成関数
 const createScrapedDataTableIfNotExists = async (db) => {
@@ -120,10 +120,12 @@ const getDiffDataDate = async (db, date) => {
     });
 };
 
-module.exports = {
+const sqlite = {
     createScrapedDataTableIfNotExists,
     saveDiffData,
     isDiffDataExists,
     getDiffData,
     getDiffDataDate,
 };
+
+export default sqlite;

@@ -1,9 +1,7 @@
-const puppeteer = require('puppeteer');
-const config = require('./slorepo-config');
+import puppeteer from 'puppeteer';
+import config from './slorepo-config.js';
 
-module.exports = scrapeSlotDataByMachine;
-
-async function scrapeSlotDataByMachine(date, holeCode, interval = 3000) {
+export default async function scrapeSlotDataByMachine(date, holeCode, interval = 3000) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 
@@ -41,10 +39,6 @@ async function scrapeSlotDataByMachine(date, holeCode, interval = 3000) {
         const processedData = processSlotData(allData);
 
         return processedData;
-
-    } catch (error) {
-        console.error('エラーが発生しました:', error);
-        return [];
     } finally {
         await browser.close();
     }

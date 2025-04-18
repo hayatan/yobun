@@ -1,6 +1,6 @@
-const sqlite3 = require('sqlite3').verbose();
-const { execSync } = require('child_process');
-require('dotenv').config();
+import sqlite3 from 'sqlite3';
+import 'dotenv/config';
+
 const dbPath = process.env.SQLITE_DB_PATH;
 
 // SQLiteデータベースの設定
@@ -12,4 +12,4 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-module.exports = db;
+export default db;

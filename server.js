@@ -1,9 +1,8 @@
-require('dotenv').config();
-const express = require('express');
-const { bigQuery } = require('./bigquery');
-const { db } = require('./sqlite');
-const { runScrape } = require('./src/app');
-const util = require('util');
+import 'dotenv/config';
+import express from 'express';
+import bigquery from './src/db/bigquery/init.js';
+import db from './src/db/sqlite/init.js';
+import { runScrape } from './src/app.js';
 
 const app = express();
 
@@ -15,7 +14,7 @@ app.get('/health', (req, res) => {
 // スクレイピング実行エンドポイント
 app.get('/run-scrape', async (req, res) => {
     try {
-        await runScrape(bigQuery, db);
+        await runScrape(bigquery, db);
         res.status(200).send('スクレイピング処理が完了しました。');
     } catch (error) {
         console.error('スクレイピング処理中にエラーが発生しました:', error);
@@ -33,8 +32,19 @@ app.get('/', async (req, res) => {
 });
 
 // Promise 化するわよっ！
-const execAsync = util.promisify(db.exec).bind(db);
-const allAsync = util.promisify(db.all).bind(db);
+const execAsync = (sql) => new Promise((resolve, reject) => {
+    db.exec(sql, (err) => {
+        if (err) reject(err);
+        else resolve();
+    });
+});
+
+const allAsync = (sql) => new Promise((resolve, reject) => {
+    db.all(sql, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+    });
+});
 
 app.get('/test-write', async (req, res) => {
     try {

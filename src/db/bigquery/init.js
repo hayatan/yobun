@@ -1,5 +1,5 @@
-require('dotenv').config();
-const { BigQuery } = require('@google-cloud/bigquery');
+import 'dotenv/config';
+import { BigQuery } from '@google-cloud/bigquery';
 
 // 環境に応じたBigQueryの設定
 const bigquery = process.env.NODE_ENV === 'production'
@@ -9,4 +9,4 @@ const bigquery = process.env.NODE_ENV === 'production'
         keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
     }); // 開発環境ではキーを直接
 
-module.exports = bigquery;
+export default bigquery;

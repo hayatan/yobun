@@ -1,7 +1,7 @@
-require('dotenv').config();
-const bigquery = require('./src/db/bigquery/init');
-const db = require('./src/db/sqlite/init');
-const { runScrape } = require('./src/app');
+import 'dotenv/config';
+import bigquery from './src/db/bigquery/init.js';
+import db from './src/db/sqlite/init.js';
+import { runScrape } from './src/app.js';
 
 // メイン処理
 (async () => {

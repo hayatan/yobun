@@ -1,7 +1,7 @@
-const scrape = require('./scrape');
+import scrape from './scrape.js';
 
 // スクレイピング実行処理
-const runScrape = async (bigquery, db, startDate) => {
+export const runScrape = async (bigquery, db, startDate) => {
     const datasetId = 'slot_data';
     const tableIdPrefix = 'data_';
 
@@ -11,8 +11,4 @@ const runScrape = async (bigquery, db, startDate) => {
     console.log('スクレイピング処理を開始します...');
     await scrape(bigquery, datasetId, tableIdPrefix, db, startDate, endDate);
     console.log('スクレイピング処理が完了しました。');
-};
-
-module.exports = {
-    runScrape,
 };

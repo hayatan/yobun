@@ -53,10 +53,12 @@ const formatDiffData = (data) => {
     }))
 };
 
-module.exports = {
+const util = {
     generateDateRange,
     delay,
     validateDiffData,
     formatDiffData,
     formatUrlDate,
 };
+
+export default util;

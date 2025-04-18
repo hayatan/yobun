@@ -1,4 +1,4 @@
-const util = require('../../util/common');
+import util from '../../util/common.js';
 
 const ensureTableExists = async (bigquery, datasetId, tableId) => {
     const dataset = bigquery.dataset(datasetId);
@@ -99,52 +99,40 @@ const saveToBigQueryReplace = async (bigquery, datasetId, tableId, data) => {
         await table.delete({ ignoreNotFound: true });
         await saveToBigQuery(bigquery, datasetId, tableId, data);
     } catch (error) {
+        console.error(`テーブル ${tableId} の再作成中にエラーが発生しました:`, error);
         throw error;
     }
 };
 
-// 指定されたテーブルに保存済みのホールを取得する関数
 const getSavedHoles = async (bigquery, datasetId, tableId) => {
-    const query = `
-        SELECT DISTINCT hole
-        FROM \`${bigquery.projectId}.${datasetId}.${tableId}\`
-    `;
-    const options = {
-        query,
-    };
-
+    const dataset = bigquery.dataset(datasetId);
+    const table = dataset.table(tableId);
     try {
-        const [rows] = await bigquery.query(options);
+        const [rows] = await table.query({
+            query: `SELECT DISTINCT hole FROM \`${datasetId}.${tableId}\``,
+        });
         return rows.map(row => row.hole);
     } catch (error) {
-        if (error.code === 404) {
-            console.log(`Table ${tableId} does not exist yet.`);
-            return [];
-        } else {
-            throw error;
-        }
+        console.error(`テーブル ${tableId} から店舗一覧の取得中にエラーが発生しました:`, error);
+        return [];
     }
 };
 
-// BigQueryのテーブルの行数を取得する関数
 const getBigQueryRowCount = async (bigquery, datasetId, tableId) => {
-    const query = `SELECT COUNT(DISTINCT id) as rowCount FROM \`${bigquery.projectId}.${datasetId}.${tableId}\``;
-    const options = { query };
-
+    const dataset = bigquery.dataset(datasetId);
+    const table = dataset.table(tableId);
     try {
-        const [rows] = await bigquery.query(options);
-        return rows[0].rowCount;
+        const [rows] = await table.query({
+            query: `SELECT COUNT(*) as count FROM \`${datasetId}.${tableId}\``,
+        });
+        return rows[0].count;
     } catch (error) {
-        if (error.code === 404) {
-            console.log(`Table ${tableId} does not exist yet.`);
-            return 0;
-        } else {
-            throw error;
-        }
+        console.error(`テーブル ${tableId} の行数取得中にエラーが発生しました:`, error);
+        return 0;
     }
 };
 
-module.exports = {
+export {
     saveToBigQuery,
     saveToBigQueryReplace,
     getSavedHoles,

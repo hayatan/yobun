@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     holes: [
         {
             name: "アイランド秋葉原店",
