@@ -174,3 +174,78 @@ alwaysApply: true
 ### 6.2 ログフォーマット
 - 日時、処理内容、対象を明確に記載
 - エラーログは具体的な情報を含める
+
+## 7. インフラストラクチャ
+### 7.1 実行環境
+- ローカル実行: `index.js`を直接実行
+  ```javascript
+  // ローカルでの実行例
+  node index.js
+  ```
+- クラウド実行: Google Cloud Runでホスト
+  - Express.jsベースのWebサーバー
+  - ヘルスチェックエンドポイント実装
+  - スクレイピング実行エンドポイント提供
+
+### 7.2 データベース管理
+- SQLiteデータベースの永続化
+  - Litestreamを使用したGCSへのレプリケーション
+  - コンテナ起動時の自動復元機能
+  ```yaml
+  # litestream.yml
+  dbs:
+    - path: /tmp/db.sqlite
+      replicas:
+        - type: gcs
+          bucket: youbun-sqlite
+          path: db.replica
+  ```
+
+### 7.3 コンテナ化
+- 軽量なNode.jsイメージを使用
+- 必要なツールの最小限のインストール
+  ```dockerfile
+  FROM node:23-slim
+  RUN apt-get update && apt-get install -y \
+      sqlite3 \
+      curl
+  ```
+
+### 7.4 環境変数
+- 開発環境と本番環境の切り替え
+  ```javascript
+  if (process.env.NODE_ENV === 'development') {
+      console.log('開発環境で起動中...');
+  }
+  ```
+- データベースパスの設定
+  ```javascript
+  const dbPath = process.env.SQLITE_DB_PATH;
+  ```
+
+### 7.5 エラーハンドリング
+- アプリケーション全体での一貫したエラー処理
+  ```javascript
+  try {
+      await runScrape(bigquery, db);
+  } catch (error) {
+      console.error('スクレイピング処理中にエラーが発生しました:', error);
+  }
+  ```
+
+### 7.6 監視とログ
+- ヘルスチェックエンドポイントの実装
+  ```javascript
+  app.get('/health', (req, res) => {
+      res.status(200).send('OK');
+  });
+  ```
+- 詳細なログ出力
+  ```javascript
+  console.log(`[${date}][${hole.name}] 処理を開始します...`);
+  ```
+
+### 7.7 自動化
+- Cloud Runでの定期実行
+- データの自動バックアップ
+- エラー発生時の自動通知
