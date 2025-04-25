@@ -36,5 +36,9 @@ export default {
             name: "メッセ竹の塚",
             code: 'e383a1e38383e382bbe7abb9e381aee5a19ae5ba97code'
         },
+        {
+            name: "ニュークラウン綾瀬店",
+            code: 'e3838be383a5e383bce382afe383a9e382a6e383b3e7b6bee780ace5ba97code'
+        },
     ]
 }; 
