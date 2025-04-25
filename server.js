@@ -11,6 +11,16 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// アクセスログを出力するミドルウェア
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    const method = req.method;
+    const path = req.path;
+    const ip = req.ip;
+    console.log(`[${timestamp}] ${method} ${path} from ${ip}`);
+    next();
+});
+
 // 静的ファイルを提供
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -56,6 +66,15 @@ app.post('/pubsub', express.json(), async (req, res) => {
     }
 
     try {
+        const { startDate, endDate } = req.body;
+        
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                error: '開始日と終了日を指定してください',
+                status: scrapingState
+            });
+        }
+
         updateScrapingState({
             isRunning: true,
             startTime: new Date(),
@@ -63,7 +82,7 @@ app.post('/pubsub', express.json(), async (req, res) => {
         });
 
         // 非同期でスクレイピングを実行
-        runScrape(bigquery, db, updateProgress)
+        runScrape(bigquery, db, updateProgress, { startDate, endDate })
             .then(() => {
                 updateScrapingState({
                     isRunning: false,

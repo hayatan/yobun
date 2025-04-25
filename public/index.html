@@ -46,11 +46,29 @@
             text-align: left;
             white-space: pre-wrap;
         }
+        .date-range {
+            margin: 20px 0;
+        }
+        .date-range label {
+            margin-right: 10px;
+        }
+        .date-range input {
+            margin-right: 20px;
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Yobun Scraper</h1>
+        <div class="date-range">
+            <label for="startDate">開始日:</label>
+            <input type="date" id="startDate">
+            <label for="endDate">終了日:</label>
+            <input type="date" id="endDate">
+        </div>
         <button id="runButton" class="button" onclick="runScrape()">スクレイピング実行</button>
         <div id="status" class="status"></div>
         <div id="log" class="log"></div>
@@ -73,11 +91,27 @@
             logDiv.scrollTop = logDiv.scrollHeight;
         }
 
+        // デフォルトの日付を設定
+        function setDefaultDates() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - 3);
+            
+            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+        }
+
+        // ページ読み込み時にデフォルト日付を設定
+        window.onload = setDefaultDates;
+
         async function runScrape() {
             if (isRunning) return;
             isRunning = true;
             runButton.disabled = true;
             logDiv.innerHTML = '';
+
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
 
             try {
                 const response = await fetch('/pubsub', {
@@ -85,7 +119,10 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: '{}'
+                    body: JSON.stringify({
+                        startDate,
+                        endDate
+                    })
                 });
                 const data = await response.json();
                 updateStatus(data.status);
