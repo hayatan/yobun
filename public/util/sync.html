@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スロットデータスクレイピング</title>
+    <title>SQLite to BigQuery 同期</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .progress {
@@ -16,21 +16,17 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">スロットデータスクレイピング</h1>
+        <h1 class="mb-4">SQLite to BigQuery 同期</h1>
         
         <div class="card">
             <div class="card-body">
-                <form id="scrapeForm">
+                <form id="syncForm">
                     <div class="mb-3">
-                        <label for="startDate" class="form-label">開始日</label>
-                        <input type="date" class="form-control" id="startDate" required>
+                        <label for="date" class="form-label">同期する日付</label>
+                        <input type="date" class="form-control" id="date" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="endDate" class="form-label">終了日</label>
-                        <input type="date" class="form-control" id="endDate" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="scrapeButton">スクレイピング開始</button>
-                    <a href="/util/sync" class="btn btn-secondary ms-2">SQLite to BigQuery 同期</a>
+                    <button type="submit" class="btn btn-primary" id="syncButton">同期開始</button>
+                    <a href="/" class="btn btn-secondary ms-2">戻る</a>
                 </form>
             </div>
         </div>
@@ -49,62 +45,58 @@
     </div>
 
     <script>
-        const scrapeForm = document.getElementById('scrapeForm');
-        const scrapeButton = document.getElementById('scrapeButton');
+        const syncForm = document.getElementById('syncForm');
+        const syncButton = document.getElementById('syncButton');
         const statusCard = document.getElementById('statusCard');
         const progressBar = document.querySelector('.progress-bar');
         const statusMessage = document.getElementById('statusMessage');
         let statusCheckInterval;
 
         // デフォルトの日付を設定
-        function setDefaultDates() {
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(endDate.getDate() - 7);
-            
-            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
-            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+        function setDefaultDate() {
+            const today = new Date();
+            document.getElementById('date').value = today.toISOString().split('T')[0];
         }
 
         // ページ読み込み時にデフォルト日付を設定
-        window.onload = setDefaultDates;
+        window.onload = setDefaultDate;
 
-        scrapeForm.addEventListener('submit', async (e) => {
+        syncForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            const date = document.getElementById('date').value;
             
             try {
-                scrapeButton.disabled = true;
+                syncButton.disabled = true;
                 statusCard.style.display = 'block';
                 progressBar.style.width = '0%';
-                statusMessage.textContent = 'スクレイピングを開始します...';
+                statusMessage.textContent = '同期処理を開始します...';
 
-                const response = await fetch('/pubsub', {
+                const response = await fetch('/util/sync', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ startDate, endDate })
+                    body: JSON.stringify({ date })
                 });
 
+                const data = await response.json();
+
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'スクレイピングの開始に失敗しました');
+                    throw new Error(data.error || data.message || '同期処理の開始に失敗しました');
                 }
 
                 // 状態チェックを開始
                 startStatusCheck();
             } catch (error) {
                 statusMessage.textContent = `エラー: ${error.message}`;
-                scrapeButton.disabled = false;
+                syncButton.disabled = false;
             }
         });
 
         function startStatusCheck() {
             statusCheckInterval = setInterval(async () => {
                 try {
-                    const response = await fetch('/status');
+                    const response = await fetch('/util/sync/status');
                     const status = await response.json();
 
                     if (status.progress.total > 0) {
@@ -116,7 +108,7 @@
 
                     if (!status.isRunning) {
                         clearInterval(statusCheckInterval);
-                        scrapeButton.disabled = false;
+                        syncButton.disabled = false;
                         
                         if (status.lastError) {
                             statusMessage.textContent = `エラー: ${status.lastError}`;
@@ -125,7 +117,7 @@
                 } catch (error) {
                     clearInterval(statusCheckInterval);
                     statusMessage.textContent = `エラー: ${error.message}`;
-                    scrapeButton.disabled = false;
+                    syncButton.disabled = false;
                 }
             }, 1000);
         }
