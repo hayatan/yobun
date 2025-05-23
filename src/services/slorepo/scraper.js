@@ -131,10 +131,20 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
         // 一覧表から抽出
         const slotTables = document.querySelectorAll('table.table2');
         slotTables.forEach(table => {
+            // テーブルのヘッダーを確認して、必要なテーブルだけを処理
+            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+            
+            // 必要なヘッダーが含まれているか確認
+            const requiredHeaders = ['台番', '差枚', 'G数', 'BB', 'RB', '合成'];
+            const hasRequiredHeaders = requiredHeaders.every(header => headers.includes(header));
+            
+            // 必要なヘッダーが含まれていない場合はスキップ
+            if (!hasRequiredHeaders) {
+                return;
+            }
+
             const tbody = table.querySelector('tbody');
             const trs = tbody.querySelectorAll('tr');
-
-            const headers = Array.from(trs[0].querySelectorAll('th')).map(th => th.textContent.trim());
 
             trs.forEach(tr => {
                 const tds = tr.querySelectorAll('td');
@@ -147,7 +157,7 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
                         existingRow.game = tds[headers.indexOf('G数')].textContent.trim();
                         existingRow.big = tds[headers.indexOf('BB')].textContent.trim();
                         existingRow.reg = tds[headers.indexOf('RB')].textContent.trim();
-                        existingRow.combinedRate =  tds[headers.indexOf('合成')].textContent.trim();
+                        existingRow.combinedRate = tds[headers.indexOf('合成')].textContent.trim();
                     } else {
                         rows.push({
                             date: date,
