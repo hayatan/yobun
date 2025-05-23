@@ -40,5 +40,9 @@ export default {
             name: "ニュークラウン綾瀬店",
             code: 'e3838be383a5e383bce382afe383a9e382a6e383b3e7b6bee780ace5ba97code'
         },
+        {
+            name: "ビッグアップル秋葉原店",
+            code: 'e38393e38383e382b0e382a2e38383e38397e383abefbc8ee7a78be89189e58e9fe5ba97code'
+        },
     ]
 }; 
