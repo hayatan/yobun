@@ -44,5 +44,9 @@ export default {
             name: "ビッグアップル秋葉原店",
             code: 'e38393e38383e382b0e382a2e38383e38397e383abefbc8ee7a78be89189e58e9fe5ba97code'
         },
+        {
+            name: "タイヨーネオ富山店",
+            code: 'e382bfe382a4e383a8e383bce3838de382aae5af8ce5b1b1e5ba97code'
+        },
     ]
 }; 
