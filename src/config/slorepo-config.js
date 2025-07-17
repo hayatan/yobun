@@ -48,5 +48,9 @@ export default {
             name: "タイヨーネオ富山店",
             code: 'e382bfe382a4e383a8e383bce3838de382aae5af8ce5b1b1e5ba97code'
         },
+        {
+            name: "KEIZ富山田中店",
+            code: '4b45495ae5af8ce5b1b1e794b0e4b8ade5ba97code'
+        },
     ]
 }; 
