@@ -167,34 +167,22 @@ const getBigQueryRowCount = async (table, hole) => {
     }
 };
 
-// 特定の日付とホールのデータを削除
-const deleteBigQueryData = async (table, hole) => {
+// BigQueryテーブル全体を削除（強制再取得用）
+const deleteBigQueryTable = async (table) => {
     try {
-        const projectId = table.dataset.projectId;
-        const datasetId = table.dataset.id;
         const tableId = table.id;
+        console.log(`BigQueryテーブル全体を削除中: ${tableId}`);
         
-        const query = `
-            DELETE FROM \`${projectId}.${datasetId}.${tableId}\`
-            WHERE hole = '${hole}'
-        `;
-        
-        console.log(`BigQueryからデータを削除中: ${tableId} - ${hole}`);
-        
-        // BigQueryクライアントを使用してクエリを実行
-        const bigquery = table.dataset.parent;
-        const [job] = await bigquery.createQueryJob({
-            query,
-            useLegacySql: false
-        });
-        
-        // ジョブの完了を待機
-        const [rows] = await job.getQueryResults();
-        console.log(`BigQueryデータ削除完了: ${tableId} - ${hole}`);
+        await table.delete();
+        console.log(`BigQueryテーブル削除完了: ${tableId}`);
         
         return true;
     } catch (error) {
-        console.error(`BigQueryデータ削除中にエラーが発生しました: ${error.message}`);
+        if (error.code === 404) {
+            console.log(`テーブル ${table.id} は存在しませんでした（削除済み）`);
+            return true;
+        }
+        console.error(`BigQueryテーブル削除中にエラーが発生しました: ${error.message}`);
         throw error;
     }
 };
@@ -204,5 +192,5 @@ export {
     getSavedHoles,
     getBigQueryRowCount,
     getTable,
-    deleteBigQueryData,
+    deleteBigQueryTable,
 };

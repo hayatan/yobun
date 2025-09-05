@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer';
 import config from '../../config/slorepo-config.js';
 import { cleanNumber, calculateMaxMY, calculateMaxMDia } from '../../util/slorepo.js';
 
-export default async function scrapeSlotDataByMachine(date, holeCode, interval = 3000) {
+export default async function scrapeSlotDataByMachine(date, holeCode, interval = 5000) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 
@@ -11,10 +11,18 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
     console.log(`[${date}][${hole.name}] スクレイピングを開始します... ${baseUrl}`);
     const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled'
+        ]
     });
 
     const page = await browser.newPage();
+    
+    // User-Agentを設定してbot検出を回避
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    
     const allData = [];
 
     try {
@@ -73,6 +81,9 @@ async function getMachines(page) {
 }
 
 async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
+    
+    // 既存のリスナーを削除してから新しいリスナーを追加
+    page.removeAllListeners("response");
     
     page.on("response", async response => {
         const status = response.status();

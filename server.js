@@ -5,7 +5,7 @@ import db from './src/db/sqlite/init.js';
 import { runScrape } from './src/app.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getTable, saveToBigQuery, deleteBigQueryData } from './src/db/bigquery/operations.js';
+import { getTable, saveToBigQuery, deleteBigQueryTable } from './src/db/bigquery/operations.js';
 import sqlite from './src/db/sqlite/operations.js';
 import scrapeSlotDataByMachine from './src/services/slorepo/scraper.js';
 import config from './src/config/slorepo-config.js';
@@ -288,7 +288,7 @@ app.post('/util/force-rescrape', express.json(), async (req, res) => {
             startTime: new Date(),
             progress: {
                 current: 0,
-                total: 4,
+                total: 5,
                 message: '強制再取得を開始します...'
             },
             lastError: null
@@ -300,47 +300,56 @@ app.post('/util/force-rescrape', express.json(), async (req, res) => {
                 // Step 1: SQLiteからデータを削除
                 forceRescrapeState.progress = {
                     current: 1,
-                    total: 4,
+                    total: 5,
                     message: `[${date}][${holeName}] SQLiteからデータを削除中...`
                 };
                 await sqlite.deleteDiffData(db, date, holeName);
 
-                // Step 2: BigQueryからデータを削除
+                // Step 2: BigQueryテーブル全体を削除
                 forceRescrapeState.progress = {
                     current: 2,
-                    total: 4,
-                    message: `[${date}][${holeName}] BigQueryからデータを削除中...`
+                    total: 5,
+                    message: `[${date}] BigQueryテーブル全体を削除中...`
                 };
                 const datasetId = 'slot_data';
                 const tableId = `data_${date.replace(/-/g, '')}`;
                 const table = await getTable(bigquery, datasetId, tableId);
-                await deleteBigQueryData(table, holeName);
+                await deleteBigQueryTable(table);
 
                 // Step 3: 新しいデータをスクレイピング
                 forceRescrapeState.progress = {
                     current: 3,
-                    total: 4,
+                    total: 5,
                     message: `[${date}][${holeName}] 新しいデータをスクレイピング中...`
                 };
                 const newData = await scrapeSlotDataByMachine(date, hole.code);
                 
-                // SQLiteに保存
-                await sqlite.saveDiffData(db, newData);
-
-                // Step 4: BigQueryに保存
+                // Step 4: SQLiteに保存
                 forceRescrapeState.progress = {
                     current: 4,
-                    total: 4,
-                    message: `[${date}][${holeName}] BigQueryにデータを保存中...`
+                    total: 5,
+                    message: `[${date}][${holeName}] SQLiteに新データを保存中...`
                 };
-                await saveToBigQuery(table, newData);
+                await sqlite.saveDiffData(db, newData);
+
+                // Step 5: SQLite→BigQuery同期（該当日付の全データ）
+                forceRescrapeState.progress = {
+                    current: 5,
+                    total: 5,
+                    message: `[${date}] SQLite→BigQuery同期中...`
+                };
+                const allDateData = await sqlite.getDiffDataDate(db, date);
+                if (allDateData.length > 0) {
+                    const newTable = await getTable(bigquery, datasetId, tableId);
+                    await saveToBigQuery(newTable, allDateData);
+                }
 
                 forceRescrapeState = {
                     isRunning: false,
                     startTime: null,
                     progress: {
-                        current: 4,
-                        total: 4,
+                        current: 5,
+                        total: 5,
                         message: `[${date}][${holeName}] 強制再取得が完了しました`
                     },
                     lastError: null
@@ -352,7 +361,7 @@ app.post('/util/force-rescrape', express.json(), async (req, res) => {
                     startTime: null,
                     progress: {
                         current: 0,
-                        total: 4,
+                        total: 5,
                         message: '強制再取得中にエラーが発生しました'
                     },
                     lastError: error.message
