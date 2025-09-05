@@ -120,12 +120,33 @@ const getDiffDataDate = async (db, date) => {
     });
 };
 
+// 特定の日付とホールのデータを削除
+const deleteDiffData = async (db, date, hole) => {
+    await createScrapedDataTableIfNotExists(db);
+    return new Promise((resolve, reject) => {
+        const query = `
+            DELETE FROM scraped_data
+            WHERE date = ? AND hole = ?
+        `;
+        db.run(query, [date, hole], function(err) {
+            if (err) {
+                console.error(`[${date}][${hole}] データ削除中にエラーが発生しました: ${err.message}`);
+                reject(err);
+            } else {
+                console.log(`[${date}][${hole}] データ削除結果: ${this.changes} 件削除`);
+                resolve(this.changes);
+            }
+        });
+    });
+};
+
 const sqlite = {
     createScrapedDataTableIfNotExists,
     saveDiffData,
     isDiffDataExists,
     getDiffData,
     getDiffDataDate,
+    deleteDiffData,
 };
 
 export default sqlite;

@@ -5,8 +5,10 @@ import db from './src/db/sqlite/init.js';
 import { runScrape } from './src/app.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getTable, saveToBigQuery } from './src/db/bigquery/operations.js';
+import { getTable, saveToBigQuery, deleteBigQueryData } from './src/db/bigquery/operations.js';
 import sqlite from './src/db/sqlite/operations.js';
+import scrapeSlotDataByMachine from './src/services/slorepo/scraper.js';
+import config from './src/config/slorepo-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +42,18 @@ let scrapingState = {
 
 // 同期処理の状態管理
 let syncState = {
+    isRunning: false,
+    startTime: null,
+    progress: {
+        current: 0,
+        total: 0,
+        message: ''
+    },
+    lastError: null
+};
+
+// 強制再取得の状態管理
+let forceRescrapeState = {
     isRunning: false,
     startTime: null,
     progress: {
@@ -134,6 +148,11 @@ app.get('/', (req, res) => {
 // 同期処理のフロントエンド
 app.get('/util/sync', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'util', 'sync.html'));
+});
+
+// 強制再取得のフロントエンド
+app.get('/util/force-rescrape', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'util', 'force-rescrape.html'));
 });
 
 // 同期処理のエンドポイント
@@ -234,6 +253,138 @@ app.post('/util/sync', express.json(), async (req, res) => {
 // 同期処理の状態を取得するエンドポイント
 app.get('/util/sync/status', (req, res) => {
     res.json(syncState);
+});
+
+// 強制再取得のエンドポイント
+app.post('/util/force-rescrape', express.json(), async (req, res) => {
+    if (forceRescrapeState.isRunning) {
+        return res.status(409).json({ 
+            error: '強制再取得は既に実行中です',
+            status: forceRescrapeState
+        });
+    }
+
+    try {
+        const { date, holeName } = req.body;
+        
+        if (!date || !holeName) {
+            return res.status(400).json({
+                error: '日付とホール名を指定してください',
+                status: forceRescrapeState
+            });
+        }
+
+        // ホール設定を確認
+        const hole = config.holes.find(h => h.name === holeName);
+        if (!hole) {
+            return res.status(400).json({
+                error: '指定されたホールが見つかりません',
+                status: forceRescrapeState
+            });
+        }
+
+        forceRescrapeState = {
+            isRunning: true,
+            startTime: new Date(),
+            progress: {
+                current: 0,
+                total: 4,
+                message: '強制再取得を開始します...'
+            },
+            lastError: null
+        };
+
+        // 非同期で強制再取得を実行
+        (async () => {
+            try {
+                // Step 1: SQLiteからデータを削除
+                forceRescrapeState.progress = {
+                    current: 1,
+                    total: 4,
+                    message: `[${date}][${holeName}] SQLiteからデータを削除中...`
+                };
+                await sqlite.deleteDiffData(db, date, holeName);
+
+                // Step 2: BigQueryからデータを削除
+                forceRescrapeState.progress = {
+                    current: 2,
+                    total: 4,
+                    message: `[${date}][${holeName}] BigQueryからデータを削除中...`
+                };
+                const datasetId = 'slot_data';
+                const tableId = `data_${date.replace(/-/g, '')}`;
+                const table = await getTable(bigquery, datasetId, tableId);
+                await deleteBigQueryData(table, holeName);
+
+                // Step 3: 新しいデータをスクレイピング
+                forceRescrapeState.progress = {
+                    current: 3,
+                    total: 4,
+                    message: `[${date}][${holeName}] 新しいデータをスクレイピング中...`
+                };
+                const newData = await scrapeSlotDataByMachine(date, hole.code);
+                
+                // SQLiteに保存
+                await sqlite.saveDiffData(db, newData);
+
+                // Step 4: BigQueryに保存
+                forceRescrapeState.progress = {
+                    current: 4,
+                    total: 4,
+                    message: `[${date}][${holeName}] BigQueryにデータを保存中...`
+                };
+                await saveToBigQuery(table, newData);
+
+                forceRescrapeState = {
+                    isRunning: false,
+                    startTime: null,
+                    progress: {
+                        current: 4,
+                        total: 4,
+                        message: `[${date}][${holeName}] 強制再取得が完了しました`
+                    },
+                    lastError: null
+                };
+            } catch (error) {
+                console.error('強制再取得中にエラーが発生しました:', error);
+                forceRescrapeState = {
+                    isRunning: false,
+                    startTime: null,
+                    progress: {
+                        current: 0,
+                        total: 4,
+                        message: '強制再取得中にエラーが発生しました'
+                    },
+                    lastError: error.message
+                };
+            }
+        })();
+
+        res.status(202).json({ 
+            message: '強制再取得を開始しました',
+            status: forceRescrapeState
+        });
+    } catch (error) {
+        forceRescrapeState = {
+            isRunning: false,
+            startTime: null,
+            progress: {
+                current: 0,
+                total: 4,
+                message: '強制再取得の開始に失敗しました'
+            },
+            lastError: error.message
+        };
+        res.status(500).json({ 
+            error: '強制再取得の開始に失敗しました',
+            status: forceRescrapeState
+        });
+    }
+});
+
+// 強制再取得の状態を取得するエンドポイント
+app.get('/util/force-rescrape/status', (req, res) => {
+    res.json(forceRescrapeState);
 });
 
 // Promise 化するわよっ！
