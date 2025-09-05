@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 import config from '../../config/slorepo-config.js';
-import { cleanNumber, calculateMaxMY, calculateMaxMDia } from '../../util/slorepo.js';
+import { cleanNumber } from '../../util/slorepo.js';
 
 export default async function scrapeSlotDataByMachine(date, holeCode, interval = 5000) {
     const hole = config.holes.find(h => h.code === holeCode);
@@ -59,14 +59,9 @@ function processSlotData(allData) {
         ...item,
         diff: cleanNumber(item.diff),
         game: cleanNumber(item.game),
-        maxMY: calculateMaxMY(item.graphData),
-        maxMDia: calculateMaxMDia(item.graphData),
+        maxMY: 0,  // 未使用のため0固定
+        maxMDia: 0,  // 未使用のため0固定
         win: cleanNumber(item.diff) >= 1 ? 1 : 0,
-        win1000: cleanNumber(item.diff) >= 1000 ? 1 : 0,
-        win2000: cleanNumber(item.diff) >= 2000 ? 1 : 0,
-        win5000: cleanNumber(item.diff) >= 5000 ? 1 : 0,
-        win7000: cleanNumber(item.diff) >= 7000 ? 1 : 0,
-        win10000: cleanNumber(item.diff) >= 10000 ? 1 : 0,
     }));
 }
 
