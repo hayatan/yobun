@@ -3,7 +3,11 @@
 -- 宛先テーブル: yobun-450512.datamart.machine_stats (日付パーティション)
 -- 
 -- 注意: @run_date は実行日。集計日は実行日の1日前（@run_date - 1）
---       例: 12/25に実行 → 集計日は12/24、データ範囲は11/26〜12/24（28日間）
+--       例: 12/25に実行 → 集計日は12/24
+--
+-- 集計期間:
+--   当日から（当日を含む）: d3, d5, d7, d28, mtd
+--   前日から（当日を含まない）: prev_d3, prev_d5, prev_d7, prev_d28, prev_mtd
 
 -- ============================================================================
 -- 1. 重複排除: 同じ日付・店舗・台番のデータはtimestamp最新を採用
@@ -28,8 +32,8 @@ WITH deduplicated_data AS (
       ORDER BY timestamp DESC
     ) AS rn
   FROM `yobun-450512.slot_data.data_*`
-  -- 実行日の1日前（集計日）から28日間のデータを取得
-  WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(@run_date, INTERVAL 29 DAY))
+  -- 集計日から最大31日前までのデータを取得（当月対応）
+  WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(@run_date, INTERVAL 32 DAY))
                           AND FORMAT_DATE('%Y%m%d', DATE_SUB(@run_date, INTERVAL 1 DAY))
 ),
 
@@ -169,21 +173,26 @@ normalized_data AS (
 ),
 
 -- ============================================================================
--- 4. 当日のデータから機種名を取得 (集計日の機種が基準)
---    集計日 = 実行日の1日前
+-- 4. 集計日の定義（実行日の1日前）
 -- ============================================================================
-current_day_machines AS (
-  SELECT
-    hole,
-    machine_number,
-    machine
-  FROM normalized_data
-  WHERE date = DATE_SUB(@run_date, INTERVAL 1 DAY)
+target_date_def AS (
+  SELECT DATE_SUB(@run_date, INTERVAL 1 DAY) AS target_date
 ),
 
 -- ============================================================================
--- 5. 機種変更検出: 各台番の集計開始日を算出
---    同じ機種名でデータが遡れる最も古い日付がstart_date
+-- 5. 当日のデータから機種名を取得 (集計日の機種が基準)
+-- ============================================================================
+current_day_machines AS (
+  SELECT
+    n.hole,
+    n.machine_number,
+    n.machine
+  FROM normalized_data n, target_date_def t
+  WHERE n.date = t.target_date
+),
+
+-- ============================================================================
+-- 6. 機種変更検出: 各台番の集計開始日を算出
 -- ============================================================================
 machine_periods AS (
   SELECT
@@ -191,133 +200,225 @@ machine_periods AS (
     n.machine_number,
     c.machine,
     MIN(n.date) AS start_date,
-    DATE_SUB(@run_date, INTERVAL 1 DAY) AS end_date
+    t.target_date AS end_date
   FROM normalized_data n
   INNER JOIN current_day_machines c
     ON n.hole = c.hole
     AND n.machine_number = c.machine_number
-    AND n.machine = c.machine  -- 同じ機種名のデータのみ
-  GROUP BY n.hole, n.machine_number, c.machine
+    AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  GROUP BY n.hole, n.machine_number, c.machine, t.target_date
 ),
 
 -- ============================================================================
--- 6. 各期間の集計
+-- 7. 当日データ (d1)
 -- ============================================================================
--- 28日間集計
-stats_28d AS (
-  SELECT
-    n.hole,
-    n.machine_number,
-    SUM(n.diff) AS d28_diff,
-    SUM(n.game) AS d28_game,
-    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d28_win_rate,
-    CASE
-      WHEN SUM(n.game) = 0 THEN NULL
-      ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3)
-    END AS d28_payout_rate
-  FROM normalized_data n
-  INNER JOIN machine_periods mp
-    ON n.hole = mp.hole
-    AND n.machine_number = mp.machine_number
-  INNER JOIN current_day_machines c
-    ON n.hole = c.hole
-    AND n.machine_number = c.machine_number
-    AND n.machine = c.machine  -- 同じ機種名のデータのみ
-  WHERE n.date BETWEEN DATE_SUB(@run_date, INTERVAL 28 DAY) AND DATE_SUB(@run_date, INTERVAL 1 DAY)
-  GROUP BY n.hole, n.machine_number
-),
-
--- 5日間集計
-stats_5d AS (
-  SELECT
-    n.hole,
-    n.machine_number,
-    SUM(n.diff) AS d5_diff,
-    SUM(n.game) AS d5_game,
-    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d5_win_rate,
-    CASE
-      WHEN SUM(n.game) = 0 THEN NULL
-      ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3)
-    END AS d5_payout_rate
-  FROM normalized_data n
-  INNER JOIN current_day_machines c
-    ON n.hole = c.hole
-    AND n.machine_number = c.machine_number
-    AND n.machine = c.machine  -- 同じ機種名のデータのみ
-  WHERE n.date BETWEEN DATE_SUB(@run_date, INTERVAL 5 DAY) AND DATE_SUB(@run_date, INTERVAL 1 DAY)
-  GROUP BY n.hole, n.machine_number
-),
-
--- 3日間集計
-stats_3d AS (
-  SELECT
-    n.hole,
-    n.machine_number,
-    SUM(n.diff) AS d3_diff,
-    SUM(n.game) AS d3_game,
-    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d3_win_rate,
-    CASE
-      WHEN SUM(n.game) = 0 THEN NULL
-      ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3)
-    END AS d3_payout_rate
-  FROM normalized_data n
-  INNER JOIN current_day_machines c
-    ON n.hole = c.hole
-    AND n.machine_number = c.machine_number
-    AND n.machine = c.machine  -- 同じ機種名のデータのみ
-  WHERE n.date BETWEEN DATE_SUB(@run_date, INTERVAL 3 DAY) AND DATE_SUB(@run_date, INTERVAL 1 DAY)
-  GROUP BY n.hole, n.machine_number
-),
-
--- 当日データ（集計日 = 実行日の1日前）
-stats_1d AS (
+stats_d1 AS (
   SELECT
     n.hole,
     n.machine_number,
     n.diff AS d1_diff,
     n.game AS d1_game,
-    CASE
-      WHEN n.game = 0 THEN NULL
-      ELSE (n.game * 3 + n.diff) / (n.game * 3)
-    END AS d1_payout_rate
+    CASE WHEN n.game = 0 THEN NULL ELSE (n.game * 3 + n.diff) / (n.game * 3) END AS d1_payout_rate
+  FROM normalized_data n, target_date_def t
+  WHERE n.date = t.target_date
+),
+
+-- ============================================================================
+-- 8. 当日から過去N日間（当日を含む）
+-- ============================================================================
+-- 3日間（当日〜3日前）
+stats_d3 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS d3_diff,
+    SUM(n.game) AS d3_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d3_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d3_payout_rate
   FROM normalized_data n
-  WHERE n.date = DATE_SUB(@run_date, INTERVAL 1 DAY)
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 2 DAY) AND t.target_date
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 5日間（当日〜5日前）
+stats_d5 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS d5_diff,
+    SUM(n.game) AS d5_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d5_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d5_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 4 DAY) AND t.target_date
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 7日間（当日〜7日前）
+stats_d7 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS d7_diff,
+    SUM(n.game) AS d7_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d7_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d7_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 6 DAY) AND t.target_date
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 28日間（当日〜28日前）
+stats_d28 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS d28_diff,
+    SUM(n.game) AS d28_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d28_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d28_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 27 DAY) AND t.target_date
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 当月（当日〜月初）
+stats_mtd AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS mtd_diff,
+    SUM(n.game) AS mtd_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS mtd_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS mtd_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_TRUNC(t.target_date, MONTH) AND t.target_date
+  GROUP BY n.hole, n.machine_number
+),
+
+-- ============================================================================
+-- 9. 前日から過去N日間（当日を含まない）
+-- ============================================================================
+-- 3日間（前日〜4日前）
+stats_prev_d3 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS prev_d3_diff,
+    SUM(n.game) AS prev_d3_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d3_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d3_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 3 DAY) AND DATE_SUB(t.target_date, INTERVAL 1 DAY)
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 5日間（前日〜6日前）
+stats_prev_d5 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS prev_d5_diff,
+    SUM(n.game) AS prev_d5_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d5_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d5_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 5 DAY) AND DATE_SUB(t.target_date, INTERVAL 1 DAY)
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 7日間（前日〜8日前）
+stats_prev_d7 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS prev_d7_diff,
+    SUM(n.game) AS prev_d7_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d7_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d7_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 7 DAY) AND DATE_SUB(t.target_date, INTERVAL 1 DAY)
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 28日間（前日〜29日前）
+stats_prev_d28 AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS prev_d28_diff,
+    SUM(n.game) AS prev_d28_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d28_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d28_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 28 DAY) AND DATE_SUB(t.target_date, INTERVAL 1 DAY)
+  GROUP BY n.hole, n.machine_number
+),
+
+-- 前月分（前日〜月初）
+stats_prev_mtd AS (
+  SELECT
+    n.hole, n.machine_number,
+    SUM(n.diff) AS prev_mtd_diff,
+    SUM(n.game) AS prev_mtd_game,
+    SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_mtd_win_rate,
+    CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_mtd_payout_rate
+  FROM normalized_data n
+  INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+  CROSS JOIN target_date_def t
+  WHERE n.date BETWEEN DATE_TRUNC(t.target_date, MONTH) AND DATE_SUB(t.target_date, INTERVAL 1 DAY)
+  GROUP BY n.hole, n.machine_number
 )
 
 -- ============================================================================
--- 7. 最終出力
+-- 10. 最終出力
 -- ============================================================================
 SELECT
-  DATE_SUB(@run_date, INTERVAL 1 DAY) AS target_date,
+  mp.end_date AS target_date,
   mp.hole,
   mp.machine_number,
   mp.machine,
   mp.start_date,
   mp.end_date,
-  -- 28日間
-  s28.d28_diff,
-  s28.d28_game,
-  s28.d28_win_rate,
-  s28.d28_payout_rate,
-  -- 5日間
-  s5.d5_diff,
-  s5.d5_game,
-  s5.d5_win_rate,
-  s5.d5_payout_rate,
-  -- 3日間
-  s3.d3_diff,
-  s3.d3_game,
-  s3.d3_win_rate,
-  s3.d3_payout_rate,
-  -- 当日
-  s1.d1_diff,
-  s1.d1_game,
-  s1.d1_payout_rate
-FROM machine_periods mp
-LEFT JOIN stats_28d s28 ON mp.hole = s28.hole AND mp.machine_number = s28.machine_number
-LEFT JOIN stats_5d s5 ON mp.hole = s5.hole AND mp.machine_number = s5.machine_number
-LEFT JOIN stats_3d s3 ON mp.hole = s3.hole AND mp.machine_number = s3.machine_number
-LEFT JOIN stats_1d s1 ON mp.hole = s1.hole AND mp.machine_number = s1.machine_number
--- ORDER BY はスケジュールクエリのパーティション書き込みと互換性がないため削除
--- 必要な場合は SELECT 時にソートしてください
+  
+  -- 当日データ
+  d1.d1_diff,
+  d1.d1_game,
+  d1.d1_payout_rate,
+  
+  -- 当日から過去N日間（当日を含む）
+  d3.d3_diff, d3.d3_game, d3.d3_win_rate, d3.d3_payout_rate,
+  d5.d5_diff, d5.d5_game, d5.d5_win_rate, d5.d5_payout_rate,
+  d7.d7_diff, d7.d7_game, d7.d7_win_rate, d7.d7_payout_rate,
+  d28.d28_diff, d28.d28_game, d28.d28_win_rate, d28.d28_payout_rate,
+  mtd.mtd_diff, mtd.mtd_game, mtd.mtd_win_rate, mtd.mtd_payout_rate,
+  
+  -- 前日から過去N日間（当日を含まない）
+  pd3.prev_d3_diff, pd3.prev_d3_game, pd3.prev_d3_win_rate, pd3.prev_d3_payout_rate,
+  pd5.prev_d5_diff, pd5.prev_d5_game, pd5.prev_d5_win_rate, pd5.prev_d5_payout_rate,
+  pd7.prev_d7_diff, pd7.prev_d7_game, pd7.prev_d7_win_rate, pd7.prev_d7_payout_rate,
+  pd28.prev_d28_diff, pd28.prev_d28_game, pd28.prev_d28_win_rate, pd28.prev_d28_payout_rate,
+  pmtd.prev_mtd_diff, pmtd.prev_mtd_game, pmtd.prev_mtd_win_rate, pmtd.prev_mtd_payout_rate
 
+FROM machine_periods mp
+LEFT JOIN stats_d1 d1 ON mp.hole = d1.hole AND mp.machine_number = d1.machine_number
+LEFT JOIN stats_d3 d3 ON mp.hole = d3.hole AND mp.machine_number = d3.machine_number
+LEFT JOIN stats_d5 d5 ON mp.hole = d5.hole AND mp.machine_number = d5.machine_number
+LEFT JOIN stats_d7 d7 ON mp.hole = d7.hole AND mp.machine_number = d7.machine_number
+LEFT JOIN stats_d28 d28 ON mp.hole = d28.hole AND mp.machine_number = d28.machine_number
+LEFT JOIN stats_mtd mtd ON mp.hole = mtd.hole AND mp.machine_number = mtd.machine_number
+LEFT JOIN stats_prev_d3 pd3 ON mp.hole = pd3.hole AND mp.machine_number = pd3.machine_number
+LEFT JOIN stats_prev_d5 pd5 ON mp.hole = pd5.hole AND mp.machine_number = pd5.machine_number
+LEFT JOIN stats_prev_d7 pd7 ON mp.hole = pd7.hole AND mp.machine_number = pd7.machine_number
+LEFT JOIN stats_prev_d28 pd28 ON mp.hole = pd28.hole AND mp.machine_number = pd28.machine_number
+LEFT JOIN stats_prev_mtd pmtd ON mp.hole = pmtd.hole AND mp.machine_number = pmtd.machine_number
