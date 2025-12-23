@@ -71,7 +71,18 @@ CREATE TABLE IF NOT EXISTS `yobun-450512.datamart.machine_stats` (
   -- ========================================
   -- 前日から過去N日間（当日を含まない）
   -- ========================================
-  -- 3日間（前日〜4日前）
+  -- 前日のみ（1日前）
+  prev_d1_diff INT64 OPTIONS(description = '前日 差枚'),
+  prev_d1_game INT64 OPTIONS(description = '前日 ゲーム数'),
+  prev_d1_payout_rate FLOAT64 OPTIONS(description = '前日 機械割'),
+  
+  -- 2日間（前日〜2日前）
+  prev_d2_diff INT64 OPTIONS(description = '前日から2日間 総差枚'),
+  prev_d2_game INT64 OPTIONS(description = '前日から2日間 総ゲーム数'),
+  prev_d2_win_rate FLOAT64 OPTIONS(description = '前日から2日間 勝率'),
+  prev_d2_payout_rate FLOAT64 OPTIONS(description = '前日から2日間 機械割'),
+  
+  -- 3日間（前日〜3日前）
   prev_d3_diff INT64 OPTIONS(description = '前日から3日間 総差枚'),
   prev_d3_game INT64 OPTIONS(description = '前日から3日間 総ゲーム数'),
   prev_d3_win_rate FLOAT64 OPTIONS(description = '前日から3日間 勝率'),

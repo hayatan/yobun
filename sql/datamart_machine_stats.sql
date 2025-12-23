@@ -294,6 +294,28 @@ USING (
   -- ============================================================================
   -- 9. 前日から過去N日間（当日を含まない）
   -- ============================================================================
+  stats_prev_d1 AS (
+    SELECT n.hole, n.machine_number,
+      n.diff AS prev_d1_diff, n.game AS prev_d1_game,
+      CASE WHEN n.game = 0 THEN NULL ELSE (n.game * 3 + n.diff) / (n.game * 3) END AS prev_d1_payout_rate
+    FROM normalized_data n
+    INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+    CROSS JOIN target_date_def t
+    WHERE n.date = DATE_SUB(t.target_date, INTERVAL 1 DAY)
+  ),
+
+  stats_prev_d2 AS (
+    SELECT n.hole, n.machine_number,
+      SUM(n.diff) AS prev_d2_diff, SUM(n.game) AS prev_d2_game,
+      SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d2_win_rate,
+      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d2_payout_rate
+    FROM normalized_data n
+    INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
+    CROSS JOIN target_date_def t
+    WHERE n.date BETWEEN DATE_SUB(t.target_date, INTERVAL 2 DAY) AND DATE_SUB(t.target_date, INTERVAL 1 DAY)
+    GROUP BY n.hole, n.machine_number
+  ),
+
   stats_prev_d3 AS (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_d3_diff, SUM(n.game) AS prev_d3_game,
@@ -370,6 +392,8 @@ USING (
     d7.d7_diff, d7.d7_game, d7.d7_win_rate, d7.d7_payout_rate,
     d28.d28_diff, d28.d28_game, d28.d28_win_rate, d28.d28_payout_rate,
     mtd.mtd_diff, mtd.mtd_game, mtd.mtd_win_rate, mtd.mtd_payout_rate,
+    pd1.prev_d1_diff, pd1.prev_d1_game, pd1.prev_d1_payout_rate,
+    pd2.prev_d2_diff, pd2.prev_d2_game, pd2.prev_d2_win_rate, pd2.prev_d2_payout_rate,
     pd3.prev_d3_diff, pd3.prev_d3_game, pd3.prev_d3_win_rate, pd3.prev_d3_payout_rate,
     pd5.prev_d5_diff, pd5.prev_d5_game, pd5.prev_d5_win_rate, pd5.prev_d5_payout_rate,
     pd7.prev_d7_diff, pd7.prev_d7_game, pd7.prev_d7_win_rate, pd7.prev_d7_payout_rate,
@@ -382,6 +406,8 @@ USING (
   LEFT JOIN stats_d7 d7 ON mp.hole = d7.hole AND mp.machine_number = d7.machine_number
   LEFT JOIN stats_d28 d28 ON mp.hole = d28.hole AND mp.machine_number = d28.machine_number
   LEFT JOIN stats_mtd mtd ON mp.hole = mtd.hole AND mp.machine_number = mtd.machine_number
+  LEFT JOIN stats_prev_d1 pd1 ON mp.hole = pd1.hole AND mp.machine_number = pd1.machine_number
+  LEFT JOIN stats_prev_d2 pd2 ON mp.hole = pd2.hole AND mp.machine_number = pd2.machine_number
   LEFT JOIN stats_prev_d3 pd3 ON mp.hole = pd3.hole AND mp.machine_number = pd3.machine_number
   LEFT JOIN stats_prev_d5 pd5 ON mp.hole = pd5.hole AND mp.machine_number = pd5.machine_number
   LEFT JOIN stats_prev_d7 pd7 ON mp.hole = pd7.hole AND mp.machine_number = pd7.machine_number
@@ -421,6 +447,13 @@ WHEN MATCHED THEN
     mtd_game = source.mtd_game,
     mtd_win_rate = source.mtd_win_rate,
     mtd_payout_rate = source.mtd_payout_rate,
+    prev_d1_diff = source.prev_d1_diff,
+    prev_d1_game = source.prev_d1_game,
+    prev_d1_payout_rate = source.prev_d1_payout_rate,
+    prev_d2_diff = source.prev_d2_diff,
+    prev_d2_game = source.prev_d2_game,
+    prev_d2_win_rate = source.prev_d2_win_rate,
+    prev_d2_payout_rate = source.prev_d2_payout_rate,
     prev_d3_diff = source.prev_d3_diff,
     prev_d3_game = source.prev_d3_game,
     prev_d3_win_rate = source.prev_d3_win_rate,
@@ -452,6 +485,8 @@ WHEN NOT MATCHED THEN
     d7_diff, d7_game, d7_win_rate, d7_payout_rate,
     d28_diff, d28_game, d28_win_rate, d28_payout_rate,
     mtd_diff, mtd_game, mtd_win_rate, mtd_payout_rate,
+    prev_d1_diff, prev_d1_game, prev_d1_payout_rate,
+    prev_d2_diff, prev_d2_game, prev_d2_win_rate, prev_d2_payout_rate,
     prev_d3_diff, prev_d3_game, prev_d3_win_rate, prev_d3_payout_rate,
     prev_d5_diff, prev_d5_game, prev_d5_win_rate, prev_d5_payout_rate,
     prev_d7_diff, prev_d7_game, prev_d7_win_rate, prev_d7_payout_rate,
@@ -466,6 +501,8 @@ WHEN NOT MATCHED THEN
     source.d7_diff, source.d7_game, source.d7_win_rate, source.d7_payout_rate,
     source.d28_diff, source.d28_game, source.d28_win_rate, source.d28_payout_rate,
     source.mtd_diff, source.mtd_game, source.mtd_win_rate, source.mtd_payout_rate,
+    source.prev_d1_diff, source.prev_d1_game, source.prev_d1_payout_rate,
+    source.prev_d2_diff, source.prev_d2_game, source.prev_d2_win_rate, source.prev_d2_payout_rate,
     source.prev_d3_diff, source.prev_d3_game, source.prev_d3_win_rate, source.prev_d3_payout_rate,
     source.prev_d5_diff, source.prev_d5_game, source.prev_d5_win_rate, source.prev_d5_payout_rate,
     source.prev_d7_diff, source.prev_d7_game, source.prev_d7_win_rate, source.prev_d7_payout_rate,
