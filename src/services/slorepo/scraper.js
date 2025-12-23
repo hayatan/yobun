@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer';
 import config from '../../config/slorepo-config.js';
 import { cleanNumber } from '../../util/slorepo.js';
 
-export default async function scrapeSlotDataByMachine(date, holeCode, interval = 5000) {
+export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 
