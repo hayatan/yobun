@@ -38,6 +38,12 @@
 | `all_machines_scatter.sql` | 全機種の散布図用データ |
 | `all_machines_summary.sql` | 全機種のカテゴリ別集計 |
 
+### 条件付き確率分析（ベースレートバイアス対策）
+
+| ファイル | 用途 |
+|----------|------|
+| `tolove_conditional_probability.sql` | 前N日カテゴリ別の「当日104%以上になる確率」|
+
 ## カテゴリ閾値
 
 ### 短期機械割（3段階）
