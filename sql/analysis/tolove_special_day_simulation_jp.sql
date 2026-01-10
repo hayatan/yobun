@@ -27,9 +27,11 @@
 -- 【出力項目】
 --   曜日, 参照期間, 戦略, 実施日数, 参照台数, 勝利日数, 勝率, 合計差枚, 平均差枚, 機械割
 --
--- 【拡張方法】
+-- 【拡張方法（モジュラー設計）】
 --   - 曜日カテゴリ追加: day_categories CTEに行を追加
---   - 戦略追加: basic_strategies / compound_strategies のUNNEST配列に要素を追加
+--   - 長期条件追加: long_term_conditions CTEに行を追加
+--   - 短期条件追加: short_term_conditions CTEに行を追加
+--   → 組み合わせは自動生成されます
 -- ============================================================================
 
 WITH 
@@ -53,7 +55,7 @@ base_data AS (
     prev_d5_win_rate,
     prev_d7_win_rate,
     prev_d28_win_rate,
-    -- 過去28日の機械割（データマートから取得）
+    -- 過去28日の機械割
     prev_d28_payout_rate,
     -- 土日祝フラグ
     CASE 
@@ -89,7 +91,6 @@ day_categories AS (
 -- ============================================================================
 -- 3. 基本戦略（単一期間参照）- 参照期間ごとにランキング計算
 -- ============================================================================
--- 前日
 basic_d1 AS (
   SELECT 
     '前日' AS `参照期間`, 1 AS period_order,
@@ -132,7 +133,6 @@ basic_d28 AS (
   FROM base_data WHERE prev_d28_diff IS NOT NULL
 ),
 
--- 基本戦略の統合
 basic_periods AS (
   SELECT * FROM basic_d1 UNION ALL
   SELECT * FROM basic_d3 UNION ALL
@@ -141,7 +141,6 @@ basic_periods AS (
   SELECT * FROM basic_d28
 ),
 
--- 基本戦略の適用
 basic_with_strategies AS (
   SELECT 
     p.`参照期間`, p.period_order, p.target_date, p.d1_diff, p.d1_game, p.is_holiday, p.is_special_day,
@@ -161,192 +160,127 @@ basic_with_strategies AS (
 ),
 
 -- ============================================================================
--- 4. 複合戦略（長期28日 × 短期条件）
+-- 4. 複合戦略用マスタ定義（モジュラー設計）
+-- ============================================================================
+
+-- 長期条件マスタ（過去28日間の条件）
+-- 追加方法: 新しいSTRUCTを配列に追加するだけ
+long_term_conditions AS (
+  SELECT * FROM UNNEST([
+    STRUCT(
+      '過去28日間勝率50%以上' AS lt_name, 
+      'win_rate' AS lt_type, 
+      0.5 AS lt_threshold, 
+      '>=' AS lt_op, 
+      1 AS lt_sort
+    ),
+    STRUCT('過去28日間勝率50%未満', 'win_rate', 0.5, '<', 2),
+    STRUCT('過去28日間機械割110%以上', 'payout_rate', 1.10, '>=', 3),
+    STRUCT('過去28日間機械割105%以上', 'payout_rate', 1.05, '>=', 4),
+    STRUCT('過去28日間機械割100%未満', 'payout_rate', 1.00, '<', 5)
+  ])
+),
+
+-- 短期条件マスタ（過去3/5/7日間の条件）
+-- 追加方法: 新しいSTRUCTを配列に追加するだけ
+short_term_conditions AS (
+  SELECT * FROM UNNEST([
+    -- 条件なし（長期のみ）
+    STRUCT(
+      '' AS st_name, 
+      0 AS st_period, 
+      'none' AS st_type, 
+      0.0 AS st_threshold, 
+      '' AS st_op, 
+      0 AS st_sort
+    ),
+    -- 過去3日間
+    STRUCT('+過去3日間勝率100%', 3, 'win_rate', 1.0, '=', 1),
+    STRUCT('+過去3日間勝率80%以上', 3, 'win_rate', 0.8, '>=', 2),
+    STRUCT('+過去3日間勝率60%以上', 3, 'win_rate', 0.6, '>=', 3),
+    STRUCT('+過去3日間勝率30%以下', 3, 'win_rate', 0.3, '<=', 4),
+    STRUCT('+過去3日間勝率0%', 3, 'win_rate', 0.0, '=', 5),
+    -- 過去5日間
+    STRUCT('+過去5日間勝率100%', 5, 'win_rate', 1.0, '=', 11),
+    STRUCT('+過去5日間勝率80%以上', 5, 'win_rate', 0.8, '>=', 12),
+    STRUCT('+過去5日間勝率60%以上', 5, 'win_rate', 0.6, '>=', 13),
+    STRUCT('+過去5日間勝率30%以下', 5, 'win_rate', 0.3, '<=', 14),
+    STRUCT('+過去5日間勝率0%', 5, 'win_rate', 0.0, '=', 15),
+    -- 過去7日間
+    STRUCT('+過去7日間勝率100%', 7, 'win_rate', 1.0, '=', 21),
+    STRUCT('+過去7日間勝率80%以上', 7, 'win_rate', 0.8, '>=', 22),
+    STRUCT('+過去7日間勝率60%以上', 7, 'win_rate', 0.6, '>=', 23),
+    STRUCT('+過去7日間勝率30%以下', 7, 'win_rate', 0.3, '<=', 24),
+    STRUCT('+過去7日間勝率0%', 7, 'win_rate', 0.0, '=', 25)
+  ])
+),
+
+-- ============================================================================
+-- 5. 組み合わせ自動生成（CROSS JOIN）
+-- ============================================================================
+strategy_combinations AS (
+  SELECT
+    CONCAT(lt.lt_name, st.st_name) AS strategy_name,
+    lt.lt_type, lt.lt_threshold, lt.lt_op,
+    st.st_period, st.st_type, st.st_threshold, st.st_op,
+    lt.lt_sort * 100 + st.st_sort AS sort_order
+  FROM long_term_conditions lt
+  CROSS JOIN short_term_conditions st
+),
+
+-- ============================================================================
+-- 6. 動的条件評価
 -- ============================================================================
 compound_with_strategies AS (
   SELECT 
     '複合' AS `参照期間`, 
     99 AS period_order,
     b.target_date, b.d1_diff, b.d1_game, b.is_holiday, b.is_special_day,
-    s.`戦略`, s.strategy_order
+    sc.strategy_name AS `戦略`, 
+    sc.sort_order AS strategy_order
   FROM base_data b
-  CROSS JOIN UNNEST([
-    -- ========== 28日勝率50%以上 ==========
-    STRUCT('過去28日間勝率50%以上' AS `戦略`, 101 AS strategy_order,
-           b.prev_d28_win_rate >= 0.5 AS matches),
-    STRUCT('過去28日間勝率50%以上+過去3日間勝率100%', 102,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d3_win_rate = 1.0),
-    STRUCT('過去28日間勝率50%以上+過去5日間勝率100%', 103,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d5_win_rate = 1.0),
-    STRUCT('過去28日間勝率50%以上+過去7日間勝率100%', 104,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d7_win_rate = 1.0),
-    STRUCT('過去28日間勝率50%以上+過去3日間勝率80%以上', 105,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d3_win_rate >= 0.8),
-    STRUCT('過去28日間勝率50%以上+過去5日間勝率80%以上', 106,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d5_win_rate >= 0.8),
-    STRUCT('過去28日間勝率50%以上+過去7日間勝率80%以上', 107,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d7_win_rate >= 0.8),
-    STRUCT('過去28日間勝率50%以上+過去3日間勝率60%以上', 108,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d3_win_rate >= 0.6),
-    STRUCT('過去28日間勝率50%以上+過去5日間勝率60%以上', 109,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d5_win_rate >= 0.6),
-    STRUCT('過去28日間勝率50%以上+過去7日間勝率60%以上', 110,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d7_win_rate >= 0.6),
-    STRUCT('過去28日間勝率50%以上+過去3日間勝率30%以下', 111,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d3_win_rate <= 0.3),
-    STRUCT('過去28日間勝率50%以上+過去5日間勝率30%以下', 112,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d5_win_rate <= 0.3),
-    STRUCT('過去28日間勝率50%以上+過去7日間勝率30%以下', 113,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d7_win_rate <= 0.3),
-    STRUCT('過去28日間勝率50%以上+過去3日間勝率0%', 114,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d3_win_rate = 0),
-    STRUCT('過去28日間勝率50%以上+過去5日間勝率0%', 115,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d5_win_rate = 0),
-    STRUCT('過去28日間勝率50%以上+過去7日間勝率0%', 116,
-           b.prev_d28_win_rate >= 0.5 AND b.prev_d7_win_rate = 0),
-
-    -- ========== 28日勝率50%未満 ==========
-    STRUCT('過去28日間勝率50%以下', 201,
-           b.prev_d28_win_rate < 0.5),
-    STRUCT('過去28日間勝率50%以下+過去3日間勝率100%', 202,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d3_win_rate = 1.0),
-    STRUCT('過去28日間勝率50%以下+過去5日間勝率100%', 203,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d5_win_rate = 1.0),
-    STRUCT('過去28日間勝率50%以下+過去7日間勝率100%', 204,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d7_win_rate = 1.0),
-    STRUCT('過去28日間勝率50%以下+過去3日間勝率80%以上', 205,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d3_win_rate >= 0.8),
-    STRUCT('過去28日間勝率50%以下+過去5日間勝率80%以上', 206,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d5_win_rate >= 0.8),
-    STRUCT('過去28日間勝率50%以下+過去7日間勝率80%以上', 207,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d7_win_rate >= 0.8),
-    STRUCT('過去28日間勝率50%以下+過去3日間勝率60%以上', 208,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d3_win_rate >= 0.6),
-    STRUCT('過去28日間勝率50%以下+過去5日間勝率60%以上', 209,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d5_win_rate >= 0.6),
-    STRUCT('過去28日間勝率50%以下+過去7日間勝率60%以上', 210,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d7_win_rate >= 0.6),
-    STRUCT('過去28日間勝率50%以下+過去3日間勝率30%以下', 211,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d3_win_rate <= 0.3),
-    STRUCT('過去28日間勝率50%以下+過去5日間勝率30%以下', 212,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d5_win_rate <= 0.3),
-    STRUCT('過去28日間勝率50%以下+過去7日間勝率30%以下', 213,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d7_win_rate <= 0.3),
-    STRUCT('過去28日間勝率50%以下+過去3日間勝率0%', 214,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d3_win_rate = 0),
-    STRUCT('過去28日間勝率50%以下+過去5日間勝率0%', 215,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d5_win_rate = 0),
-    STRUCT('過去28日間勝率50%以下+過去7日間勝率0%', 216,
-           b.prev_d28_win_rate < 0.5 AND b.prev_d7_win_rate = 0),
-
-    -- ========== 28日機械割110%以上 ==========
-    STRUCT('過去28日間機械割110%以上', 301,
-           b.prev_d28_payout_rate >= 1.10),
-    STRUCT('過去28日間機械割110%以上+過去3日間勝率100%', 302,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d3_win_rate = 1.0),
-    STRUCT('過去28日間機械割110%以上+過去5日間勝率100%', 303,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d5_win_rate = 1.0),
-    STRUCT('過去28日間機械割110%以上+過去7日間勝率100%', 304,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d7_win_rate = 1.0),
-    STRUCT('過去28日間機械割110%以上+過去3日間勝率80%以上', 305,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d3_win_rate >= 0.8),
-    STRUCT('過去28日間機械割110%以上+過去5日間勝率80%以上', 306,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d5_win_rate >= 0.8),
-    STRUCT('過去28日間機械割110%以上+過去7日間勝率80%以上', 307,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d7_win_rate >= 0.8),
-    STRUCT('過去28日間機械割110%以上+過去3日間勝率60%以上', 308,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d3_win_rate >= 0.6),
-    STRUCT('過去28日間機械割110%以上+過去5日間勝率60%以上', 309,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d5_win_rate >= 0.6),
-    STRUCT('過去28日間機械割110%以上+過去7日間勝率60%以上', 310,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d7_win_rate >= 0.6),
-    STRUCT('過去28日間機械割110%以上+過去3日間勝率30%以下', 311,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d3_win_rate <= 0.3),
-    STRUCT('過去28日間機械割110%以上+過去5日間勝率30%以下', 312,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d5_win_rate <= 0.3),
-    STRUCT('過去28日間機械割110%以上+過去7日間勝率30%以下', 313,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d7_win_rate <= 0.3),
-    STRUCT('過去28日間機械割110%以上+過去3日間勝率0%', 314,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d3_win_rate = 0),
-    STRUCT('過去28日間機械割110%以上+過去5日間勝率0%', 315,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d5_win_rate = 0),
-    STRUCT('過去28日間機械割110%以上+過去7日間勝率0%', 316,
-           b.prev_d28_payout_rate >= 1.10 AND b.prev_d7_win_rate = 0),
-
-    -- ========== 28日機械割105%以上 ==========
-    STRUCT('過去28日間機械割105%以上', 401,
-           b.prev_d28_payout_rate >= 1.05),
-    STRUCT('過去28日間機械割105%以上+過去3日間勝率100%', 402,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d3_win_rate = 1.0),
-    STRUCT('過去28日間機械割105%以上+過去5日間勝率100%', 403,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d5_win_rate = 1.0),
-    STRUCT('過去28日間機械割105%以上+過去7日間勝率100%', 404,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d7_win_rate = 1.0),
-    STRUCT('過去28日間機械割105%以上+過去3日間勝率80%以上', 405,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d3_win_rate >= 0.8),
-    STRUCT('過去28日間機械割105%以上+過去5日間勝率80%以上', 406,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d5_win_rate >= 0.8),
-    STRUCT('過去28日間機械割105%以上+過去7日間勝率80%以上', 407,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d7_win_rate >= 0.8),
-    STRUCT('過去28日間機械割105%以上+過去3日間勝率60%以上', 408,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d3_win_rate >= 0.6),
-    STRUCT('過去28日間機械割105%以上+過去5日間勝率60%以上', 409,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d5_win_rate >= 0.6),
-    STRUCT('過去28日間機械割105%以上+過去7日間勝率60%以上', 410,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d7_win_rate >= 0.6),
-    STRUCT('過去28日間機械割105%以上+過去3日間勝率30%以下', 411,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d3_win_rate <= 0.3),
-    STRUCT('過去28日間機械割105%以上+過去5日間勝率30%以下', 412,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d5_win_rate <= 0.3),
-    STRUCT('過去28日間機械割105%以上+過去7日間勝率30%以下', 413,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d7_win_rate <= 0.3),
-    STRUCT('過去28日間機械割105%以上+過去3日間勝率0%', 414,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d3_win_rate = 0),
-    STRUCT('過去28日間機械割105%以上+過去5日間勝率0%', 415,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d5_win_rate = 0),
-    STRUCT('過去28日間機械割105%以上+過去7日間勝率0%', 416,
-           b.prev_d28_payout_rate >= 1.05 AND b.prev_d7_win_rate = 0),
-
-    -- ========== 28日機械割100%未満 ==========
-    STRUCT('過去28日間機械割100%以下', 501,
-           b.prev_d28_payout_rate < 1.00),
-    STRUCT('過去28日間機械割100%以下+過去3日間勝率100%', 502,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d3_win_rate = 1.0),
-    STRUCT('過去28日間機械割100%以下+過去5日間勝率100%', 503,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d5_win_rate = 1.0),
-    STRUCT('過去28日間機械割100%以下+過去7日間勝率100%', 504,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d7_win_rate = 1.0),
-    STRUCT('過去28日間機械割100%以下+過去3日間勝率80%以上', 505,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d3_win_rate >= 0.8),
-    STRUCT('過去28日間機械割100%以下+過去5日間勝率80%以上', 506,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d5_win_rate >= 0.8),
-    STRUCT('過去28日間機械割100%以下+過去7日間勝率80%以上', 507,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d7_win_rate >= 0.8),
-    STRUCT('過去28日間機械割100%以下+過去3日間勝率60%以上', 508,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d3_win_rate >= 0.6),
-    STRUCT('過去28日間機械割100%以下+過去5日間勝率60%以上', 509,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d5_win_rate >= 0.6),
-    STRUCT('過去28日間機械割100%以下+過去7日間勝率60%以上', 510,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d7_win_rate >= 0.6),
-    STRUCT('過去28日間機械割100%以下+過去3日間勝率30%以下', 511,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d3_win_rate <= 0.3),
-    STRUCT('過去28日間機械割100%以下+過去5日間勝率30%以下', 512,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d5_win_rate <= 0.3),
-    STRUCT('過去28日間機械割100%以下+過去7日間勝率30%以下', 513,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d7_win_rate <= 0.3),
-    STRUCT('過去28日間機械割100%以下+過去3日間勝率0%', 514,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d3_win_rate = 0),
-    STRUCT('過去28日間機械割100%以下+過去5日間勝率0%', 515,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d5_win_rate = 0),
-    STRUCT('過去28日間機械割100%以下+過去7日間勝率0%', 516,
-           b.prev_d28_payout_rate < 1.00 AND b.prev_d7_win_rate = 0)
-  ]) AS s
-  WHERE s.matches = TRUE
+  CROSS JOIN strategy_combinations sc
+  WHERE 
+    -- 長期条件の評価
+    (
+      (sc.lt_type = 'win_rate' AND (
+        (sc.lt_op = '>=' AND b.prev_d28_win_rate >= sc.lt_threshold) OR
+        (sc.lt_op = '<' AND b.prev_d28_win_rate < sc.lt_threshold)
+      ))
+      OR
+      (sc.lt_type = 'payout_rate' AND (
+        (sc.lt_op = '>=' AND b.prev_d28_payout_rate >= sc.lt_threshold) OR
+        (sc.lt_op = '<' AND b.prev_d28_payout_rate < sc.lt_threshold)
+      ))
+    )
+    AND
+    -- 短期条件の評価
+    (
+      sc.st_type = 'none'
+      OR
+      (sc.st_period = 3 AND (
+        (sc.st_op = '=' AND b.prev_d3_win_rate = sc.st_threshold) OR
+        (sc.st_op = '>=' AND b.prev_d3_win_rate >= sc.st_threshold) OR
+        (sc.st_op = '<=' AND b.prev_d3_win_rate <= sc.st_threshold)
+      ))
+      OR
+      (sc.st_period = 5 AND (
+        (sc.st_op = '=' AND b.prev_d5_win_rate = sc.st_threshold) OR
+        (sc.st_op = '>=' AND b.prev_d5_win_rate >= sc.st_threshold) OR
+        (sc.st_op = '<=' AND b.prev_d5_win_rate <= sc.st_threshold)
+      ))
+      OR
+      (sc.st_period = 7 AND (
+        (sc.st_op = '=' AND b.prev_d7_win_rate = sc.st_threshold) OR
+        (sc.st_op = '>=' AND b.prev_d7_win_rate >= sc.st_threshold) OR
+        (sc.st_op = '<=' AND b.prev_d7_win_rate <= sc.st_threshold)
+      ))
+    )
     AND b.prev_d28_win_rate IS NOT NULL
 ),
 
 -- ============================================================================
--- 5. 全戦略の統合
+-- 7. 全戦略の統合
 -- ============================================================================
 all_strategies AS (
   SELECT * FROM basic_with_strategies
@@ -355,7 +289,7 @@ all_strategies AS (
 ),
 
 -- ============================================================================
--- 6. 曜日カテゴリの適用
+-- 8. 曜日カテゴリの適用
 -- ============================================================================
 categorized_data AS (
   SELECT 
@@ -378,7 +312,7 @@ categorized_data AS (
 )
 
 -- ============================================================================
--- 7. 最終集計
+-- 9. 最終集計
 -- ============================================================================
 SELECT
   `曜日`,
