@@ -22,40 +22,59 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象�
 --   - 特日: 0のつく日、1のつく日、6のつく日、月最終日
 --
 -- 【参照期間】
---   - 前日: 前日1日間のデータを参照
---   - 過去3日: 前日から3日間のデータを参照
---   - 過去5日: 前日から5日間のデータを参照
---   - 過去7日: 前日から7日間のデータを参照
---   - 過去28日: 前日から28日間のデータを参照
---   - 複合: 長期(28日)と短期(3/5/7日)を組み合わせた複合戦略
+--   基本戦略（単一期間参照）:
+--     - 前日: 前日1日間のデータを参照
+--     - 過去3日: 前日から3日間のデータを参照
+--     - 過去5日: 前日から5日間のデータを参照
+--     - 過去7日: 前日から7日間のデータを参照
+--     - 過去28日: 前日から28日間のデータを参照
+--   複合戦略（長期×短期の組み合わせ）:
+--     - 長期条件（28日間）と短期条件（3/5/7日間）を組み合わせた複合戦略
 --
--- 【戦略カテゴリ】
---   1. 差枚ベース:
---      - 差枚ベスト1: 差枚1位の台を選ぶ
---      - 差枚ベスト3: 差枚上位3台を選ぶ
---      - 差枚ワースト1: 差枚最下位の台を選ぶ
---      - 差枚ワースト3: 差枚下位3台を選ぶ
---   2. 勝率ベース:
+-- 【基本戦略（単一期間参照）】
+--   各参照期間ごとに単一条件で評価する戦略
+--   1. 差枚ベース（4種類）:
+--      - 差枚ベスト1~5: 差枚1~5位の台を選ぶ
+--      - 差枚ベスト6~10: 差枚6~10位の台を選ぶ
+--      - 差枚ワースト1~5: 差枚下位1~5位の台を選ぶ
+--      - 差枚ワースト6~10: 差枚下位6~10位の台を選ぶ
+--   2. 勝率ベース（6段階、MECE）:
 --      - 勝率100%: 全勝台を選ぶ
---      - 勝率60%以上: 勝率60%以上の台を選ぶ
---      - 勝率30%以下: 勝率30%以下の台を選ぶ
+--      - 勝率75%超100%未満: 勝率75%超100%未満の台を選ぶ
+--      - 勝率50%超75%以下: 勝率50%超75%以下の台を選ぶ
+--      - 勝率25%超50%以下: 勝率25%超50%以下の台を選ぶ
+--      - 勝率0%超25%未満: 勝率0%超25%未満の台を選ぶ
 --      - 勝率0%: 全敗台を選ぶ
---   3. 長期勝率ベース（複合戦略）:
---      - 過去28日間勝率50%以上/未満 × 短期勝率条件（3/5/7日間の勝率100%、80%以上、60%以上、30%以下、0%）
---   4. 長期機械割ベース（複合戦略）:
---      - 過去28日間機械割110%/105%/100%未満 × 短期勝率条件（3/5/7日間の勝率100%、80%以上、60%以上、30%以下、0%）
+--   注意: 基本戦略には機械割ベースは含まれない
+--         理由: 機械割は28日間の指標のため、基本戦略の「各参照期間ごとの単一条件」の
+--               枠組みに収まらない。機械割は複合戦略の長期条件として使用される。
 --
--- 【戦略の組み合わせロジック】
---   長期条件（6種類）: 条件なし、過去28日間勝率50%超/以下（2段階、短期条件との一貫性確保）、
---                     過去28日間機械割110%以上/105%以上110%未満/100%以上105%未満/100%未満（MECE）
---   短期条件（19種類）: 条件なし、勝率条件（18種類、MECE、6段階×3期間）、末尾関連性（5種類）
+-- 【複合戦略（長期×短期の組み合わせ）】
+--   長期条件（28日間）と短期条件（3/5/7日間）を組み合わせた戦略
+--   1. 長期勝率ベース:
+--      - 過去28日間勝率（4種類、MECE、パーセンタイルベース） × 短期条件（勝率条件または末尾関連性）
+--   2. 長期機械割ベース:
+--      - 過去28日間機械割（4種類、MECE） × 短期条件（勝率条件または末尾関連性）
+--   3. 長期差枚ベース:
+--      - 過去28日間差枚（4種類） × 短期条件（勝率条件または末尾関連性）
+--
+-- 【戦略の組み合わせロジック（複合戦略）】
+--   長期条件（13種類）:
+--     - 条件なし: 1種類
+--     - 過去28日間勝率: 4種類（50.0%以上、42.9%以上50.0%未満、35.7%以上42.9%未満、35.7%未満、パーセンタイルベース）
+--     - 過去28日間機械割: 4種類（104.47%以上、102.47%以上104.47%未満、100.91%以上102.47%未満、100.91%未満、パーセンタイルベース）
+--     - 過去28日間差枚: 4種類（ベスト1~5、ベスト6~10、ワースト1~5、ワースト6~10）
+--   短期条件（23種類）:
+--     - 条件なし: 1種類
+--     - 勝率条件: 18種類（6段階 × 3期間（3/5/7日間）、離散的で現在の区切りを維持）
+--     - 末尾関連性: 4種類（末尾1桁=日付末尾1桁、末尾2桁=日付末尾2桁、末尾1桁=日付末尾1桁+1/-1）
 --   短期条件は「勝率条件」と「末尾関連性」のいずれか1つのみ（両方は不可）
---   組み合わせ数: 6 × 19 = 114種類
+--   組み合わせ数: 13 × 23 = 299種類
 --
 -- 【MECE化の理由】
 --   条件が重複すると、同じ台が複数の戦略に重複してカウントされ、評価が不当に高くなる
 --   範囲を細かく分割することで、各条件が独立し、正確な評価が可能
---   長期条件の勝率は「50%超/以下」とすることで、短期条件との一貫性を確保
+--   長期条件の勝率は短期条件と同じ6段階に統一することで、評価ロジックを統一し、コードの重複を削減
 --
 -- 【勝率範囲の定義（短期条件、MECE、6段階）】
 --   100%: 全勝（`>= 1.0 AND <= 1.0`）
@@ -75,8 +94,16 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象�
 --   台番末尾1桁=日付末尾1桁、台番末尾2桁=日付末尾2桁、台番末尾1桁=日付末尾1桁+1/-1
 --
 -- 【基本戦略と複合戦略の違い】
---   基本戦略: 末尾関連性を適用しない（サンプルサイズ確保）
---   複合戦略: 末尾関連性を含む全組み合わせを分析
+--   基本戦略:
+--     - 各参照期間（1/3/5/7/28日）ごとに単一条件で評価
+--     - 差枚ベース（4種類）と勝率ベース（6段階）のみ
+--     - 末尾関連性を適用しない（サンプルサイズ確保のため）
+--     - 機械割ベースは含まれない（28日間の指標のため、基本戦略の枠組みに収まらない）
+--   複合戦略:
+--     - 長期条件（28日間）と短期条件（3/5/7日間）を組み合わせて評価
+--     - 長期条件: 条件なし、勝率（6段階）、機械割（4種類）、差枚（4種類）
+--     - 短期条件: 条件なし、勝率条件（18種類）、末尾関連性（4種類）
+--     - 末尾関連性を含む全組み合わせを分析
 --
 -- 【出力項目】
 --   シミュレーション結果:
@@ -140,6 +167,7 @@ base_data AS (
     b.d3_win_rate AS curr_d3_win_rate,
     b.d5_win_rate AS curr_d5_win_rate,
     b.d7_win_rate AS curr_d7_win_rate,
+    b.d28_diff AS curr_d28_diff,
     b.d28_win_rate AS curr_d28_win_rate,
     b.d28_payout_rate AS curr_d28_payout_rate,
     -- 当日を含まない各期間のデータ（シミュレーション用）
@@ -204,7 +232,10 @@ base_data_with_special AS (
     MOD(EXTRACT(DAY FROM bd.target_date), 10) AS date_last_1digit,
     EXTRACT(DAY FROM bd.target_date) AS date_last_2digits,
     MOD(bd.machine_number, 10) AS machine_last_1digit,
-    MOD(bd.machine_number, 100) AS machine_last_2digits
+    MOD(bd.machine_number, 100) AS machine_last_2digits,
+    -- 過去28日間の差枚ランキング（複合戦略用）
+    ROW_NUMBER() OVER (PARTITION BY bd.target_date ORDER BY bd.prev_d28_diff DESC) AS prev_d28_rank_best,
+    ROW_NUMBER() OVER (PARTITION BY bd.target_date ORDER BY bd.prev_d28_diff ASC) AS prev_d28_rank_worst
   FROM base_data bd
   LEFT JOIN special_day_logic sdl ON bd.target_date = sdl.target_date
 ),
@@ -233,55 +264,132 @@ long_term_conditions AS (
       CAST(NULL AS FLOAT64) AS lt_threshold,
       CAST(NULL AS FLOAT64) AS lt_threshold_upper,
       CAST(NULL AS STRING) AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
       0 AS lt_sort
     ),
+    -- 過去28日間勝率（4種類、MECE、パーセンタイルベース）
     STRUCT(
-      '過去28日間勝率50%超' AS lt_name,
+      '過去28日間勝率50.0%以上' AS lt_name,  -- 上位25%（p75以上）
       'win_rate' AS lt_type,
-      0.5 AS lt_threshold,
+      0.50 AS lt_threshold,
       CAST(NULL AS FLOAT64) AS lt_threshold_upper,
-      '>' AS lt_op,
+      '>=' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
       1 AS lt_sort
     ),
     STRUCT(
-      '過去28日間勝率50%以下' AS lt_name,
+      '過去28日間勝率42.9%以上50.0%未満' AS lt_name,  -- 上位25%〜50%（p50〜p75）
       'win_rate' AS lt_type,
-      0.5 AS lt_threshold,
-      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
-      '<=' AS lt_op,
+      0.429 AS lt_threshold,
+      0.50 AS lt_threshold_upper,
+      '>=' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
       2 AS lt_sort
     ),
     STRUCT(
-      '過去28日間機械割110%以上' AS lt_name,
-      'payout_rate' AS lt_type,
-      1.10 AS lt_threshold,
-      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      '過去28日間勝率35.7%以上42.9%未満' AS lt_name,  -- 下位25%〜50%（p25〜p50）
+      'win_rate' AS lt_type,
+      0.357 AS lt_threshold,
+      0.429 AS lt_threshold_upper,
       '>=' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
       3 AS lt_sort
     ),
     STRUCT(
-      '過去28日間機械割105%以上110%未満' AS lt_name,
-      'payout_rate' AS lt_type,
-      1.05 AS lt_threshold,
-      1.10 AS lt_threshold_upper,
-      '>=' AS lt_op,
-      4 AS lt_sort
-    ),
-    STRUCT(
-      '過去28日間機械割100%以上105%未満' AS lt_name,
-      'payout_rate' AS lt_type,
-      1.00 AS lt_threshold,
-      1.05 AS lt_threshold_upper,
-      '>=' AS lt_op,
-      5 AS lt_sort
-    ),
-    STRUCT(
-      '過去28日間機械割100%未満' AS lt_name,
-      'payout_rate' AS lt_type,
-      1.00 AS lt_threshold,
+      '過去28日間勝率35.7%未満' AS lt_name,  -- 下位25%（p25未満）
+      'win_rate' AS lt_type,
+      0.357 AS lt_threshold,
       CAST(NULL AS FLOAT64) AS lt_threshold_upper,
       '<' AS lt_op,
-      6 AS lt_sort
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
+      4 AS lt_sort
+    ),
+    -- 過去28日間機械割（4種類、MECE、パーセンタイルベース）
+    STRUCT(
+      '過去28日間機械割104.47%以上' AS lt_name,  -- 上位25%（p75以上）
+      'payout_rate' AS lt_type,
+      1.0447 AS lt_threshold,
+      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      '>=' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
+      7 AS lt_sort
+    ),
+    STRUCT(
+      '過去28日間機械割102.47%以上104.47%未満' AS lt_name,  -- 上位25%〜50%（p50〜p75）
+      'payout_rate' AS lt_type,
+      1.0247 AS lt_threshold,
+      1.0447 AS lt_threshold_upper,
+      '>=' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
+      8 AS lt_sort
+    ),
+    STRUCT(
+      '過去28日間機械割100.91%以上102.47%未満' AS lt_name,  -- 下位25%〜50%（p25〜p50）
+      'payout_rate' AS lt_type,
+      1.0091 AS lt_threshold,
+      1.0247 AS lt_threshold_upper,
+      '>=' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
+      9 AS lt_sort
+    ),
+    STRUCT(
+      '過去28日間機械割100.91%未満' AS lt_name,  -- 下位25%（p25未満）
+      'payout_rate' AS lt_type,
+      1.0091 AS lt_threshold,
+      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      '<' AS lt_op,
+      CAST(NULL AS STRING) AS lt_rank_type,
+      CAST(NULL AS STRING) AS lt_rank_range,
+      10 AS lt_sort
+    ),
+    -- 過去28日間差枚（4種類）
+    STRUCT(
+      '過去28日間差枚ベスト1~5' AS lt_name,
+      'diff_rank' AS lt_type,
+      CAST(NULL AS FLOAT64) AS lt_threshold,
+      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      CAST(NULL AS STRING) AS lt_op,
+      'best' AS lt_rank_type,
+      '1-5' AS lt_rank_range,
+      11 AS lt_sort
+    ),
+    STRUCT(
+      '過去28日間差枚ベスト6~10' AS lt_name,
+      'diff_rank' AS lt_type,
+      CAST(NULL AS FLOAT64) AS lt_threshold,
+      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      CAST(NULL AS STRING) AS lt_op,
+      'best' AS lt_rank_type,
+      '6-10' AS lt_rank_range,
+      12 AS lt_sort
+    ),
+    STRUCT(
+      '過去28日間差枚ワースト1~5' AS lt_name,
+      'diff_rank' AS lt_type,
+      CAST(NULL AS FLOAT64) AS lt_threshold,
+      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      CAST(NULL AS STRING) AS lt_op,
+      'worst' AS lt_rank_type,
+      '1-5' AS lt_rank_range,
+      13 AS lt_sort
+    ),
+    STRUCT(
+      '過去28日間差枚ワースト6~10' AS lt_name,
+      'diff_rank' AS lt_type,
+      CAST(NULL AS FLOAT64) AS lt_threshold,
+      CAST(NULL AS FLOAT64) AS lt_threshold_upper,
+      CAST(NULL AS STRING) AS lt_op,
+      'worst' AS lt_rank_type,
+      '6-10' AS lt_rank_range,
+      14 AS lt_sort
     )
   ])
 ),
@@ -362,6 +470,7 @@ strategy_combinations AS (
       ELSE CONCAT(lt.lt_name, st.st_name)
     END AS strategy_name,
     lt.lt_type, lt.lt_threshold, lt.lt_threshold_upper, lt.lt_op,
+    lt.lt_rank_type, lt.lt_rank_range,
     st.st_period, st.st_type, st.st_threshold, st.st_threshold_upper, st.st_op,
     lt.lt_sort * 100 + st.st_sort AS sort_order
   FROM long_term_conditions lt
@@ -437,14 +546,16 @@ basic_with_strategies AS (
     s.`戦略`, s.strategy_order
   FROM basic_periods p
   CROSS JOIN UNNEST([
-    STRUCT('差枚ベスト1' AS `戦略`, 1 AS strategy_order, p.rank_best = 1 AS matches),
-    STRUCT('差枚ベスト3', 2, p.rank_best <= 3),
-    STRUCT('差枚ワースト1', 3, p.rank_worst = 1),
-    STRUCT('差枚ワースト3', 4, p.rank_worst <= 3),
+    STRUCT('差枚ベスト1~5' AS `戦略`, 1 AS strategy_order, p.rank_best BETWEEN 1 AND 5 AS matches),
+    STRUCT('差枚ベスト6~10', 2, p.rank_best BETWEEN 6 AND 10),
+    STRUCT('差枚ワースト1~5', 3, p.rank_worst BETWEEN 1 AND 5),
+    STRUCT('差枚ワースト6~10', 4, p.rank_worst BETWEEN 6 AND 10),
     STRUCT('勝率100%', 5, p.ref_win_rate IS NOT NULL AND p.ref_win_rate = 1.0),
-    STRUCT('勝率60%以上', 6, p.ref_win_rate IS NOT NULL AND p.ref_win_rate >= 0.6),
-    STRUCT('勝率30%以下', 7, p.ref_win_rate IS NOT NULL AND p.ref_win_rate <= 0.3),
-    STRUCT('勝率0%', 8, p.ref_win_rate IS NOT NULL AND p.ref_win_rate = 0)
+    STRUCT('勝率75%超100%未満', 6, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.75 AND p.ref_win_rate < 1.0),
+    STRUCT('勝率50%超75%以下', 7, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.5 AND p.ref_win_rate <= 0.75),
+    STRUCT('勝率25%超50%以下', 8, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.25 AND p.ref_win_rate <= 0.5),
+    STRUCT('勝率0%超25%未満', 9, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.0 AND p.ref_win_rate < 0.25),
+    STRUCT('勝率0%', 10, p.ref_win_rate IS NOT NULL AND p.ref_win_rate = 0.0)
   ]) AS s
   WHERE s.matches = TRUE
 ),
@@ -454,98 +565,103 @@ basic_with_strategies AS (
 -- ----------------------------------------------------------------------------
 -- prev_d* カラムを使用（当日を含まない）
 -- ----------------------------------------------------------------------------
+-- 複合戦略評価用: 期間別勝率値の計算（リファクタリング）
+compound_evaluation_base AS (
+  SELECT
+    b.*,
+    sc.*,
+    -- 短期条件の期間別勝率値
+    CASE sc.st_period
+      WHEN 3 THEN b.prev_d3_win_rate
+      WHEN 5 THEN b.prev_d5_win_rate
+      WHEN 7 THEN b.prev_d7_win_rate
+      ELSE NULL
+    END AS st_win_rate_value
+  FROM base_data_with_special b
+  CROSS JOIN strategy_combinations sc
+),
+
 compound_with_strategies AS (
   SELECT 
     '複合' AS `参照期間`, 
     99 AS period_order,
-    b.target_date, b.d1_diff, b.d1_game, b.is_holiday, b.is_special_day,
-    sc.strategy_name AS `戦略`, 
-    sc.sort_order AS strategy_order
-  FROM base_data_with_special b
-  CROSS JOIN strategy_combinations sc
+    ceb.target_date, ceb.d1_diff, ceb.d1_game, ceb.is_holiday, ceb.is_special_day,
+    ceb.strategy_name AS `戦略`, 
+    ceb.sort_order AS strategy_order
+  FROM compound_evaluation_base ceb
   WHERE 
     -- 長期条件の評価
     (
-      sc.lt_type = 'none'
+      ceb.lt_type = 'none'
       OR
-      (sc.lt_type = 'win_rate' AND (
-        (sc.lt_op = '>' AND b.prev_d28_win_rate > sc.lt_threshold) OR
-        (sc.lt_op = '<=' AND b.prev_d28_win_rate <= sc.lt_threshold)
-      ))
-      OR
-      (sc.lt_type = 'payout_rate' AND (
-        (sc.lt_threshold_upper IS NULL AND (
-          (sc.lt_op = '>=' AND b.prev_d28_payout_rate >= sc.lt_threshold) OR
-          (sc.lt_op = '<' AND b.prev_d28_payout_rate < sc.lt_threshold)
+      -- 勝率条件（短期と同じロジック、threshold_upperを使用）
+      (ceb.lt_type = 'win_rate' AND ceb.prev_d28_win_rate IS NOT NULL AND (
+        (ceb.lt_threshold_upper IS NULL AND (
+          (ceb.lt_op = '>=' AND ceb.prev_d28_win_rate >= ceb.lt_threshold) OR
+          (ceb.lt_op = '<=' AND ceb.prev_d28_win_rate <= ceb.lt_threshold) OR
+          (ceb.lt_op = '>' AND ceb.prev_d28_win_rate > ceb.lt_threshold)
         ))
         OR
-        (sc.lt_threshold_upper IS NOT NULL AND 
-         b.prev_d28_payout_rate >= sc.lt_threshold AND 
-         b.prev_d28_payout_rate < sc.lt_threshold_upper)
+        (ceb.lt_threshold_upper IS NOT NULL AND (
+          (ceb.lt_op = '>=' AND ceb.prev_d28_win_rate >= ceb.lt_threshold AND ceb.prev_d28_win_rate <= ceb.lt_threshold_upper) OR
+          (ceb.lt_op = '>' AND ceb.prev_d28_win_rate > ceb.lt_threshold AND ceb.prev_d28_win_rate <= ceb.lt_threshold_upper)
+        ))
+      ))
+      OR
+      -- 機械割条件（既存のまま）
+      (ceb.lt_type = 'payout_rate' AND (
+        (ceb.lt_threshold_upper IS NULL AND (
+          (ceb.lt_op = '>=' AND ceb.prev_d28_payout_rate >= ceb.lt_threshold) OR
+          (ceb.lt_op = '<' AND ceb.prev_d28_payout_rate < ceb.lt_threshold)
+        ))
+        OR
+        (ceb.lt_threshold_upper IS NOT NULL AND 
+         ceb.prev_d28_payout_rate >= ceb.lt_threshold AND 
+         ceb.prev_d28_payout_rate < ceb.lt_threshold_upper)
+      ))
+      OR
+      -- 差枚条件（新規追加）
+      (ceb.lt_type = 'diff_rank' AND (
+        (ceb.lt_rank_type = 'best' AND (
+          (ceb.lt_rank_range = '1-5' AND ceb.prev_d28_rank_best BETWEEN 1 AND 5) OR
+          (ceb.lt_rank_range = '6-10' AND ceb.prev_d28_rank_best BETWEEN 6 AND 10)
+        ))
+        OR
+        (ceb.lt_rank_type = 'worst' AND (
+          (ceb.lt_rank_range = '1-5' AND ceb.prev_d28_rank_worst BETWEEN 1 AND 5) OR
+          (ceb.lt_rank_range = '6-10' AND ceb.prev_d28_rank_worst BETWEEN 6 AND 10)
+        ))
       ))
     )
     AND
     -- 短期条件の評価
     (
-      sc.st_type = 'none'
+      ceb.st_type = 'none'
       OR
-      (sc.st_type = 'win_rate' AND (
-        (sc.st_threshold_upper IS NULL AND (
-          (sc.st_period = 3 AND (
-            (sc.st_op = '=' AND b.prev_d3_win_rate = sc.st_threshold) OR
-            (sc.st_op = '>=' AND b.prev_d3_win_rate >= sc.st_threshold) OR
-            (sc.st_op = '<=' AND b.prev_d3_win_rate <= sc.st_threshold)
-          ))
-          OR
-          (sc.st_period = 5 AND (
-            (sc.st_op = '=' AND b.prev_d5_win_rate = sc.st_threshold) OR
-            (sc.st_op = '>=' AND b.prev_d5_win_rate >= sc.st_threshold) OR
-            (sc.st_op = '<=' AND b.prev_d5_win_rate <= sc.st_threshold)
-          ))
-          OR
-          (sc.st_period = 7 AND (
-            (sc.st_op = '=' AND b.prev_d7_win_rate = sc.st_threshold) OR
-            (sc.st_op = '>=' AND b.prev_d7_win_rate >= sc.st_threshold) OR
-            (sc.st_op = '<=' AND b.prev_d7_win_rate <= sc.st_threshold)
-          ))
+      -- 勝率条件（期間別勝率値を使用、統一されたロジックで評価）
+      (ceb.st_type = 'win_rate' AND ceb.st_win_rate_value IS NOT NULL AND (
+        (ceb.st_threshold_upper IS NULL AND (
+          (ceb.st_op = '>=' AND ceb.st_win_rate_value >= ceb.st_threshold) OR
+          (ceb.st_op = '<=' AND ceb.st_win_rate_value <= ceb.st_threshold) OR
+          (ceb.st_op = '>' AND ceb.st_win_rate_value > ceb.st_threshold)
         ))
         OR
-        (sc.st_threshold_upper IS NOT NULL AND (
-          (sc.st_op = '>=' AND sc.st_period = 3 AND 
-           b.prev_d3_win_rate >= sc.st_threshold AND 
-           b.prev_d3_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>=' AND sc.st_period = 5 AND 
-           b.prev_d5_win_rate >= sc.st_threshold AND 
-           b.prev_d5_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>=' AND sc.st_period = 7 AND 
-           b.prev_d7_win_rate >= sc.st_threshold AND 
-           b.prev_d7_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>' AND sc.st_period = 3 AND 
-           b.prev_d3_win_rate > sc.st_threshold AND 
-           b.prev_d3_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>' AND sc.st_period = 5 AND 
-           b.prev_d5_win_rate > sc.st_threshold AND 
-           b.prev_d5_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>' AND sc.st_period = 7 AND 
-           b.prev_d7_win_rate > sc.st_threshold AND 
-           b.prev_d7_win_rate <= sc.st_threshold_upper)
+        (ceb.st_threshold_upper IS NOT NULL AND (
+          (ceb.st_op = '>=' AND ceb.st_win_rate_value >= ceb.st_threshold AND ceb.st_win_rate_value <= ceb.st_threshold_upper) OR
+          (ceb.st_op = '>' AND ceb.st_win_rate_value > ceb.st_threshold AND ceb.st_win_rate_value <= ceb.st_threshold_upper)
         ))
       ))
       OR
-      (sc.st_type = 'digit_match_1' AND b.machine_last_1digit = b.date_last_1digit)
+      -- 末尾関連性条件
+      (ceb.st_type = 'digit_match_1' AND ceb.machine_last_1digit = ceb.date_last_1digit)
       OR
-      (sc.st_type = 'digit_match_2' AND b.machine_last_2digits = b.date_last_2digits)
+      (ceb.st_type = 'digit_match_2' AND ceb.machine_last_2digits = ceb.date_last_2digits)
       OR
-      (sc.st_type = 'digit_plus_1' AND b.machine_last_1digit = MOD(b.date_last_1digit + 1, 10))
+      (ceb.st_type = 'digit_plus_1' AND ceb.machine_last_1digit = MOD(ceb.date_last_1digit + 1, 10))
       OR
-      (sc.st_type = 'digit_minus_1' AND b.machine_last_1digit = MOD(b.date_last_1digit - 1 + 10, 10))
+      (ceb.st_type = 'digit_minus_1' AND ceb.machine_last_1digit = MOD(ceb.date_last_1digit - 1 + 10, 10))
     )
-    AND (sc.lt_type = 'none' OR b.prev_d28_win_rate IS NOT NULL)
+    AND (ceb.lt_type = 'none' OR ceb.lt_type = 'diff_rank' OR ceb.prev_d28_win_rate IS NOT NULL OR ceb.prev_d28_payout_rate IS NOT NULL)
 ),
 
 -- ----------------------------------------------------------------------------
@@ -611,7 +727,11 @@ latest_date AS (
 ),
 
 latest_data AS (
-  SELECT b.*
+  SELECT 
+    b.*,
+    -- 過去28日間の差枚ランキング（次の日の台番算出用、最新日を含む過去28日間の差枚でランキング）
+    ROW_NUMBER() OVER (ORDER BY b.curr_d28_diff DESC) AS curr_d28_rank_best,
+    ROW_NUMBER() OVER (ORDER BY b.curr_d28_diff ASC) AS curr_d28_rank_worst
   FROM base_data_with_special b
   INNER JOIN latest_date ld ON b.target_date = ld.max_date
 ),
@@ -714,17 +834,37 @@ next_basic_machines AS (
     STRING_AGG(CAST(p.machine_number AS STRING), ', ' ORDER BY p.machine_number) AS target_machines
   FROM next_basic_periods p
   CROSS JOIN UNNEST([
-    STRUCT('差枚ベスト1' AS `戦略`, 1 AS strategy_order, p.rank_best = 1 AS matches),
-    STRUCT('差枚ベスト3', 2, p.rank_best <= 3),
-    STRUCT('差枚ワースト1', 3, p.rank_worst = 1),
-    STRUCT('差枚ワースト3', 4, p.rank_worst <= 3),
+    STRUCT('差枚ベスト1~5' AS `戦略`, 1 AS strategy_order, p.rank_best BETWEEN 1 AND 5 AS matches),
+    STRUCT('差枚ベスト6~10', 2, p.rank_best BETWEEN 6 AND 10),
+    STRUCT('差枚ワースト1~5', 3, p.rank_worst BETWEEN 1 AND 5),
+    STRUCT('差枚ワースト6~10', 4, p.rank_worst BETWEEN 6 AND 10),
     STRUCT('勝率100%', 5, p.ref_win_rate IS NOT NULL AND p.ref_win_rate = 1.0),
-    STRUCT('勝率60%以上', 6, p.ref_win_rate IS NOT NULL AND p.ref_win_rate >= 0.6),
-    STRUCT('勝率30%以下', 7, p.ref_win_rate IS NOT NULL AND p.ref_win_rate <= 0.3),
-    STRUCT('勝率0%', 8, p.ref_win_rate IS NOT NULL AND p.ref_win_rate = 0)
+    STRUCT('勝率75%超100%未満', 6, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.75 AND p.ref_win_rate < 1.0),
+    STRUCT('勝率50%超75%以下', 7, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.5 AND p.ref_win_rate <= 0.75),
+    STRUCT('勝率25%超50%以下', 8, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.25 AND p.ref_win_rate <= 0.5),
+    STRUCT('勝率0%超25%未満', 9, p.ref_win_rate IS NOT NULL AND p.ref_win_rate > 0.0 AND p.ref_win_rate < 0.25),
+    STRUCT('勝率0%', 10, p.ref_win_rate IS NOT NULL AND p.ref_win_rate = 0.0)
   ]) AS s
   WHERE s.matches = TRUE
   GROUP BY p.`参照期間`, p.period_order, s.`戦略`, s.strategy_order
+),
+
+-- 複合戦略評価用（次の日の台番算出）: 期間別勝率値の計算（リファクタリング）
+next_compound_evaluation_base AS (
+  SELECT
+    ld.*,
+    sc.*,
+    ndi.*,
+    -- 短期条件の期間別勝率値
+    CASE sc.st_period
+      WHEN 3 THEN ld.curr_d3_win_rate
+      WHEN 5 THEN ld.curr_d5_win_rate
+      WHEN 7 THEN ld.curr_d7_win_rate
+      ELSE NULL
+    END AS st_win_rate_value
+  FROM latest_data ld
+  CROSS JOIN strategy_combinations sc
+  CROSS JOIN next_day_info ndi
 ),
 
 -- ----------------------------------------------------------------------------
@@ -736,96 +876,84 @@ next_compound_machines AS (
   SELECT
     '複合' AS `参照期間`,
     99 AS period_order,
-    sc.strategy_name AS `戦略`,
-    sc.sort_order AS strategy_order,
-    STRING_AGG(CAST(ld.machine_number AS STRING), ', ' ORDER BY ld.machine_number) AS target_machines
-  FROM latest_data ld
-  CROSS JOIN strategy_combinations sc
-  CROSS JOIN next_day_info ndi
+    ceb.strategy_name AS `戦略`,
+    ceb.sort_order AS strategy_order,
+    STRING_AGG(CAST(ceb.machine_number AS STRING), ', ' ORDER BY ceb.machine_number) AS target_machines
+  FROM next_compound_evaluation_base ceb
   WHERE 
     -- 長期条件の評価（curr_d28_* を使用）
     (
-      sc.lt_type = 'none'
+      ceb.lt_type = 'none'
       OR
-      (sc.lt_type = 'win_rate' AND (
-        (sc.lt_op = '>' AND ld.curr_d28_win_rate > sc.lt_threshold) OR
-        (sc.lt_op = '<=' AND ld.curr_d28_win_rate <= sc.lt_threshold)
-      ))
-      OR
-      (sc.lt_type = 'payout_rate' AND (
-        (sc.lt_threshold_upper IS NULL AND (
-          (sc.lt_op = '>=' AND ld.curr_d28_payout_rate >= sc.lt_threshold) OR
-          (sc.lt_op = '<' AND ld.curr_d28_payout_rate < sc.lt_threshold)
+      -- 勝率条件（短期と同じロジック、threshold_upperを使用）
+      (ceb.lt_type = 'win_rate' AND ceb.curr_d28_win_rate IS NOT NULL AND (
+        (ceb.lt_threshold_upper IS NULL AND (
+          (ceb.lt_op = '>=' AND ceb.curr_d28_win_rate >= ceb.lt_threshold) OR
+          (ceb.lt_op = '<=' AND ceb.curr_d28_win_rate <= ceb.lt_threshold) OR
+          (ceb.lt_op = '>' AND ceb.curr_d28_win_rate > ceb.lt_threshold)
         ))
         OR
-        (sc.lt_threshold_upper IS NOT NULL AND 
-         ld.curr_d28_payout_rate >= sc.lt_threshold AND 
-         ld.curr_d28_payout_rate < sc.lt_threshold_upper)
+        (ceb.lt_threshold_upper IS NOT NULL AND (
+          (ceb.lt_op = '>=' AND ceb.curr_d28_win_rate >= ceb.lt_threshold AND ceb.curr_d28_win_rate <= ceb.lt_threshold_upper) OR
+          (ceb.lt_op = '>' AND ceb.curr_d28_win_rate > ceb.lt_threshold AND ceb.curr_d28_win_rate <= ceb.lt_threshold_upper)
+        ))
+      ))
+      OR
+      -- 機械割条件（既存のまま）
+      (ceb.lt_type = 'payout_rate' AND (
+        (ceb.lt_threshold_upper IS NULL AND (
+          (ceb.lt_op = '>=' AND ceb.curr_d28_payout_rate >= ceb.lt_threshold) OR
+          (ceb.lt_op = '<' AND ceb.curr_d28_payout_rate < ceb.lt_threshold)
+        ))
+        OR
+        (ceb.lt_threshold_upper IS NOT NULL AND 
+         ceb.curr_d28_payout_rate >= ceb.lt_threshold AND 
+         ceb.curr_d28_payout_rate < ceb.lt_threshold_upper)
+      ))
+      OR
+      -- 差枚条件（新規追加）
+      (ceb.lt_type = 'diff_rank' AND (
+        (ceb.lt_rank_type = 'best' AND (
+          (ceb.lt_rank_range = '1-5' AND ceb.curr_d28_rank_best BETWEEN 1 AND 5) OR
+          (ceb.lt_rank_range = '6-10' AND ceb.curr_d28_rank_best BETWEEN 6 AND 10)
+        ))
+        OR
+        (ceb.lt_rank_type = 'worst' AND (
+          (ceb.lt_rank_range = '1-5' AND ceb.curr_d28_rank_worst BETWEEN 1 AND 5) OR
+          (ceb.lt_rank_range = '6-10' AND ceb.curr_d28_rank_worst BETWEEN 6 AND 10)
+        ))
       ))
     )
     AND
     -- 短期条件の評価（curr_d3/5/7_* を使用、末尾関連性はnext_dateを使用）
     (
-      sc.st_type = 'none'
+      ceb.st_type = 'none'
       OR
-      (sc.st_type = 'win_rate' AND (
-        (sc.st_threshold_upper IS NULL AND (
-          (sc.st_period = 3 AND (
-            (sc.st_op = '=' AND ld.curr_d3_win_rate = sc.st_threshold) OR
-            (sc.st_op = '>=' AND ld.curr_d3_win_rate >= sc.st_threshold) OR
-            (sc.st_op = '<=' AND ld.curr_d3_win_rate <= sc.st_threshold)
-          ))
-          OR
-          (sc.st_period = 5 AND (
-            (sc.st_op = '=' AND ld.curr_d5_win_rate = sc.st_threshold) OR
-            (sc.st_op = '>=' AND ld.curr_d5_win_rate >= sc.st_threshold) OR
-            (sc.st_op = '<=' AND ld.curr_d5_win_rate <= sc.st_threshold)
-          ))
-          OR
-          (sc.st_period = 7 AND (
-            (sc.st_op = '=' AND ld.curr_d7_win_rate = sc.st_threshold) OR
-            (sc.st_op = '>=' AND ld.curr_d7_win_rate >= sc.st_threshold) OR
-            (sc.st_op = '<=' AND ld.curr_d7_win_rate <= sc.st_threshold)
-          ))
+      -- 勝率条件（期間別勝率値を使用、統一されたロジックで評価）
+      (ceb.st_type = 'win_rate' AND ceb.st_win_rate_value IS NOT NULL AND (
+        (ceb.st_threshold_upper IS NULL AND (
+          (ceb.st_op = '>=' AND ceb.st_win_rate_value >= ceb.st_threshold) OR
+          (ceb.st_op = '<=' AND ceb.st_win_rate_value <= ceb.st_threshold) OR
+          (ceb.st_op = '>' AND ceb.st_win_rate_value > ceb.st_threshold)
         ))
         OR
-        (sc.st_threshold_upper IS NOT NULL AND (
-          (sc.st_op = '>=' AND sc.st_period = 3 AND 
-           ld.curr_d3_win_rate >= sc.st_threshold AND 
-           ld.curr_d3_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>=' AND sc.st_period = 5 AND 
-           ld.curr_d5_win_rate >= sc.st_threshold AND 
-           ld.curr_d5_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>=' AND sc.st_period = 7 AND 
-           ld.curr_d7_win_rate >= sc.st_threshold AND 
-           ld.curr_d7_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>' AND sc.st_period = 3 AND 
-           ld.curr_d3_win_rate > sc.st_threshold AND 
-           ld.curr_d3_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>' AND sc.st_period = 5 AND 
-           ld.curr_d5_win_rate > sc.st_threshold AND 
-           ld.curr_d5_win_rate <= sc.st_threshold_upper)
-          OR
-          (sc.st_op = '>' AND sc.st_period = 7 AND 
-           ld.curr_d7_win_rate > sc.st_threshold AND 
-           ld.curr_d7_win_rate <= sc.st_threshold_upper)
+        (ceb.st_threshold_upper IS NOT NULL AND (
+          (ceb.st_op = '>=' AND ceb.st_win_rate_value >= ceb.st_threshold AND ceb.st_win_rate_value <= ceb.st_threshold_upper) OR
+          (ceb.st_op = '>' AND ceb.st_win_rate_value > ceb.st_threshold AND ceb.st_win_rate_value <= ceb.st_threshold_upper)
         ))
       ))
       OR
-      (sc.st_type = 'digit_match_1' AND ld.machine_last_1digit = ndi.next_date_last_1digit)
+      -- 末尾関連性条件
+      (ceb.st_type = 'digit_match_1' AND ceb.machine_last_1digit = ceb.next_date_last_1digit)
       OR
-      (sc.st_type = 'digit_match_2' AND ld.machine_last_2digits = ndi.next_date_last_2digits)
+      (ceb.st_type = 'digit_match_2' AND ceb.machine_last_2digits = ceb.next_date_last_2digits)
       OR
-      (sc.st_type = 'digit_plus_1' AND ld.machine_last_1digit = MOD(ndi.next_date_last_1digit + 1, 10))
+      (ceb.st_type = 'digit_plus_1' AND ceb.machine_last_1digit = MOD(ceb.next_date_last_1digit + 1, 10))
       OR
-      (sc.st_type = 'digit_minus_1' AND ld.machine_last_1digit = MOD(ndi.next_date_last_1digit - 1 + 10, 10))
+      (ceb.st_type = 'digit_minus_1' AND ceb.machine_last_1digit = MOD(ceb.next_date_last_1digit - 1 + 10, 10))
     )
-    AND (sc.lt_type = 'none' OR ld.curr_d28_win_rate IS NOT NULL)
-  GROUP BY sc.strategy_name, sc.sort_order
+    AND (ceb.lt_type = 'none' OR ceb.lt_type = 'diff_rank' OR ceb.curr_d28_win_rate IS NOT NULL OR ceb.curr_d28_payout_rate IS NOT NULL)
+  GROUP BY ceb.strategy_name, ceb.sort_order
 ),
 
 -- ----------------------------------------------------------------------------
