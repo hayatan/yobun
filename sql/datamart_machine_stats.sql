@@ -1,8 +1,9 @@
 -- データマート: 台番別統計データ
--- 実行方法: BigQuery スケジュールクエリで @run_date パラメータを使用
+-- 実行方法: BigQuery スケジュールクエリで @run_time パラメータを使用
 -- 宛先テーブル: yobun-450512.datamart.machine_stats (日付パーティション)
 -- 
--- 注意: @run_date は実行日。集計日は実行日の1日前（@run_date - 1）
+-- 注意: @run_time は実行時刻（TIMESTAMP型）。集計日は実行日の1日前
+--       DATE(@run_time,'Asia/Tokyo') でJSTの日付を取得
 --       例: 12/25に実行 → 集計日は12/24
 --
 -- 集計期間:
@@ -37,8 +38,9 @@ USING (
       ) AS rn
     FROM `yobun-450512.slot_data.data_*`
     -- 集計日から最大31日前までのデータを取得（当月対応）
-    WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(@run_date, INTERVAL 32 DAY))
-                            AND FORMAT_DATE('%Y%m%d', DATE_SUB(@run_date, INTERVAL 1 DAY))
+    -- @run_time からJSTの日付を取得して計算（_TABLE_SUFFIXはJST基準）
+    WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(DATE(@run_time, 'Asia/Tokyo'), INTERVAL 32 DAY))
+                            AND FORMAT_DATE('%Y%m%d', DATE_SUB(DATE(@run_time, 'Asia/Tokyo'), INTERVAL 1 DAY))
   ),
 
   -- ============================================================================
@@ -177,10 +179,10 @@ USING (
   ),
 
   -- ============================================================================
-  -- 4. 集計日の定義（実行日の1日前）
+  -- 4. 集計日の定義（実行日の1日前、JST基準）
   -- ============================================================================
   target_date_def AS (
-    SELECT DATE_SUB(@run_date, INTERVAL 1 DAY) AS target_date
+    SELECT DATE_SUB(DATE(@run_time, 'Asia/Tokyo'), INTERVAL 1 DAY) AS target_date
   ),
 
   -- ============================================================================
