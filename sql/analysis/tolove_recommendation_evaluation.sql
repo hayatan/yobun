@@ -26,6 +26,11 @@
 -- 注: DECLARE文はBigQuery Connectorでサポートされないため、params CTEを使用
 -- 注: 診断機能はクエリの複雑さを減らすため一時的に無効化
 -- score_methodはscore_methods CTEで一括定義（全手法を同時評価）
+--
+-- 【特日タイプ（special_day_type）】
+-- 'island': アイランド秋葉原店（10,20,30日、1,11,21,31日、6,16,26日、月末）
+-- 'espas':  エスパス秋葉原駅前店（月末のみ）
+-- 'none':   特日なし（全日を通常日として扱う）
 -- 
 -- 【score_method一覧】
 -- 'original': 元の計算方法（RMS × 信頼性 × 頻度 × 異常値 × 複合）
@@ -59,7 +64,12 @@ params AS (
   SELECT
     'アイランド秋葉原店' AS target_hole,      -- 対象店舗
     'L+ToLOVEるダークネス' AS target_machine, -- 対象機種
-    120 AS evaluation_days                    -- 評価期間（直近N日間、推奨: 120日以上）
+    120 AS evaluation_days,                   -- 評価期間（直近N日間、推奨: 120日以上）
+    -- 特日タイプ:
+    --   'island' = アイランド秋葉原店（10,20,30日、1,11,21,31日、6,16,26日、月末）
+    --   'espas'  = エスパス秋葉原駅前店（月末のみ）
+    --   'none'   = 特日なし（全日を通常日として扱う）
+    'island' AS special_day_type
 ),
 
 -- ############################################################################
@@ -127,20 +137,35 @@ base_data AS (
 ),
 
 -- ----------------------------------------------------------------------------
--- 1-2. 特日定義
+-- 1-2. 特日定義（店舗ごとに異なる）
 -- ----------------------------------------------------------------------------
 special_day_logic AS (
   SELECT 
-    target_date,
-    CASE 
-      WHEN EXTRACT(DAY FROM target_date) IN (10, 20, 30) THEN TRUE
-      WHEN EXTRACT(DAY FROM target_date) IN (1, 11, 21, 31) THEN TRUE
-      WHEN EXTRACT(DAY FROM target_date) IN (6, 16, 26) THEN TRUE
-      WHEN target_date = LAST_DAY(target_date) THEN TRUE
+    bd.target_date,
+    CASE p.special_day_type
+      -- アイランド秋葉原店: 6,16,26日、月末
+      WHEN 'island' THEN
+        CASE 
+          WHEN EXTRACT(DAY FROM bd.target_date) IN (6, 16, 26) THEN TRUE
+          WHEN bd.target_date = LAST_DAY(bd.target_date) THEN TRUE
+          ELSE FALSE
+        END
+      -- エスパス秋葉原駅前店: 6のつく日、14日、月末
+      WHEN 'espas' THEN
+        CASE 
+          WHEN EXTRACT(DAY FROM bd.target_date) IN (6, 16, 26) THEN TRUE
+          WHEN EXTRACT(DAY FROM bd.target_date) = 14 THEN TRUE
+          WHEN bd.target_date = LAST_DAY(bd.target_date) THEN TRUE
+          ELSE FALSE
+        END
+      -- 特日なし: 全日を通常日として扱う
+      WHEN 'none' THEN FALSE
+      -- デフォルト: 特日なし
       ELSE FALSE
     END AS is_special_day
-  FROM base_data
-  GROUP BY target_date
+  FROM base_data bd
+  CROSS JOIN params p
+  GROUP BY bd.target_date, p.special_day_type
 ),
 
 base_data_with_special AS (
@@ -222,7 +247,10 @@ short_term_digit_conditions AS (
     STRUCT('+台番末尾1桁=日付末尾1桁', 0, 'digit_match_1', 0.0, '', CAST(NULL AS FLOAT64), 30),
     STRUCT('+台番末尾2桁=日付末尾2桁', 0, 'digit_match_2', 0.0, '', CAST(NULL AS FLOAT64), 31),
     STRUCT('+台番末尾1桁=日付末尾1桁+1', 0, 'digit_plus_1', 0.0, '', CAST(NULL AS FLOAT64), 32),
-    STRUCT('+台番末尾1桁=日付末尾1桁-1', 0, 'digit_minus_1', 0.0, '', CAST(NULL AS FLOAT64), 33)
+    STRUCT('+台番末尾1桁=日付末尾1桁-1', 0, 'digit_minus_1', 0.0, '', CAST(NULL AS FLOAT64), 33),
+    -- 特日条件
+    STRUCT('+特日', 0, 'special_day', 0.0, '', CAST(NULL AS FLOAT64), 40),
+    STRUCT('+特日以外', 0, 'non_special_day', 0.0, '', CAST(NULL AS FLOAT64), 41)
   ])
 ),
 
@@ -246,6 +274,10 @@ strategy_combinations AS (
     lt.lt_sort * 100 + st.st_sort AS sort_order
   FROM long_term_conditions lt
   CROSS JOIN short_term_conditions st
+  WHERE NOT (
+    -- 長期条件と末尾条件・特日条件は組み合わせない（ノイズになるため）
+    lt.lt_type != 'none' AND st.st_type IN ('digit_match_1', 'digit_match_2', 'digit_plus_1', 'digit_minus_1', 'special_day', 'non_special_day')
+  )
 ),
 
 -- ############################################################################
@@ -277,9 +309,12 @@ evaluation_base_data AS (
     MOD(EXTRACT(DAY FROM ed.evaluation_date), 10) AS next_date_last_1digit,
     EXTRACT(DAY FROM ed.evaluation_date) AS next_date_last_2digits,
     bd.machine_last_1digit,
-    bd.machine_last_2digits
+    bd.machine_last_2digits,
+    -- 評価対象日の特日フラグ（推奨台を出す日が特日かどうか）
+    COALESCE(sdl_next.is_special_day, FALSE) AS next_is_special_day
   FROM evaluation_dates ed
   INNER JOIN base_data_with_special bd ON bd.target_date = ed.data_date
+  LEFT JOIN special_day_logic sdl_next ON ed.evaluation_date = sdl_next.target_date
 ),
 
 -- ----------------------------------------------------------------------------
@@ -367,6 +402,11 @@ evaluation_compound_machines AS (
       (sc.st_type = 'digit_plus_1' AND ebd.machine_last_1digit = MOD(ebd.next_date_last_1digit + 1, 10))
       OR
       (sc.st_type = 'digit_minus_1' AND ebd.machine_last_1digit = MOD(ebd.next_date_last_1digit - 1 + 10, 10))
+      OR
+      -- 特日条件
+      (sc.st_type = 'special_day' AND ebd.next_is_special_day = TRUE)
+      OR
+      (sc.st_type = 'non_special_day' AND ebd.next_is_special_day = FALSE)
     )
 ),
 
@@ -470,6 +510,11 @@ strategy_simulation_base AS (
       (sc.st_type = 'digit_plus_1' AND bd.machine_last_1digit = MOD(bd.date_last_1digit + 1, 10))
       OR
       (sc.st_type = 'digit_minus_1' AND bd.machine_last_1digit = MOD(bd.date_last_1digit - 1 + 10, 10))
+      OR
+      -- 特日条件
+      (sc.st_type = 'special_day' AND bd.is_special_day = TRUE)
+      OR
+      (sc.st_type = 'non_special_day' AND bd.is_special_day = FALSE)
     )
 ),
 

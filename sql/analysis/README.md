@@ -139,15 +139,42 @@ PARTITION BY target_date;
 
 ### 2.2 パラメータ設定
 
+BigQuery Connectorは`DECLARE`文をサポートしていないため、`params` CTE内で設定します：
+
 ```sql
-DECLARE target_date DATE DEFAULT NULL;  -- 推奨台を出す日付（NULL=最新日の次の日）
-DECLARE target_hole STRING DEFAULT 'アイランド秋葉原店';  -- 対象店舗
-DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象機種
+params AS (
+  SELECT
+    CAST(NULL AS DATE) AS target_date,  -- 推奨台を出す日付（NULL=最新日の次の日）
+    'アイランド秋葉原店' AS target_hole,  -- 対象店舗
+    'L+ToLOVEるダークネス' AS target_machine,  -- 対象機種
+    'island' AS special_day_type,  -- 特日タイプ（island/espas/none）
+    'rms_frequency_dual' AS score_method  -- スコア計算メソッド
+)
 ```
+
+#### 特日タイプ（special_day_type）
+
+| タイプ | 説明 |
+|--------|------|
+| `island` | アイランド秋葉原店（6,16,26日、月末） |
+| `espas` | エスパス秋葉原駅前店（6,16,26日、14日、月末） |
+| `none` | 特日なし（全日を通常日として扱う） |
+
+#### スコア計算メソッド（score_method）
+
+| メソッド | 計算式 |
+|----------|--------|
+| `simple` | RMS のみ |
+| `rms_reliability` | RMS × 信頼性スコア |
+| `rms_frequency` | RMS × 頻度ボーナス |
+| `rms_frequency_filter` | RMS × 頻度（有効性0.5以上の戦略のみ） |
+| `rms_frequency_anomaly` | RMS × 頻度 × 異常値ボーナス |
+| `rms_frequency_dual` | RMS × 頻度 × 複合ボーナス（**デフォルト・推奨**） |
+| `original` | RMS × 信頼性 × 頻度 × 異常値 × 複合 |
 
 ### 2.3 スコア計算方法
 
-`rms_frequency_dual` 方式を採用しています：
+デフォルトの `rms_frequency_dual` 方式：
 
 ```
 総合スコア = RMS × 頻度ボーナス × 複合ボーナス
@@ -156,6 +183,10 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象�
 - **RMS**: 勝率パーセンタイルスコアと機械割パーセンタイルスコアの二乗平均平方根
 - **頻度ボーナス**: `sqrt(該当数) / sqrt(最大該当数)`
 - **複合ボーナス**: 機械割がp50以上かつ勝率がp50以上の場合 1.1、それ以外 1.0
+- **信頼性スコア**: days≥30かつref_count≥50で1.0、それ未満は段階的に減少
+- **異常値ボーナス**: 機械割がp75の1.05倍以上、または勝率がp75の1.1倍以上で1.1
+
+`score_method`パラメータで他の計算方法に切り替え可能です（評価クエリと同一ロジック）。
 
 ### 2.4 優先度ランクの定義
 
@@ -172,6 +203,9 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象�
 
 | カラム | 型 | 説明 |
 |--------|-----|------|
+| `hole_name` | STRING | 店舗名 |
+| `machine_name` | STRING | 機種名 |
+| `score_method` | STRING | スコア計算メソッド |
 | `target_date` | DATE | 推奨日付 |
 | `machine_number` | STRING | 台番 |
 | `priority_rank` | INT | 優先度ランク（5=最高、0=対象外） |
@@ -183,6 +217,8 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象�
 | `weighted_win_rate` | FLOAT | 重み付け勝率（例: 0.583 = 58.3%） |
 | `rms` | FLOAT | RMSスコア |
 | `frequency_bonus` | FLOAT | 出現頻度ボーナス |
+| `reliability_score` | FLOAT | 信頼性スコア |
+| `anomaly_bonus` | FLOAT | 異常値ボーナス |
 | `dual_high_bonus` | FLOAT | 複合ボーナス |
 | `top1_score` | FLOAT | TOP1のスコア（参考） |
 
@@ -214,13 +250,33 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';  -- 対象�
 
 ### 3.2 パラメータ設定
 
+BigQuery Connectorは`DECLARE`文をサポートしていないため、`params` CTE内で設定します：
+
 ```sql
-DECLARE target_hole STRING DEFAULT 'アイランド秋葉原店';
-DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';
-DECLARE evaluation_days INT64 DEFAULT 120;  -- 評価期間（直近N日間）
+params AS (
+  SELECT
+    'アイランド秋葉原店' AS target_hole,  -- 対象店舗
+    'L+ToLOVEるダークネス' AS target_machine,  -- 対象機種
+    120 AS evaluation_days,  -- 評価期間（直近N日間、推奨: 120日以上）
+    'island' AS special_day_type  -- 特日タイプ（island/espas/none）
+)
 ```
 
-### 3.3 評価カテゴリ
+### 3.3 戦略条件
+
+#### 長期条件（過去28日間ベース）
+- 勝率: 50%以上 / 42.9%以上50%未満 / 35.7%以上42.9%未満 / 35.7%未満
+- 機械割: 104.47%以上 / 102.47%以上 / 100.91%以上 / 100.91%未満
+- 差枚ランキング: ベスト1-5 / ベスト6-10 / ワースト1-5 / ワースト6-10
+
+#### 短期条件
+- 過去3/5/7日間勝率: 100% / 75%超 / 50%超75%以下 / 25%超50%以下 / 0%超25%未満 / 0%
+- 台番末尾: 日付末尾1桁と一致 / 2桁一致 / +1 / -1
+- **特日**: 特日 / 特日以外（`special_day_type`で定義された特日に該当するか）
+
+※ 長期条件と短期条件の組み合わせ（末尾・特日条件は長期条件と組み合わせない）
+
+### 3.4 評価カテゴリ
 
 | カテゴリ | 説明 |
 |----------|------|
@@ -228,20 +284,22 @@ DECLARE evaluation_days INT64 DEFAULT 120;  -- 評価期間（直近N日間）
 | OUTLIER | 外れ値（飛び抜けて高いスコアの台） |
 | THRESHOLD_80〜99PCT | TOP1スコアの各%以上 |
 
-### 3.4 スコア計算方法（score_method）
+### 3.5 スコア計算方法（score_method）
 
-| 方法 | 説明 |
-|------|------|
-| `original` | RMS × 信頼性 × 頻度 × 異常値 × 複合 |
-| `simple` | RMSのみ |
-| `rms_reliability` | RMS × 信頼性（絶対閾値ベース） |
-| `rms_frequency` | RMS × 頻度ボーナス |
-| `rms_frequency_dual` | RMS × 頻度 × 複合ボーナス（推奨） |
-| `rms_frequency_anomaly` | RMS × 頻度 × 異常値ボーナス |
-| `strategy_filter` | 有効性スコア0.5以上の戦略のみ |
-| `rms_frequency_filter` | RMS × 頻度 + 戦略フィルタ |
+| 方法 | 説明 | 適用場面 |
+|------|------|----------|
+| `simple` | RMSのみ | シンプルな比較 |
+| `rms_reliability` | RMS × 信頼性（絶対閾値ベース） | データ量に差がある場合 |
+| `rms_frequency` | RMS × 頻度ボーナス | 複数戦略該当を重視 |
+| `rms_frequency_dual` | RMS × 頻度 × 複合ボーナス（**推奨**） | 一般的な使用 |
+| `rms_frequency_anomaly` | RMS × 頻度 × 異常値ボーナス | 高出玉台を重視 |
+| `rms_frequency_filter` | RMS × 頻度（有効性0.5以上の戦略のみ） | ノイズ除去 |
+| `strategy_filter` | 有効性スコア0.5以上の戦略のみ | 戦略フィルタのみ |
+| `original` | RMS × 信頼性 × 頻度 × 異常値 × 複合 | 全要素を考慮 |
 
-### 3.5 出力項目
+※ 出力クエリ・評価クエリで同一のロジックを使用しています。
+
+### 3.6 出力項目
 
 | カラム | 説明 |
 |--------|------|
@@ -303,11 +361,13 @@ DECLARE evaluation_days INT64 DEFAULT 120;  -- 評価期間（直近N日間）
 
 ### 5.3 パラメータの調整
 
-各クエリのパラメータを調整することで、以下のことが可能です：
+各クエリの `params` CTE内のパラメータを調整することで、以下のことが可能です：
 
-- **特定の日付の推奨台を取得**: `DECLARE target_date DATE DEFAULT '2026-01-15';`
-- **別の店舗・機種を分析**: `DECLARE target_hole` と `DECLARE target_machine` を変更
-- **評価期間の変更**: `DECLARE evaluation_days INT64 DEFAULT 120;`
+- **特定の日付の推奨台を取得**: `CAST('2026-01-15' AS DATE) AS target_date`
+- **別の店舗・機種を分析**: `target_hole` と `target_machine` を変更
+- **評価期間の変更**: `120 AS evaluation_days`
+- **特日タイプの変更**: `'island'` / `'espas'` / `'none'` AS `special_day_type`
+- **スコア計算メソッドの変更**: `'rms_frequency_dual' AS score_method`
 
 ---
 
@@ -335,5 +395,12 @@ DECLARE evaluation_days INT64 DEFAULT 120;  -- 評価期間（直近N日間）
 ### 7.2 狙い台一覧が出力されない
 
 - `datamart.machine_stats` に最新のデータが存在するか確認
-- `tolove_recommendation_output.sql` のパラメータ（`target_hole`, `target_machine`）を確認
+- `tolove_recommendation_output.sql` の `params` CTE内のパラメータ（`target_hole`, `target_machine`）を確認
 - BigQuery Connectorの接続設定を確認
+- `score_method` が有効な値であるか確認
+
+### 7.3 評価クエリと出力クエリの結果が異なる
+
+- 両クエリの `params` CTE内のパラメータが一致しているか確認
+- `score_method` が同じか確認
+- `special_day_type` が同じか確認
