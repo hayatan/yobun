@@ -59,33 +59,57 @@
 WITH 
 -- ############################################################################
 -- Part 0: パラメータ定義（全機種×全期間の組み合わせ）
+-- 評価期間: 14日（直近）, 28日（短期）, 60日（中期）, 120日（長期）
+-- 合計: 11機種 × 4期間 = 44組み合わせ
 -- ############################################################################
 params AS (
   SELECT * FROM UNNEST([
-    -- アイランド秋葉原店（5機種 × 2期間 = 10組み合わせ）
+    -- アイランド秋葉原店（5機種 × 4期間 = 20組み合わせ）
     STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 28 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 14 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 28 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 14 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'Lバンドリ！' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'Lバンドリ！' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lバンドリ！' AS target_machine, 28 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lバンドリ！' AS target_machine, 14 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 28 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 14 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
     STRUCT('アイランド秋葉原店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
-    -- エスパス秋葉原駅前店（6機種 × 2期間 = 12組み合わせ）
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 28 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 14 AS evaluation_days, 'island' AS special_day_type),
+    -- エスパス秋葉原駅前店（6機種 × 4期間 = 24組み合わせ）
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 28 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 14 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'ToLOVEるダークネス+TRANCE+ver.8.7' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'ToLOVEるダークネス+TRANCE+ver.8.7' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'ToLOVEるダークネス+TRANCE+ver.8.7' AS target_machine, 28 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'ToLOVEるダークネス+TRANCE+ver.8.7' AS target_machine, 14 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 28 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 14 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lバンドリ！' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lバンドリ！' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lバンドリ！' AS target_machine, 28 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lバンドリ！' AS target_machine, 14 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 28 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 14 AS evaluation_days, 'espas' AS special_day_type),
     STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
-    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type)
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 28 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 14 AS evaluation_days, 'espas' AS special_day_type)
   ])
 ),
 
