@@ -105,50 +105,47 @@ USING (
       STRUCT(1025, 1031), STRUCT(1026, 1032), STRUCT(1027, 1033), STRUCT(1028, 1035),
       STRUCT(1030, 1036), STRUCT(1031, 1037), STRUCT(1032, 1038), STRUCT(1033, 1050),
       STRUCT(1035, 1051), STRUCT(1036, 1052), STRUCT(1037, 1053), STRUCT(1038, 1055),
-      STRUCT(1050, 1056), STRUCT(1051, 1057),
-      -- 以下は変更なし
-      STRUCT(1052, 1052), STRUCT(1053, 1053), STRUCT(1055, 1055), STRUCT(1056, 1056),
-      STRUCT(1057, 1057), STRUCT(1058, 1058), STRUCT(1060, 1060), STRUCT(1061, 1061),
-      STRUCT(1062, 1062),
-      -- 続き
-      STRUCT(1063, 1070), STRUCT(1065, 1071), STRUCT(1066, 1072), STRUCT(1067, 1073),
-      STRUCT(1068, 1075), STRUCT(1070, 1076), STRUCT(1071, 1077), STRUCT(1072, 1078),
-      STRUCT(1073, 1080), STRUCT(1075, 1081), STRUCT(1076, 1082), STRUCT(1077, 1083),
-      STRUCT(1078, 1085), STRUCT(1080, 1086), STRUCT(1081, 1087), STRUCT(1082, 1088),
-      STRUCT(1083, 1100), STRUCT(1085, 1101), STRUCT(1086, 1102), STRUCT(1087, 1103),
-      STRUCT(1088, 1105), STRUCT(1100, 1106), STRUCT(1101, 1107), STRUCT(1102, 1108),
-      STRUCT(1103, 1110), STRUCT(1105, 1111), STRUCT(1106, 1112), STRUCT(1107, 1113),
-      STRUCT(1108, 1115), STRUCT(1110, 1116), STRUCT(1111, 1117), STRUCT(1112, 1118),
-      STRUCT(1113, 1120), STRUCT(1115, 1121), STRUCT(1116, 1122), STRUCT(1117, 1123),
-      STRUCT(1118, 1125), STRUCT(1120, 1126), STRUCT(1121, 1127), STRUCT(1122, 1128),
-      STRUCT(1123, 1130), STRUCT(1125, 1131), STRUCT(1126, 1132), STRUCT(1127, 1133),
-      STRUCT(1128, 1135), STRUCT(1130, 1136), STRUCT(1131, 1137), STRUCT(1132, 1138),
-      STRUCT(1133, 1150), STRUCT(1135, 1151), STRUCT(1136, 1152), STRUCT(1137, 1153),
-      STRUCT(1138, 1155), STRUCT(1150, 1156), STRUCT(1151, 1157), STRUCT(1152, 1158),
-      STRUCT(1153, 1160), STRUCT(1155, 1161), STRUCT(1156, 1162), STRUCT(1157, 1163),
-      STRUCT(1158, 1165), STRUCT(1160, 1166), STRUCT(1161, 1167), STRUCT(1162, 1168),
-      STRUCT(1163, 1170), STRUCT(1165, 1171), STRUCT(1166, 1172), STRUCT(1167, 1173),
-      STRUCT(1168, 1175), STRUCT(1170, 1176), STRUCT(1171, 1177), STRUCT(1172, 1178),
-      STRUCT(1173, 1180), STRUCT(1175, 1181), STRUCT(1176, 1182), STRUCT(1177, 1183),
-      STRUCT(1178, 1185), STRUCT(1180, 1186), STRUCT(1181, 1187), STRUCT(1182, 1188),
-      STRUCT(1183, 1200), STRUCT(1185, 1201), STRUCT(1186, 1202), STRUCT(1187, 1203),
-      STRUCT(1188, 1207), STRUCT(1200, 1208), STRUCT(1201, 1210), STRUCT(1202, 1211),
-      STRUCT(1203, 1212), STRUCT(1205, 1213), STRUCT(1206, 1215), STRUCT(1207, 1216),
-      STRUCT(1208, 1217), STRUCT(1210, 1218), STRUCT(1211, 1220), STRUCT(1212, 1221),
-      STRUCT(1213, 1222), STRUCT(1215, 1223), STRUCT(1216, 1225), STRUCT(1217, 1226),
-      STRUCT(1218, 1227), STRUCT(1220, 1228), STRUCT(1221, 1230), STRUCT(1222, 1231),
-      STRUCT(1223, 1232), STRUCT(1225, 1233), STRUCT(1226, 1235), STRUCT(1227, 1236),
-      STRUCT(1228, 1237), STRUCT(1230, 1238), STRUCT(1231, 1250), STRUCT(1232, 1251),
-      STRUCT(1233, 1252), STRUCT(1235, 1253), STRUCT(1236, 1255), STRUCT(1237, 1256),
-      STRUCT(1238, 1257), STRUCT(1250, 1258), STRUCT(1251, 1260), STRUCT(1252, 1261),
-      STRUCT(1253, 1262), STRUCT(1255, 1263), STRUCT(1256, 1265), STRUCT(1257, 1266),
-      STRUCT(1258, 1267), STRUCT(1260, 1268), STRUCT(1261, 1270), STRUCT(1262, 1271),
-      STRUCT(1263, 1272), STRUCT(1265, 1273), STRUCT(1266, 1275), STRUCT(1267, 1276),
-      STRUCT(1268, 1277), STRUCT(1270, 1278), STRUCT(1271, 1280), STRUCT(1272, 1281),
-      STRUCT(1273, 1282), STRUCT(1275, 1283), STRUCT(1276, 1285), STRUCT(1277, 1286),
-      STRUCT(1278, 1287), STRUCT(1280, 1288), STRUCT(1281, 1300), STRUCT(1282, 1301),
-      STRUCT(1283, 1302), STRUCT(1285, 1303), STRUCT(1286, 1305), STRUCT(1287, 1306),
-      STRUCT(1288, 1307), STRUCT(1300, 1308)
+      STRUCT(1050, 1056), STRUCT(1051, 1057), STRUCT(1052, 1058), STRUCT(1053, 1060),
+      STRUCT(1055, 1061), STRUCT(1056, 1062), STRUCT(1057, 1063), STRUCT(1058, 1065),
+      STRUCT(1060, 1066), STRUCT(1061, 1067), STRUCT(1062, 1068), STRUCT(1063, 1070),
+      STRUCT(1065, 1071), STRUCT(1066, 1072), STRUCT(1067, 1073), STRUCT(1068, 1075),
+      STRUCT(1070, 1076), STRUCT(1071, 1077), STRUCT(1072, 1078), STRUCT(1073, 1080),
+      STRUCT(1075, 1081), STRUCT(1076, 1082), STRUCT(1077, 1083), STRUCT(1078, 1085),
+      STRUCT(1080, 1086), STRUCT(1081, 1087), STRUCT(1082, 1088), STRUCT(1083, 1100),
+      STRUCT(1085, 1101), STRUCT(1086, 1102), STRUCT(1087, 1103), STRUCT(1088, 1105),
+      STRUCT(1100, 1106), STRUCT(1101, 1107), STRUCT(1102, 1108), STRUCT(1103, 1110),
+      STRUCT(1105, 1111), STRUCT(1106, 1112), STRUCT(1107, 1113), STRUCT(1108, 1115),
+      STRUCT(1110, 1116), STRUCT(1111, 1117), STRUCT(1112, 1118), STRUCT(1113, 1120),
+      STRUCT(1115, 1121), STRUCT(1116, 1122), STRUCT(1117, 1123), STRUCT(1118, 1125),
+      STRUCT(1120, 1126), STRUCT(1121, 1127), STRUCT(1122, 1128), STRUCT(1123, 1130),
+      STRUCT(1125, 1131), STRUCT(1126, 1132), STRUCT(1127, 1133), STRUCT(1128, 1135),
+      STRUCT(1130, 1136), STRUCT(1131, 1137), STRUCT(1132, 1138), STRUCT(1133, 1150),
+      STRUCT(1135, 1151), STRUCT(1136, 1152), STRUCT(1137, 1153), STRUCT(1138, 1155),
+      STRUCT(1150, 1156), STRUCT(1151, 1157), STRUCT(1152, 1158), STRUCT(1153, 1160),
+      STRUCT(1155, 1161), STRUCT(1156, 1162), STRUCT(1157, 1163), STRUCT(1158, 1165),
+      STRUCT(1160, 1166), STRUCT(1161, 1167), STRUCT(1162, 1168), STRUCT(1163, 1170),
+      STRUCT(1165, 1171), STRUCT(1166, 1172), STRUCT(1167, 1173), STRUCT(1168, 1175),
+      STRUCT(1170, 1176), STRUCT(1171, 1177), STRUCT(1172, 1178), STRUCT(1173, 1180),
+      STRUCT(1175, 1181), STRUCT(1176, 1182), STRUCT(1177, 1183), STRUCT(1178, 1185),
+      STRUCT(1180, 1186), STRUCT(1181, 1187), STRUCT(1182, 1188), STRUCT(1183, 1200),
+      STRUCT(1185, 1201), STRUCT(1186, 1202), STRUCT(1187, 1203), STRUCT(1188, 1207),
+      STRUCT(1200, 1208), STRUCT(1201, 1210), STRUCT(1202, 1211), STRUCT(1203, 1212),
+      STRUCT(1205, 1213), STRUCT(1206, 1215), STRUCT(1207, 1216), STRUCT(1208, 1217),
+      STRUCT(1210, 1218), STRUCT(1211, 1220), STRUCT(1212, 1221), STRUCT(1213, 1222),
+      STRUCT(1215, 1223), STRUCT(1216, 1225), STRUCT(1217, 1226), STRUCT(1218, 1227),
+      STRUCT(1220, 1228), STRUCT(1221, 1230), STRUCT(1222, 1231), STRUCT(1223, 1232),
+      STRUCT(1225, 1233), STRUCT(1226, 1235), STRUCT(1227, 1236), STRUCT(1228, 1237),
+      STRUCT(1230, 1238), STRUCT(1231, 1250), STRUCT(1232, 1251), STRUCT(1233, 1252),
+      STRUCT(1235, 1253), STRUCT(1236, 1255), STRUCT(1237, 1256), STRUCT(1238, 1257),
+      STRUCT(1250, 1258), STRUCT(1251, 1260), STRUCT(1252, 1261), STRUCT(1253, 1262),
+      STRUCT(1255, 1263), STRUCT(1256, 1265), STRUCT(1257, 1266), STRUCT(1258, 1267),
+      STRUCT(1260, 1268), STRUCT(1261, 1270), STRUCT(1262, 1271), STRUCT(1263, 1272),
+      STRUCT(1265, 1273), STRUCT(1266, 1275), STRUCT(1267, 1276), STRUCT(1268, 1277),
+      STRUCT(1270, 1278), STRUCT(1271, 1280), STRUCT(1272, 1281), STRUCT(1273, 1282),
+      STRUCT(1275, 1283), STRUCT(1276, 1285), STRUCT(1277, 1286), STRUCT(1278, 1287),
+      STRUCT(1280, 1288), STRUCT(1281, 1300), STRUCT(1282, 1301), STRUCT(1283, 1302),
+      STRUCT(1285, 1303), STRUCT(1286, 1305), STRUCT(1287, 1306), STRUCT(1288, 1307),
+      STRUCT(1300, 1308)
     ])
   ),
 
@@ -225,7 +222,7 @@ USING (
       n.machine_number,
       n.diff AS d1_diff,
       n.game AS d1_game,
-      CASE WHEN n.game = 0 THEN NULL ELSE (n.game * 3 + n.diff) / (n.game * 3) END AS d1_payout_rate
+      SAFE_DIVIDE(n.game * 3 + n.diff, n.game * 3) AS d1_payout_rate
     FROM normalized_data n, target_date_def t
     WHERE n.date = t.target_date
   ),
@@ -237,7 +234,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS d3_diff, SUM(n.game) AS d3_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d3_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d3_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS d3_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -249,7 +246,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS d5_diff, SUM(n.game) AS d5_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d5_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d5_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS d5_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -261,7 +258,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS d7_diff, SUM(n.game) AS d7_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d7_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d7_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS d7_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -273,7 +270,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS d28_diff, SUM(n.game) AS d28_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS d28_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS d28_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS d28_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -285,7 +282,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS mtd_diff, SUM(n.game) AS mtd_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS mtd_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS mtd_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS mtd_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -299,7 +296,7 @@ USING (
   stats_prev_d1 AS (
     SELECT n.hole, n.machine_number,
       n.diff AS prev_d1_diff, n.game AS prev_d1_game,
-      CASE WHEN n.game = 0 THEN NULL ELSE (n.game * 3 + n.diff) / (n.game * 3) END AS prev_d1_payout_rate
+      SAFE_DIVIDE(n.game * 3 + n.diff, n.game * 3) AS prev_d1_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -310,7 +307,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_d2_diff, SUM(n.game) AS prev_d2_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d2_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d2_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS prev_d2_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -322,7 +319,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_d3_diff, SUM(n.game) AS prev_d3_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d3_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d3_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS prev_d3_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -334,7 +331,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_d5_diff, SUM(n.game) AS prev_d5_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d5_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d5_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS prev_d5_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -346,7 +343,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_d7_diff, SUM(n.game) AS prev_d7_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d7_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d7_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS prev_d7_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -358,7 +355,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_d28_diff, SUM(n.game) AS prev_d28_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_d28_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_d28_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS prev_d28_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
@@ -370,7 +367,7 @@ USING (
     SELECT n.hole, n.machine_number,
       SUM(n.diff) AS prev_mtd_diff, SUM(n.game) AS prev_mtd_game,
       SAFE_DIVIDE(SUM(n.win), COUNT(*)) AS prev_mtd_win_rate,
-      CASE WHEN SUM(n.game) = 0 THEN NULL ELSE (SUM(n.game) * 3 + SUM(n.diff)) / (SUM(n.game) * 3) END AS prev_mtd_payout_rate
+      SAFE_DIVIDE(SUM(n.game) * 3 + SUM(n.diff), SUM(n.game) * 3) AS prev_mtd_payout_rate
     FROM normalized_data n
     INNER JOIN current_day_machines c ON n.hole = c.hole AND n.machine_number = c.machine_number AND n.machine = c.machine
     CROSS JOIN target_date_def t
