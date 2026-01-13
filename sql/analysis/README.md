@@ -7,8 +7,8 @@
 本システムは以下のコンポーネントで構成されています：
 
 1. **`datamart_machine_stats.sql`**: 生データから台番別統計データを生成するデータマート
-2. **`tolove_recommendation_output.sql`**: 狙い台一覧出力（スコア計算・優先度ランク付けまでSQLで完結）
-3. **`tolove_recommendation_evaluation.sql`**: 狙い台選定方法の評価（過去データでの検証）
+2. **`recommendation_output.sql`**: 狙い台一覧出力（スコア計算・優先度ランク付けまでSQLで完結）
+3. **`recommendation_evaluation.sql`**: 狙い台選定方法の評価（過去データでの検証）
 
 ---
 
@@ -131,7 +131,7 @@ PARTITION BY target_date;
 
 ---
 
-## 2. 狙い台一覧出力: `tolove_recommendation_output.sql`
+## 2. 狙い台一覧出力: `recommendation_output.sql`
 
 ### 2.1 概要
 
@@ -190,14 +190,19 @@ params AS (
 
 ### 2.4 優先度ランクの定義
 
-| ランク | 条件 | 期待値 |
-|--------|------|--------|
-| 5 | TOP1スコアの99%以上 | 勝率63%、機械割113% |
-| 4 | TOP1スコアの97%以上 | 勝率60%、機械割110% |
-| 3 | TOP1スコアの95%以上 | 勝率56%、機械割108% |
-| 2 | TOP1スコアの90%以上 | 勝率50%、機械割106% |
+TOP1スコア（各店舗・機種・メソッド内での最高スコア）との比率に基づく。
+
+| ランク | 条件 | 説明 |
+|--------|------|------|
+| 5 | TOP1スコアの99%以上 | 最優先 |
+| 4 | TOP1スコアの97%以上 | 優先度高 |
+| 3 | TOP1スコアの95%以上 | 推奨 |
+| 2 | TOP1スコアの90%以上 | 候補 |
 | 1 | TOP1スコアの80%以上 | 参考程度 |
 | 0 | それ以外 | 対象外 |
+
+> **注意**: 実際の期待勝率・機械割は店舗・機種・評価期間によって異なります。  
+> 詳細は `results/YYYY-MM-DD/summary.md` の評価結果を参照してください。
 
 ### 2.5 出力項目
 
@@ -228,7 +233,7 @@ params AS (
    - スプレッドシートの「データ」→「データコネクタ」→「BigQuery に接続」
    - プロジェクト: `yobun-450512`
    - データセット: `(SQLクエリ)`
-   - クエリ: `tolove_recommendation_output.sql` の内容を貼り付け
+   - クエリ: `recommendation_output.sql` の内容を貼り付け
    - 接続先シート: 任意のシート名（例: 「狙い台一覧」）
 
 2. **フィルタで絞り込み**
@@ -242,7 +247,7 @@ params AS (
 
 ---
 
-## 3. 評価クエリ: `tolove_recommendation_evaluation.sql`
+## 3. 評価クエリ: `recommendation_evaluation.sql`
 
 ### 3.1 概要
 
@@ -322,8 +327,8 @@ params AS (
 
 | ファイル | 用途 |
 |----------|------|
-| `tolove_recommendation_output.sql` | 狙い台一覧出力（スコア計算・優先度ランク付けまでSQLで完結） |
-| `tolove_recommendation_evaluation.sql` | 狙い台選定方法の評価（過去データでの検証） |
+| `recommendation_output.sql` | 狙い台一覧出力（スコア計算・優先度ランク付けまでSQLで完結） |
+| `recommendation_evaluation.sql` | 狙い台選定方法の評価（過去データでの検証） |
 
 ### データマート
 
@@ -342,7 +347,7 @@ params AS (
    - 前日のデータが `datamart.machine_stats` に追加/更新される
 
 2. **狙い台一覧の取得**（手動実行）
-   - BigQuery Connectorで `tolove_recommendation_output.sql` をスプレッドシートに接続
+   - BigQuery Connectorで `recommendation_output.sql` をスプレッドシートに接続
    - フィルタ機能で `priority_rank >= 3` など必要な条件を設定
 
 3. **台選び**
@@ -352,12 +357,12 @@ params AS (
 ### 5.2 評価・検証ワークフロー
 
 1. **評価クエリの実行**
-   - `tolove_recommendation_evaluation.sql` をBigQueryで実行
+   - `recommendation_evaluation.sql` をBigQueryで実行
    - 各score_method、各しきい値の精度を比較
 
 2. **最適なパラメータの選定**
-   - `rms_frequency_dual` + `THRESHOLD_95PCT以上` が推奨
-   - 勝率56%以上、機械割108%以上が期待できる
+   - 評価結果に基づき、機種ごとに最適なメソッドを選択
+   - 詳細は `results/YYYY-MM-DD/summary.md` を参照
 
 ### 5.3 パラメータの調整
 
@@ -380,7 +385,7 @@ params AS (
 
 ### 6.2 スコアリングの調整
 
-スコア計算方法を変更したい場合は、`tolove_recommendation_output.sql` のスコア計算部分を編集してください。
+スコア計算方法を変更したい場合は、`recommendation_output.sql` のスコア計算部分を編集してください。
 
 ---
 
@@ -395,7 +400,7 @@ params AS (
 ### 7.2 狙い台一覧が出力されない
 
 - `datamart.machine_stats` に最新のデータが存在するか確認
-- `tolove_recommendation_output.sql` の `params` CTE内のパラメータ（`target_hole`, `target_machine`）を確認
+- `recommendation_output.sql` の `params` CTE内のパラメータ（`target_hole`, `target_machine`）を確認
 - BigQuery Connectorの接続設定を確認
 - `score_method` が有効な値であるか確認
 
@@ -416,9 +421,9 @@ params AS (
 ```
 sql/analysis/
 ├── README.md                               # このファイル
-├── tolove_recommendation_output.sql        # 出力クエリ
-├── tolove_recommendation_output_説明文.md  # スプレッドシート向け説明
-├── tolove_recommendation_evaluation.sql    # 評価クエリ
+├── recommendation_output.sql        # 出力クエリ
+├── recommendation_output_説明文.md         # スプレッドシート向け説明
+├── recommendation_evaluation.sql    # 評価クエリ
 ├── scripts/
 │   └── analyze_batch_results.py            # 分析スクリプト
 └── results/
@@ -444,7 +449,7 @@ sql/analysis/
 
 ### 8.3 評価対象の設定
 
-`tolove_recommendation_evaluation.sql` の `params` CTE を編集して、評価対象を設定します。
+`recommendation_evaluation.sql` の `params` CTE を編集して、評価対象を設定します。
 
 #### 単一評価の場合
 
@@ -480,13 +485,13 @@ params AS (
 | `espas` | エスパス秋葉原駅前店（6,16,26日、14日、月末） |
 | `none` | 特日なし（全日を通常日として扱う） |
 
-特日設定を変更する場合は、`tolove_recommendation_evaluation.sql` と `tolove_recommendation_output.sql` の両方の `special_day_logic` CTE を編集してください。
+特日設定を変更する場合は、`recommendation_evaluation.sql` と `recommendation_output.sql` の両方の `special_day_logic` CTE を編集してください。
 
 ### 8.5 評価の実行手順
 
 #### Step 1: BigQueryで評価クエリを実行
 
-1. `tolove_recommendation_evaluation.sql` の `params` CTE を編集
+1. `recommendation_evaluation.sql` の `params` CTE を編集
 2. BigQueryコンソールでクエリを実行
 3. 結果をCSVでエクスポート（「結果を保存」→「CSV（ローカルファイル）」）
 
@@ -591,7 +596,7 @@ python3 scripts/analyze_batch_results.py /path/to/exported.csv > results/$(date 
 
 ### 8.8 出力クエリへの反映
 
-評価結果を元に、`tolove_recommendation_output.sql` の `params` CTE で最適なメソッドを設定します：
+評価結果を元に、`recommendation_output.sql` の `params` CTE で最適なメソッドを設定します：
 
 ```sql
 params AS (

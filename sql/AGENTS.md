@@ -9,9 +9,10 @@ sql/
 ├── datamart_machine_stats.sql        # データマート生成クエリ
 └── analysis/                          # 分析クエリディレクトリ
     ├── README.md                      # 分析システムのドキュメント
-    ├── tolove_recommendation.sql     # 戦略シミュレーション + 台番推薦
-    ├── tolove_recommendation.gs      # 推奨台のスコアリング（GAS）
-    └── tolove_special_day_simulation_jp.sql  # 特日戦略シミュレーション
+    ├── recommendation_output.sql     # 狙い台一覧出力（複数店舗・機種対応）
+    ├── recommendation_evaluation.sql # 狙い台選定方法の評価
+    ├── scripts/                       # 分析スクリプト
+    └── results/                       # 評価結果
 ```
 
 ---
@@ -105,7 +106,7 @@ sql/
 
 - 分析クエリは `sql/analysis/` ディレクトリに配置する
 - ファイル名は `snake_case` で、機能を表す明確な名前を使用する
-- 例: `tolove_trend_analysis.sql`、`machine_comparison.sql`
+- 例: `trend_analysis.sql`、`machine_comparison.sql`
 
 #### 2. クエリの構造
 
@@ -355,5 +356,5 @@ README を更新したら、以下を確認：
 
 - `analysis/README.md`: 分析システムの詳細ドキュメント
 - `datamart_machine_stats.sql`: データマート生成クエリの実装例
-- `tolove_recommendation.sql`: 分析クエリの実装例
+- `recommendation.sql`: 分析クエリの実装例
 

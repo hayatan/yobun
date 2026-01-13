@@ -276,7 +276,7 @@ def print_markdown_report(df):
     print()
     print("### クエリ実行時のパラメータ選択")
     print()
-    print("狙い台抽出クエリ `tolove_recommendation_output.sql` を実行する際は:")
+    print("狙い台抽出クエリ `recommendation_output.sql` を実行する際は:")
     print()
     print("1. このレポートを参考に、対象店舗・機種に最適なメソッドを選択")
     print("2. `score_method` パラメータを設定")

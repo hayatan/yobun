@@ -1,20 +1,25 @@
 -- ============================================================================
--- 狙い台一覧出力クエリ
+-- 狙い台一覧出力クエリ（複数店舗・複数機種対応版）
 -- ============================================================================
 -- 
 -- 【概要】
---   tolove_recommendation_evaluation.sql と同じロジックを使用して、
+--   recommendation_evaluation.sql と同じロジックを使用して、
 --   最終的な「狙い台一覧」を出力する。
+--   複数の店舗・機種の推奨台を1回のクエリで取得可能。
+--   機種ごとに評価結果に基づいた最適なスコア計算メソッドを指定可能。
 --   スコア計算と優先度ランク付けまでSQLで完結。
 --   BigQuery Connector から直接使用可能。
 --
 -- 【出力項目】
+--   - hole_name: 店舗名
+--   - machine_name: 機種名
+--   - score_method: スコア計算メソッド
 --   - target_date: 推奨日付
 --   - machine_number: 台番
---   - score_method: スコア計算メソッド
 --   - priority_rank: 優先度ランク（5=最高、1=最低、0=対象外）
 --   - total_score: 総合スコア
 --   - top1_ratio: TOP1スコアとの比率（0〜1）
+--   - rank: 店舗・機種・メソッド内でのランキング
 --   - match_count: 該当戦略数
 --   - weighted_payout_rate: 重み付け機械割（0〜1、例: 1.085 = 108.5%）
 --   - weighted_win_rate: 重み付け勝率（0〜1、例: 0.583 = 58.3%）
@@ -25,12 +30,15 @@
 --   - dual_high_bonus: 複合ボーナス
 --
 -- 【優先度ランクの定義】
---   5: TOP1スコアの99%以上 → 勝率63%, 機械割113%期待
---   4: TOP1スコアの97%以上 → 勝率60%, 機械割110%期待
---   3: TOP1スコアの95%以上 → 勝率56%, 機械割108%期待
---   2: TOP1スコアの90%以上 → 勝率50%, 機械割106%期待
---   1: TOP1スコアの80%以上 → 参考程度
+--   TOP1スコア（各店舗・機種・メソッド内での最高スコア）との比率に基づく
+--   5: TOP1スコアの99%以上（最優先）
+--   4: TOP1スコアの97%以上
+--   3: TOP1スコアの95%以上
+--   2: TOP1スコアの90%以上
+--   1: TOP1スコアの80%以上（参考程度）
 --   0: それ以外
+--   ※ 実際の期待勝率・機械割は店舗・機種・評価期間によって異なる
+--   ※ 評価結果（results/YYYY-MM-DD/summary.md）を参照のこと
 --
 -- 【スコア計算メソッド】
 --   - original: 元の計算方法（RMS × 信頼性 × 頻度 × 異常値 × 複合）
@@ -39,13 +47,14 @@
 --   - rms_frequency: RMS × 頻度ボーナス
 --   - rms_frequency_filter: RMS × 頻度（有効性スコア0.5以上の戦略のみ）
 --   - rms_frequency_anomaly: RMS × 頻度 × 異常値ボーナス
---   - rms_frequency_dual: RMS × 頻度 × 複合ボーナス（デフォルト）
+--   - rms_frequency_dual: RMS × 頻度 × 複合ボーナス
 --
 -- 【パラメータ定義】
 -- ============================================================================
 -- ★★★ BigQuery Connector で使用する場合 ★★★
 -- BigQuery Connector は DECLARE 文をサポートしていないため、
 -- 以下の params CTE 内の値を直接変更してください。
+-- 評価結果に基づき、機種ごとに最適なメソッドを指定できます。
 -- ============================================================================
 
 -- 【パーセンタイル閾値】
@@ -59,25 +68,43 @@ WITH
 -- Part 0: パラメータ定義（BigQuery Connector 用）
 -- ############################################################################
 -- ★★★ 対象店舗・機種を変更する場合は、ここを編集してください ★★★
+-- 評価結果に基づき、機種ごとに最適なメソッドを指定
+-- 同一機種で複数メソッドを指定することも可能
+-- 
+-- 【特日タイプ（special_day_type）】
+--   'island' = アイランド秋葉原店（6,16,26日、月末）
+--   'espas'  = エスパス秋葉原駅前店（6,16,26日、14日、月末）
+--   'none'   = 特日なし（全日を通常日として扱う）
+--
+-- 【スコア計算メソッド（score_method）】
+--   'original'             = 元の計算方法（RMS × 信頼性 × 頻度 × 異常値 × 複合）
+--   'simple'               = RMSのみ
+--   'rms_reliability'      = RMS × 信頼性（絶対閾値ベース）
+--   'rms_frequency'        = RMS × 頻度ボーナス
+--   'rms_frequency_filter' = RMS × 頻度（有効性スコア0.5以上の戦略のみ）
+--   'rms_frequency_anomaly'= RMS × 頻度 × 異常値ボーナス
+--   'rms_frequency_dual'   = RMS × 頻度 × 複合ボーナス
+-- ############################################################################
 params AS (
-  SELECT
-    CAST(NULL AS DATE) AS target_date,  -- 推奨台を出す日付（NULL=最新日の次の日）
-    'アイランド秋葉原店' AS target_hole,  -- 対象店舗
-    'L+ToLOVEるダークネス' AS target_machine,  -- 対象機種
-    -- 特日タイプ:
-    --   'island' = アイランド秋葉原店（10,20,30日、1,11,21,31日、6,16,26日、月末）
-    --   'espas'  = エスパス秋葉原駅前店（月末のみ）
-    --   'none'   = 特日なし（全日を通常日として扱う）
-    'island' AS special_day_type,
-    -- スコア計算メソッド:
-    --   'original'             = 元の計算方法（RMS × 信頼性 × 頻度 × 異常値 × 複合）
-    --   'simple'               = RMSのみ
-    --   'rms_reliability'      = RMS × 信頼性（絶対閾値ベース）
-    --   'rms_frequency'        = RMS × 頻度ボーナス
-    --   'rms_frequency_filter' = RMS × 頻度（有効性スコア0.5以上の戦略のみ）
-    --   'rms_frequency_anomaly'= RMS × 頻度 × 異常値ボーナス
-    --   'rms_frequency_dual'   = RMS × 頻度 × 複合ボーナス（デフォルト）
-    'rms_frequency_dual' AS score_method
+  SELECT * FROM UNNEST([
+    -- ===== アイランド秋葉原店 =====
+    -- L+ToLOVEるダークネス: 最優秀（勝率59%, 機械割108%）
+    STRUCT(CAST(NULL AS DATE) AS target_date, 'アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 'island' AS special_day_type, 'original' AS score_method),
+    -- Lバンドリ！: 短期改善傾向
+    STRUCT(CAST(NULL AS DATE), 'アイランド秋葉原店', 'Lバンドリ！', 'island', 'original'),
+    -- マギアレコード: 中程度
+    STRUCT(CAST(NULL AS DATE), 'アイランド秋葉原店', 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝', 'island', 'original'),
+    -- L戦国乙女４: 短期改善傾向
+    STRUCT(CAST(NULL AS DATE), 'アイランド秋葉原店', 'L戦国乙女４　戦乱に閃く炯眼の軍師', 'island', 'original'),
+    
+    -- ===== エスパス秋葉原駅前店 =====
+    -- Lソードアート・オンライン: 優秀（勝率62%, 機械割106%）
+    STRUCT(CAST(NULL AS DATE), 'エスパス秋葉原駅前店', 'Lソードアート・オンライン', 'espas', 'rms_frequency'),
+    -- L戦国乙女４: 短期改善傾向
+    STRUCT(CAST(NULL AS DATE), 'エスパス秋葉原駅前店', 'L戦国乙女４　戦乱に閃く炯眼の軍師', 'espas', 'rms_frequency'),
+    -- マギアレコード: 優秀（勝率64%, 機械割105%）
+    STRUCT(CAST(NULL AS DATE), 'エスパス秋葉原駅前店', 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝', 'espas', 'rms_frequency')
+  ])
 ),
 
 -- ############################################################################
@@ -85,32 +112,37 @@ params AS (
 -- ############################################################################
 
 -- ----------------------------------------------------------------------------
--- 1-1. 対象日付の決定
+-- 1-1. 対象日付の決定（店舗・機種ごとに最新日を取得）
 -- ----------------------------------------------------------------------------
 target_date_calc AS (
   SELECT
+    p.target_hole,
+    p.target_machine,
+    p.special_day_type,
+    p.score_method,
     CASE
       WHEN p.target_date IS NOT NULL THEN p.target_date
-      ELSE (
-        SELECT DATE_ADD(MAX(ms.target_date), INTERVAL 1 DAY)
-        FROM `yobun-450512.datamart.machine_stats` ms, params p2
-        WHERE ms.hole = p2.target_hole AND ms.machine = p2.target_machine
-      )
-    END AS calc_target_date,
-    p.target_hole,
-    p.target_machine
+      ELSE DATE_ADD(max_date.latest_date, INTERVAL 1 DAY)
+    END AS calc_target_date
   FROM params p
+  LEFT JOIN (
+    SELECT hole, machine, MAX(target_date) AS latest_date
+    FROM `yobun-450512.datamart.machine_stats`
+    GROUP BY hole, machine
+  ) max_date ON p.target_hole = max_date.hole AND p.target_machine = max_date.machine
 ),
 
 -- ----------------------------------------------------------------------------
--- 1-2. 基本データの取得
+-- 1-2. 基本データの取得（店舗・機種・メソッドごと）
 -- ----------------------------------------------------------------------------
 base_data AS (
   SELECT
+    p.target_hole,
+    p.target_machine,
+    p.special_day_type,
+    p.score_method,
     ms.target_date,
     ms.machine_number,
-    ms.hole AS hole_name,
-    ms.machine AS machine_name,
     -- 当日データ
     ms.d1_diff,
     ms.d1_game,
@@ -126,13 +158,11 @@ base_data AS (
     EXTRACT(DAY FROM ms.target_date) AS date_last_2digits,
     MOD(CAST(ms.machine_number AS INT64), 10) AS machine_last_1digit,
     MOD(CAST(ms.machine_number AS INT64), 100) AS machine_last_2digits,
-    -- 差枚ランキング（当日基準）
-    ROW_NUMBER() OVER (PARTITION BY ms.target_date ORDER BY ms.prev_d28_diff DESC) AS prev_d28_rank_best,
-    ROW_NUMBER() OVER (PARTITION BY ms.target_date ORDER BY ms.prev_d28_diff ASC) AS prev_d28_rank_worst
+    -- 差枚ランキング（当日基準、店舗・機種・メソッドごと）
+    ROW_NUMBER() OVER (PARTITION BY p.target_hole, p.target_machine, p.score_method, ms.target_date ORDER BY ms.prev_d28_diff DESC) AS prev_d28_rank_best,
+    ROW_NUMBER() OVER (PARTITION BY p.target_hole, p.target_machine, p.score_method, ms.target_date ORDER BY ms.prev_d28_diff ASC) AS prev_d28_rank_worst
   FROM `yobun-450512.datamart.machine_stats` ms
-  CROSS JOIN params p
-  WHERE ms.hole = p.target_hole
-    AND ms.machine = p.target_machine
+  INNER JOIN params p ON ms.hole = p.target_hole AND ms.machine = p.target_machine
 ),
 
 -- ----------------------------------------------------------------------------
@@ -140,8 +170,12 @@ base_data AS (
 -- ----------------------------------------------------------------------------
 special_day_logic AS (
   SELECT 
+    tdc.target_hole,
+    tdc.target_machine,
+    tdc.special_day_type,
+    tdc.score_method,
     tdc.calc_target_date AS target_date,
-    CASE p.special_day_type
+    CASE tdc.special_day_type
       -- アイランド秋葉原店: 6,16,26日、月末
       WHEN 'island' THEN
         CASE 
@@ -163,7 +197,6 @@ special_day_logic AS (
       ELSE FALSE
     END AS is_special_day
   FROM target_date_calc tdc
-  CROSS JOIN params p
 ),
 
 -- ----------------------------------------------------------------------------
@@ -171,24 +204,32 @@ special_day_logic AS (
 -- ----------------------------------------------------------------------------
 next_day_info AS (
   SELECT
-    tdc.calc_target_date AS next_date,
-    MOD(EXTRACT(DAY FROM tdc.calc_target_date), 10) AS next_date_last_1digit,
-    EXTRACT(DAY FROM tdc.calc_target_date) AS next_date_last_2digits,
+    sdl.target_hole,
+    sdl.target_machine,
+    sdl.special_day_type,
+    sdl.score_method,
+    sdl.target_date AS next_date,
+    MOD(EXTRACT(DAY FROM sdl.target_date), 10) AS next_date_last_1digit,
+    EXTRACT(DAY FROM sdl.target_date) AS next_date_last_2digits,
     sdl.is_special_day AS next_is_special_day
-  FROM target_date_calc tdc
-  CROSS JOIN special_day_logic sdl
+  FROM special_day_logic sdl
 ),
 
 -- ----------------------------------------------------------------------------
 -- 1-5. 推奨対象日の前日を取得
 -- ----------------------------------------------------------------------------
 prev_day AS (
-  SELECT DATE_SUB(calc_target_date, INTERVAL 1 DAY) AS prev_date
+  SELECT 
+    target_hole,
+    target_machine,
+    special_day_type,
+    score_method,
+    DATE_SUB(calc_target_date, INTERVAL 1 DAY) AS prev_date
   FROM target_date_calc
 ),
 
 -- ----------------------------------------------------------------------------
--- 1-5. 最新データ（推奨対象日の前日データのみ）
+-- 1-6. 最新データ（推奨対象日の前日データのみ）
 -- ----------------------------------------------------------------------------
 -- ★★★ 台番号の入れ替えを考慮 ★★★
 -- 「推奨対象日の前日」に存在する台番号のみを対象にする
@@ -197,8 +238,11 @@ current_data AS (
   SELECT
     bd.*
   FROM base_data bd
-  CROSS JOIN prev_day pd
-  WHERE bd.target_date = pd.prev_date
+  INNER JOIN prev_day pd 
+    ON bd.target_hole = pd.target_hole
+    AND bd.target_machine = pd.target_machine
+    AND bd.score_method = pd.score_method
+    AND bd.target_date = pd.prev_date
 ),
 
 -- ############################################################################
@@ -327,7 +371,12 @@ strategy_combinations AS (
 -- 推奨対象日の前日時点で存在する台番号のみを対象にする
 -- これにより、過去に別の機種だった台番号のデータを除外
 current_machine_numbers AS (
-  SELECT DISTINCT machine_number
+  SELECT DISTINCT 
+    target_hole,
+    target_machine,
+    special_day_type,
+    score_method,
+    machine_number
   FROM current_data
 ),
 
@@ -336,19 +385,26 @@ current_machine_numbers AS (
 -- ----------------------------------------------------------------------------
 strategy_simulation AS (
   SELECT
+    bd.target_hole,
+    bd.target_machine,
+    bd.special_day_type,
+    bd.score_method,
     bd.target_date,
     bd.machine_number,
     sc.strategy_name,
     sc.lt_type,
     sc.st_type,
-    -- 次の日のパフォーマンス
-    LEAD(bd.d1_diff) OVER (PARTITION BY bd.machine_number ORDER BY bd.target_date) AS next_diff,
-    LEAD(bd.d1_game) OVER (PARTITION BY bd.machine_number ORDER BY bd.target_date) AS next_game
+    -- 次の日のパフォーマンス（店舗・機種・メソッドごとにパーティション）
+    LEAD(bd.d1_diff) OVER (PARTITION BY bd.target_hole, bd.target_machine, bd.score_method, bd.machine_number ORDER BY bd.target_date) AS next_diff,
+    LEAD(bd.d1_game) OVER (PARTITION BY bd.target_hole, bd.target_machine, bd.score_method, bd.machine_number ORDER BY bd.target_date) AS next_game
   FROM base_data bd
   -- ★★★ 現在の台番号のみを対象（台番号入れ替えを考慮）★★★
-  INNER JOIN current_machine_numbers cmn ON bd.machine_number = cmn.machine_number
+  INNER JOIN current_machine_numbers cmn 
+    ON bd.target_hole = cmn.target_hole
+    AND bd.target_machine = cmn.target_machine
+    AND bd.score_method = cmn.score_method
+    AND bd.machine_number = cmn.machine_number
   CROSS JOIN strategy_combinations sc
-  CROSS JOIN params p  -- 特日条件の評価に使用
   WHERE
     -- 長期条件の評価
     (sc.lt_type = 'none') OR
@@ -393,23 +449,23 @@ strategy_simulation AS (
     (sc.st_type = 'digit_minus_1' AND bd.machine_last_1digit = MOD(bd.date_last_1digit + 9, 10)) OR
     -- 特日条件（過去データの場合、店舗の特日タイプに応じて判定）
     (sc.st_type = 'special_day' AND (
-      (p.special_day_type = 'island' AND (
+      (bd.special_day_type = 'island' AND (
         EXTRACT(DAY FROM bd.target_date) IN (6, 16, 26) OR
         bd.target_date = LAST_DAY(bd.target_date)
       )) OR
-      (p.special_day_type = 'espas' AND (
+      (bd.special_day_type = 'espas' AND (
         EXTRACT(DAY FROM bd.target_date) IN (6, 16, 26) OR
         EXTRACT(DAY FROM bd.target_date) = 14 OR
         bd.target_date = LAST_DAY(bd.target_date)
       ))
     )) OR
     (sc.st_type = 'non_special_day' AND (
-      p.special_day_type = 'none' OR
-      (p.special_day_type = 'island' AND NOT (
+      bd.special_day_type = 'none' OR
+      (bd.special_day_type = 'island' AND NOT (
         EXTRACT(DAY FROM bd.target_date) IN (6, 16, 26) OR
         bd.target_date = LAST_DAY(bd.target_date)
       )) OR
-      (p.special_day_type = 'espas' AND NOT (
+      (bd.special_day_type = 'espas' AND NOT (
         EXTRACT(DAY FROM bd.target_date) IN (6, 16, 26) OR
         EXTRACT(DAY FROM bd.target_date) = 14 OR
         bd.target_date = LAST_DAY(bd.target_date)
@@ -418,10 +474,14 @@ strategy_simulation AS (
 ),
 
 -- ----------------------------------------------------------------------------
--- 3-2. 戦略ごとの実績集計
+-- 3-3. 戦略ごとの実績集計（店舗・機種・メソッドごと）
 -- ----------------------------------------------------------------------------
 strategy_effectiveness AS (
   SELECT
+    ss.target_hole,
+    ss.target_machine,
+    ss.special_day_type,
+    ss.score_method,
     ss.strategy_name,
     COUNT(*) AS ref_count,
     COUNT(DISTINCT ss.target_date) AS days,
@@ -446,14 +506,25 @@ strategy_effectiveness AS (
     ) / 2.0 AS effectiveness
   FROM strategy_simulation ss
   WHERE ss.next_game IS NOT NULL
-  GROUP BY ss.strategy_name
+  GROUP BY ss.target_hole, ss.target_machine, ss.special_day_type, ss.score_method, ss.strategy_name
 ),
 
 -- ----------------------------------------------------------------------------
--- 3-3. 有効性スコアでフィルタリングした戦略（rms_frequency_filter用）
+-- 3-4. 有効性スコアでフィルタリングした戦略（rms_frequency_filter用）
 -- ----------------------------------------------------------------------------
 strategy_effectiveness_filtered AS (
-  SELECT * FROM strategy_effectiveness
+  SELECT 
+    target_hole,
+    target_machine,
+    special_day_type,
+    score_method,
+    strategy_name,
+    ref_count,
+    days,
+    win_rate,
+    payout_rate,
+    effectiveness
+  FROM strategy_effectiveness
   WHERE effectiveness >= 0.5
 ),
 
@@ -466,11 +537,18 @@ strategy_effectiveness_filtered AS (
 -- ----------------------------------------------------------------------------
 next_day_matches AS (
   SELECT
+    cd.target_hole,
+    cd.target_machine,
+    cd.special_day_type,
+    cd.score_method,
     ndi.next_date,
     cd.machine_number,
     sc.strategy_name
   FROM current_data cd
-  CROSS JOIN next_day_info ndi
+  INNER JOIN next_day_info ndi
+    ON cd.target_hole = ndi.target_hole
+    AND cd.target_machine = ndi.target_machine
+    AND cd.score_method = ndi.score_method
   CROSS JOIN strategy_combinations sc
   WHERE
     -- 長期条件の評価
@@ -525,6 +603,10 @@ next_day_matches AS (
 -- 通常版（全戦略を使用）
 machine_scores_all AS (
   SELECT
+    ndm.target_hole,
+    ndm.target_machine,
+    ndm.special_day_type,
+    ndm.score_method,
     ndm.next_date,
     ndm.machine_number,
     COUNT(DISTINCT ndm.strategy_name) AS match_count,
@@ -534,13 +616,21 @@ machine_scores_all AS (
     SUM(COALESCE(se.days, 0)) AS total_days,
     SUM(COALESCE(se.ref_count, 0)) AS total_ref_count
   FROM next_day_matches ndm
-  LEFT JOIN strategy_effectiveness se ON ndm.strategy_name = se.strategy_name
-  GROUP BY ndm.next_date, ndm.machine_number
+  LEFT JOIN strategy_effectiveness se 
+    ON ndm.target_hole = se.target_hole
+    AND ndm.target_machine = se.target_machine
+    AND ndm.score_method = se.score_method
+    AND ndm.strategy_name = se.strategy_name
+  GROUP BY ndm.target_hole, ndm.target_machine, ndm.special_day_type, ndm.score_method, ndm.next_date, ndm.machine_number
 ),
 
 -- フィルタリング版（有効性スコア0.5以上の戦略のみ、rms_frequency_filter用）
 machine_scores_filtered AS (
   SELECT
+    ndm.target_hole,
+    ndm.target_machine,
+    ndm.special_day_type,
+    ndm.score_method,
     ndm.next_date,
     ndm.machine_number,
     COUNT(DISTINCT ndm.strategy_name) AS match_count,
@@ -550,27 +640,36 @@ machine_scores_filtered AS (
     SUM(COALESCE(sef.days, 0)) AS total_days,
     SUM(COALESCE(sef.ref_count, 0)) AS total_ref_count
   FROM next_day_matches ndm
-  INNER JOIN strategy_effectiveness_filtered sef ON ndm.strategy_name = sef.strategy_name
-  GROUP BY ndm.next_date, ndm.machine_number
+  INNER JOIN strategy_effectiveness_filtered sef 
+    ON ndm.target_hole = sef.target_hole
+    AND ndm.target_machine = sef.target_machine
+    AND ndm.score_method = sef.score_method
+    AND ndm.strategy_name = sef.strategy_name
+  GROUP BY ndm.target_hole, ndm.target_machine, ndm.special_day_type, ndm.score_method, ndm.next_date, ndm.machine_number
 ),
 
--- score_methodに応じて使用するテーブルを選択
+-- score_methodに応じて使用するテーブルを選択（各組み合わせごと）
 machine_scores AS (
   SELECT * FROM machine_scores_all
-  WHERE (SELECT score_method FROM params) != 'rms_frequency_filter'
+  WHERE score_method NOT IN ('rms_frequency_filter')
   UNION ALL
   SELECT * FROM machine_scores_filtered
-  WHERE (SELECT score_method FROM params) = 'rms_frequency_filter'
+  WHERE score_method IN ('rms_frequency_filter')
 ),
 
 -- ----------------------------------------------------------------------------
--- 4-3. 最大値の計算（正規化用）
+-- 4-3. 最大値の計算（正規化用、店舗・機種・メソッドごと）
 -- ----------------------------------------------------------------------------
 max_values AS (
   SELECT
+    ms.target_hole,
+    ms.target_machine,
+    ms.special_day_type,
+    ms.score_method,
     MAX(ms.match_count) AS max_match_count,
     MAX(ms.total_days + ms.total_ref_count) AS max_days_ref_count
   FROM machine_scores ms
+  GROUP BY ms.target_hole, ms.target_machine, ms.special_day_type, ms.score_method
 ),
 
 -- ----------------------------------------------------------------------------
@@ -578,6 +677,10 @@ max_values AS (
 -- ----------------------------------------------------------------------------
 score_details AS (
   SELECT
+    ms.target_hole,
+    ms.target_machine,
+    ms.special_day_type,
+    ms.score_method,
     ms.next_date AS target_date,
     ms.machine_number,
     ms.match_count,
@@ -635,14 +738,21 @@ score_details AS (
     ms.total_days,
     ms.total_ref_count
   FROM machine_scores ms
-  CROSS JOIN max_values mv
+  INNER JOIN max_values mv
+    ON ms.target_hole = mv.target_hole
+    AND ms.target_machine = mv.target_machine
+    AND ms.score_method = mv.score_method
 ),
 
 -- ----------------------------------------------------------------------------
--- 4-5. 総合スコア計算（score_methodパラメータで切り替え）
+-- 4-5. 総合スコア計算（score_methodに応じて切り替え）
 -- ----------------------------------------------------------------------------
 final_scores AS (
   SELECT
+    sd.target_hole,
+    sd.target_machine,
+    sd.special_day_type,
+    sd.score_method,
     sd.target_date,
     sd.machine_number,
     sd.match_count,
@@ -657,7 +767,7 @@ final_scores AS (
     sd.total_days,
     sd.total_ref_count,
     -- 総合スコア（score_methodに応じて切り替え）
-    CASE p.score_method
+    CASE sd.score_method
       -- 改善案1: RMSのみ（シンプル化）
       WHEN 'simple' THEN 
         SQRT((sd.win_rate_percentile * sd.win_rate_percentile + sd.payout_rate_percentile * sd.payout_rate_percentile) / 2)
@@ -677,7 +787,7 @@ final_scores AS (
       WHEN 'rms_frequency_anomaly' THEN 
         SQRT((sd.win_rate_percentile * sd.win_rate_percentile + sd.payout_rate_percentile * sd.payout_rate_percentile) / 2)
         * sd.frequency_bonus * sd.anomaly_bonus
-      -- ハイブリッド案3: RMS × 頻度 × 複合ボーナス（デフォルト）
+      -- ハイブリッド案3: RMS × 頻度 × 複合ボーナス
       WHEN 'rms_frequency_dual' THEN 
         SQRT((sd.win_rate_percentile * sd.win_rate_percentile + sd.payout_rate_percentile * sd.payout_rate_percentile) / 2)
         * sd.frequency_bonus * sd.dual_high_bonus
@@ -687,14 +797,17 @@ final_scores AS (
         * sd.reliability_score * sd.frequency_bonus * sd.anomaly_bonus * sd.dual_high_bonus
     END AS total_score
   FROM score_details sd
-  CROSS JOIN params p
 ),
 
 -- ----------------------------------------------------------------------------
--- 4-6. TOP1スコアとランキング
+-- 4-6. TOP1スコアとランキング（店舗・機種・メソッドごと）
 -- ----------------------------------------------------------------------------
 ranked_scores AS (
   SELECT
+    fs.target_hole,
+    fs.target_machine,
+    fs.special_day_type,
+    fs.score_method,
     fs.target_date,
     fs.machine_number,
     fs.match_count,
@@ -706,9 +819,9 @@ ranked_scores AS (
     fs.anomaly_bonus,
     fs.dual_high_bonus,
     fs.total_score,
-    MAX(fs.total_score) OVER () AS top1_score,
-    fs.total_score / NULLIF(MAX(fs.total_score) OVER (), 0) AS top1_ratio,
-    ROW_NUMBER() OVER (ORDER BY fs.total_score DESC) AS rank
+    MAX(fs.total_score) OVER (PARTITION BY fs.target_hole, fs.target_machine, fs.score_method) AS top1_score,
+    fs.total_score / NULLIF(MAX(fs.total_score) OVER (PARTITION BY fs.target_hole, fs.target_machine, fs.score_method), 0) AS top1_ratio,
+    ROW_NUMBER() OVER (PARTITION BY fs.target_hole, fs.target_machine, fs.score_method ORDER BY fs.total_score DESC) AS rank
   FROM final_scores fs
 )
 
@@ -716,9 +829,9 @@ ranked_scores AS (
 -- Part 5: 最終出力
 -- ############################################################################
 SELECT
-  p.target_hole AS hole_name,
-  p.target_machine AS machine_name,
-  p.score_method,
+  rs.target_hole AS hole_name,
+  rs.target_machine AS machine_name,
+  rs.score_method,
   rs.target_date,
   rs.machine_number,
   -- 優先度ランク（5=最高、0=対象外）
@@ -743,6 +856,5 @@ SELECT
   rs.dual_high_bonus,
   rs.top1_score
 FROM ranked_scores rs
-CROSS JOIN params p
-ORDER BY rs.rank
+ORDER BY rs.target_hole, rs.target_machine, rs.score_method, rs.rank
 

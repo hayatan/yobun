@@ -16,7 +16,7 @@ results/
 
 ### 1. 評価クエリの実行
 
-`tolove_recommendation_evaluation.sql` をBigQueryで実行し、結果をCSVでエクスポートします。
+`recommendation_evaluation.sql` をBigQueryで実行し、結果をCSVでエクスポートします。
 
 ### 2. 分析スクリプトの実行
 
