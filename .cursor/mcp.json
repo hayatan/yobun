@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+    "bigquery": {
+        "command": "./toolbox",
+        "args": ["--prebuilt","bigquery","--stdio"],
+        "env": {
+        "BIGQUERY_PROJECT": "yobun-450512",
+        "GOOGLE_APPLICATION_CREDENTIALS": "/home/hayatan/yobun/credentials/service-account.json"
+        }
+    }
+    }
+}

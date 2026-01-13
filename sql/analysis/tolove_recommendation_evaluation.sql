@@ -28,8 +28,8 @@
 -- score_methodはscore_methods CTEで一括定義（全手法を同時評価）
 --
 -- 【特日タイプ（special_day_type）】
--- 'island': アイランド秋葉原店（10,20,30日、1,11,21,31日、6,16,26日、月末）
--- 'espas':  エスパス秋葉原駅前店（月末のみ）
+-- 'island': アイランド秋葉原店（6,16,26日、月末）
+-- 'espas':  エスパス秋葉原駅前店（6,16,26日、14日、月末）
 -- 'none':   特日なし（全日を通常日として扱う）
 -- 
 -- 【score_method一覧】
@@ -58,18 +58,35 @@
 
 WITH 
 -- ############################################################################
--- Part 0: パラメータ定義
+-- Part 0: パラメータ定義（全機種×全期間の組み合わせ）
 -- ############################################################################
 params AS (
-  SELECT
-    'アイランド秋葉原店' AS target_hole,      -- 対象店舗
-    'L+ToLOVEるダークネス' AS target_machine, -- 対象機種
-    120 AS evaluation_days,                   -- 評価期間（直近N日間、推奨: 120日以上）
-    -- 特日タイプ:
-    --   'island' = アイランド秋葉原店（10,20,30日、1,11,21,31日、6,16,26日、月末）
-    --   'espas'  = エスパス秋葉原駅前店（月末のみ）
-    --   'none'   = 特日なし（全日を通常日として扱う）
-    'island' AS special_day_type
+  SELECT * FROM UNNEST([
+    -- アイランド秋葉原店（5機種 × 2期間 = 10組み合わせ）
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lバンドリ！' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'Lバンドリ！' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    -- エスパス秋葉原駅前店（6機種 × 2期間 = 12組み合わせ）
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'ToLOVEるダークネス+TRANCE+ver.8.7' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'ToLOVEるダークネス+TRANCE+ver.8.7' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lソードアート・オンライン' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lバンドリ！' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'Lバンドリ！' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L戦国乙女４　戦乱に閃く炯眼の軍師' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'スマスロ+マギアレコード+魔法少女まどか☆マギカ外伝' AS target_machine, 60 AS evaluation_days, 'espas' AS special_day_type)
+  ])
 ),
 
 -- ############################################################################
@@ -77,6 +94,10 @@ params AS (
 -- ############################################################################
 evaluation_dates AS (
   SELECT 
+    p.target_hole,
+    p.target_machine,
+    p.evaluation_days,
+    p.special_day_type,
     ms.target_date AS data_date,  -- データ取得日（推奨台算出に使うデータの日付）
     -- 次の日（評価対象日 = 推奨台を出す日）
     DATE_ADD(ms.target_date, INTERVAL 1 DAY) AS evaluation_date
@@ -86,8 +107,8 @@ evaluation_dates AS (
     AND ms.machine = p.target_machine
     AND ms.target_date >= DATE('2025-11-03')
     AND ms.d1_diff IS NOT NULL
-  GROUP BY ms.target_date
-  HAVING ms.target_date >= DATE_SUB(CURRENT_DATE(), INTERVAL (SELECT evaluation_days FROM params) DAY)
+    AND ms.target_date >= DATE_SUB(CURRENT_DATE(), INTERVAL p.evaluation_days DAY)
+  GROUP BY p.target_hole, p.target_machine, p.evaluation_days, p.special_day_type, ms.target_date
 ),
 
 -- ############################################################################
@@ -99,6 +120,10 @@ evaluation_dates AS (
 -- ----------------------------------------------------------------------------
 base_data AS (
   SELECT
+    p.target_hole,
+    p.target_machine,
+    p.evaluation_days,
+    p.special_day_type,
     b.target_date,
     b.machine_number,
     -- 当日データ
@@ -130,8 +155,9 @@ base_data AS (
       ELSE FALSE
     END AS is_holiday
   FROM `yobun-450512.datamart.machine_stats` b
-  WHERE b.hole = target_hole
-    AND b.machine = target_machine
+  CROSS JOIN params p
+  WHERE b.hole = p.target_hole
+    AND b.machine = p.target_machine
     AND b.target_date >= DATE('2025-11-03')
     AND b.d1_diff IS NOT NULL
 ),
@@ -141,8 +167,12 @@ base_data AS (
 -- ----------------------------------------------------------------------------
 special_day_logic AS (
   SELECT 
+    bd.target_hole,
+    bd.target_machine,
+    bd.evaluation_days,
+    bd.special_day_type,
     bd.target_date,
-    CASE p.special_day_type
+    CASE bd.special_day_type
       -- アイランド秋葉原店: 6,16,26日、月末
       WHEN 'island' THEN
         CASE 
@@ -164,8 +194,7 @@ special_day_logic AS (
       ELSE FALSE
     END AS is_special_day
   FROM base_data bd
-  CROSS JOIN params p
-  GROUP BY bd.target_date, p.special_day_type
+  GROUP BY bd.target_hole, bd.target_machine, bd.evaluation_days, bd.special_day_type, bd.target_date
 ),
 
 base_data_with_special AS (
@@ -178,10 +207,14 @@ base_data_with_special AS (
     MOD(bd.machine_number, 10) AS machine_last_1digit,
     MOD(bd.machine_number, 100) AS machine_last_2digits,
     -- 過去28日間の差枚ランキング
-    ROW_NUMBER() OVER (PARTITION BY bd.target_date ORDER BY bd.prev_d28_diff DESC) AS prev_d28_rank_best,
-    ROW_NUMBER() OVER (PARTITION BY bd.target_date ORDER BY bd.prev_d28_diff ASC) AS prev_d28_rank_worst
+    ROW_NUMBER() OVER (PARTITION BY bd.target_hole, bd.target_machine, bd.evaluation_days, bd.target_date ORDER BY bd.prev_d28_diff DESC) AS prev_d28_rank_best,
+    ROW_NUMBER() OVER (PARTITION BY bd.target_hole, bd.target_machine, bd.evaluation_days, bd.target_date ORDER BY bd.prev_d28_diff ASC) AS prev_d28_rank_worst
   FROM base_data bd
-  LEFT JOIN special_day_logic sdl ON bd.target_date = sdl.target_date
+  LEFT JOIN special_day_logic sdl 
+    ON bd.target_hole = sdl.target_hole
+    AND bd.target_machine = sdl.target_machine
+    AND bd.evaluation_days = sdl.evaluation_days
+    AND bd.target_date = sdl.target_date
 ),
 
 -- ----------------------------------------------------------------------------
@@ -291,6 +324,10 @@ strategy_combinations AS (
 -- ----------------------------------------------------------------------------
 evaluation_base_data AS (
   SELECT
+    ed.target_hole,
+    ed.target_machine,
+    ed.evaluation_days,
+    ed.special_day_type,
     ed.evaluation_date,  -- 評価対象日（推奨台を出す日）
     bd.target_date AS data_date,  -- データ取得日（推奨台算出に使うデータの日付）
     bd.machine_number,
@@ -303,8 +340,8 @@ evaluation_base_data AS (
     bd.curr_d28_win_rate,
     bd.curr_d28_payout_rate,
     -- 過去28日間の差枚ランキング
-    ROW_NUMBER() OVER (PARTITION BY ed.evaluation_date ORDER BY bd.curr_d28_diff DESC) AS curr_d28_rank_best,
-    ROW_NUMBER() OVER (PARTITION BY ed.evaluation_date ORDER BY bd.curr_d28_diff ASC) AS curr_d28_rank_worst,
+    ROW_NUMBER() OVER (PARTITION BY ed.target_hole, ed.target_machine, ed.evaluation_days, ed.evaluation_date ORDER BY bd.curr_d28_diff DESC) AS curr_d28_rank_best,
+    ROW_NUMBER() OVER (PARTITION BY ed.target_hole, ed.target_machine, ed.evaluation_days, ed.evaluation_date ORDER BY bd.curr_d28_diff ASC) AS curr_d28_rank_worst,
     -- 評価対象日の末尾情報
     MOD(EXTRACT(DAY FROM ed.evaluation_date), 10) AS next_date_last_1digit,
     EXTRACT(DAY FROM ed.evaluation_date) AS next_date_last_2digits,
@@ -313,8 +350,16 @@ evaluation_base_data AS (
     -- 評価対象日の特日フラグ（推奨台を出す日が特日かどうか）
     COALESCE(sdl_next.is_special_day, FALSE) AS next_is_special_day
   FROM evaluation_dates ed
-  INNER JOIN base_data_with_special bd ON bd.target_date = ed.data_date
-  LEFT JOIN special_day_logic sdl_next ON ed.evaluation_date = sdl_next.target_date
+  INNER JOIN base_data_with_special bd 
+    ON bd.target_hole = ed.target_hole
+    AND bd.target_machine = ed.target_machine
+    AND bd.evaluation_days = ed.evaluation_days
+    AND bd.target_date = ed.data_date
+  LEFT JOIN special_day_logic sdl_next 
+    ON ed.target_hole = sdl_next.target_hole
+    AND ed.target_machine = sdl_next.target_machine
+    AND ed.evaluation_days = sdl_next.evaluation_days
+    AND ed.evaluation_date = sdl_next.target_date
 ),
 
 -- ----------------------------------------------------------------------------
@@ -322,6 +367,10 @@ evaluation_base_data AS (
 -- ----------------------------------------------------------------------------
 evaluation_compound_machines AS (
   SELECT
+    ebd.target_hole,
+    ebd.target_machine,
+    ebd.evaluation_days,
+    ebd.special_day_type,
     ebd.evaluation_date,
     ebd.machine_number,
     sc.strategy_name,
@@ -424,6 +473,10 @@ evaluation_compound_machines AS (
 strategy_simulation_base AS (
   -- 各評価日付と過去データの組み合わせ
   SELECT
+    ed.target_hole,
+    ed.target_machine,
+    ed.evaluation_days,
+    ed.special_day_type,
     ed.evaluation_date,
     bd.target_date,
     bd.machine_number,
@@ -437,8 +490,12 @@ strategy_simulation_base AS (
   CROSS JOIN base_data_with_special bd
   CROSS JOIN strategy_combinations sc
   WHERE
+    -- 同じ店舗・機種・評価期間の組み合わせのみ
+    bd.target_hole = ed.target_hole
+    AND bd.target_machine = ed.target_machine
+    AND bd.evaluation_days = ed.evaluation_days
     -- 評価日付より前のデータのみを使用（未来の情報を使わない）
-    bd.target_date < ed.evaluation_date
+    AND bd.target_date < ed.evaluation_date
     AND 
     -- 長期条件の評価（prev_d28_*を使用）
     (
@@ -520,6 +577,10 @@ strategy_simulation_base AS (
 
 strategy_simulation_results AS (
   SELECT
+    ssb.target_hole,
+    ssb.target_machine,
+    ssb.evaluation_days,
+    ssb.special_day_type,
     ssb.evaluation_date,
     ssb.strategy_name,
     AVG(CASE WHEN ssb.d1_diff > 0 THEN 1.0 ELSE 0.0 END) AS win_rate,
@@ -527,7 +588,7 @@ strategy_simulation_results AS (
     COUNT(*) AS ref_count,
     COUNT(DISTINCT ssb.target_date) AS days
   FROM strategy_simulation_base ssb
-  GROUP BY ssb.evaluation_date, ssb.strategy_name
+  GROUP BY ssb.target_hole, ssb.target_machine, ssb.evaluation_days, ssb.special_day_type, ssb.evaluation_date, ssb.strategy_name
 ),
 
 -- ----------------------------------------------------------------------------
@@ -539,6 +600,10 @@ strategy_simulation_results AS (
 -- ----------------------------------------------------------------------------
 strategy_effectiveness AS (
   SELECT
+    ssr.target_hole,
+    ssr.target_machine,
+    ssr.evaluation_days,
+    ssr.special_day_type,
     ssr.evaluation_date,
     ssr.strategy_name,
     ssr.win_rate,
@@ -599,6 +664,10 @@ score_methods AS (
 -- ----------------------------------------------------------------------------
 evaluation_machine_scores_base AS (
   SELECT
+    ecm.target_hole,
+    ecm.target_machine,
+    ecm.evaluation_days,
+    ecm.special_day_type,
     ecm.evaluation_date,
     ecm.machine_number,
     COUNT(DISTINCT ecm.strategy_name) AS match_count,
@@ -609,9 +678,12 @@ evaluation_machine_scores_base AS (
     SUM(COALESCE(se.ref_count, 0)) AS total_ref_count
   FROM evaluation_compound_machines ecm
   LEFT JOIN strategy_effectiveness se 
-    ON ecm.evaluation_date = se.evaluation_date 
+    ON ecm.target_hole = se.target_hole
+    AND ecm.target_machine = se.target_machine
+    AND ecm.evaluation_days = se.evaluation_days
+    AND ecm.evaluation_date = se.evaluation_date 
     AND ecm.strategy_name = se.strategy_name
-  GROUP BY ecm.evaluation_date, ecm.machine_number
+  GROUP BY ecm.target_hole, ecm.target_machine, ecm.evaluation_days, ecm.special_day_type, ecm.evaluation_date, ecm.machine_number
 ),
 
 -- ----------------------------------------------------------------------------
@@ -620,6 +692,10 @@ evaluation_machine_scores_base AS (
 -- ----------------------------------------------------------------------------
 evaluation_machine_scores_filtered AS (
   SELECT
+    ecm.target_hole,
+    ecm.target_machine,
+    ecm.evaluation_days,
+    ecm.special_day_type,
     ecm.evaluation_date,
     ecm.machine_number,
     COUNT(DISTINCT ecm.strategy_name) AS match_count,
@@ -630,10 +706,13 @@ evaluation_machine_scores_filtered AS (
     SUM(COALESCE(se.ref_count, 0)) AS total_ref_count
   FROM evaluation_compound_machines ecm
   LEFT JOIN strategy_effectiveness se 
-    ON ecm.evaluation_date = se.evaluation_date 
+    ON ecm.target_hole = se.target_hole
+    AND ecm.target_machine = se.target_machine
+    AND ecm.evaluation_days = se.evaluation_days
+    AND ecm.evaluation_date = se.evaluation_date 
     AND ecm.strategy_name = se.strategy_name
   WHERE COALESCE(se.effectiveness, 1.0) >= 0.5
-  GROUP BY ecm.evaluation_date, ecm.machine_number
+  GROUP BY ecm.target_hole, ecm.target_machine, ecm.evaluation_days, ecm.special_day_type, ecm.evaluation_date, ecm.machine_number
 ),
 
 -- ----------------------------------------------------------------------------
@@ -642,6 +721,10 @@ evaluation_machine_scores_filtered AS (
 evaluation_machine_scores AS (
   -- フィルタなし版を使うscore_methods
   SELECT
+    emsb.target_hole,
+    emsb.target_machine,
+    emsb.evaluation_days,
+    emsb.special_day_type,
     sm.method AS score_method,
     emsb.evaluation_date,
     emsb.machine_number,
@@ -657,6 +740,10 @@ evaluation_machine_scores AS (
   UNION ALL
   -- フィルタあり版を使うscore_methods
   SELECT
+    emsf.target_hole,
+    emsf.target_machine,
+    emsf.evaluation_days,
+    emsf.special_day_type,
     sm.method AS score_method,
     emsf.evaluation_date,
     emsf.machine_number,
@@ -676,6 +763,10 @@ evaluation_machine_scores AS (
 -- ----------------------------------------------------------------------------
 evaluation_scores AS (
   SELECT
+    ems.target_hole,
+    ems.target_machine,
+    ems.evaluation_days,
+    ems.special_day_type,
     ems.score_method,
     ems.evaluation_date,
     ems.machine_number,
@@ -717,12 +808,16 @@ evaluation_scores AS (
 -- ----------------------------------------------------------------------------
 evaluation_max_values AS (
   SELECT
+    es.target_hole,
+    es.target_machine,
+    es.evaluation_days,
+    es.special_day_type,
     es.score_method,
     es.evaluation_date,
     MAX(es.total_days + es.total_ref_count) AS max_days_ref_count,
     MAX(es.match_count) AS max_match_count
   FROM evaluation_scores es
-  GROUP BY es.score_method, es.evaluation_date
+  GROUP BY es.target_hole, es.target_machine, es.evaluation_days, es.special_day_type, es.score_method, es.evaluation_date
 ),
 
 -- ----------------------------------------------------------------------------
@@ -730,6 +825,10 @@ evaluation_max_values AS (
 -- ----------------------------------------------------------------------------
 evaluation_total_scores AS (
   SELECT
+    es.target_hole,
+    es.target_machine,
+    es.evaluation_days,
+    es.special_day_type,
     es.score_method,
     es.evaluation_date,
     es.machine_number,
@@ -769,7 +868,11 @@ evaluation_total_scores AS (
     END AS dual_high_bonus
   FROM evaluation_scores es
   INNER JOIN evaluation_max_values emv 
-    ON es.score_method = emv.score_method
+    ON es.target_hole = emv.target_hole
+    AND es.target_machine = emv.target_machine
+    AND es.evaluation_days = emv.evaluation_days
+    AND es.special_day_type = emv.special_day_type
+    AND es.score_method = emv.score_method
     AND es.evaluation_date = emv.evaluation_date
 ),
 
@@ -778,6 +881,10 @@ evaluation_total_scores AS (
 -- ----------------------------------------------------------------------------
 evaluation_final_scores AS (
   SELECT
+    ets.target_hole,
+    ets.target_machine,
+    ets.evaluation_days,
+    ets.special_day_type,
     ets.score_method,
     ets.evaluation_date,
     ets.machine_number,
@@ -822,11 +929,15 @@ evaluation_final_scores AS (
 -- ----------------------------------------------------------------------------
 evaluation_rankings AS (
   SELECT
+    efs.target_hole,
+    efs.target_machine,
+    efs.evaluation_days,
+    efs.special_day_type,
     efs.score_method,
     efs.evaluation_date,
     efs.machine_number,
     efs.total_score,
-    ROW_NUMBER() OVER (PARTITION BY efs.score_method, efs.evaluation_date ORDER BY efs.total_score DESC) AS rank
+    ROW_NUMBER() OVER (PARTITION BY efs.target_hole, efs.target_machine, efs.evaluation_days, efs.special_day_type, efs.score_method, efs.evaluation_date ORDER BY efs.total_score DESC) AS rank
   FROM evaluation_final_scores efs
 ),
 
@@ -835,6 +946,10 @@ evaluation_rankings AS (
 -- ----------------------------------------------------------------------------
 evaluation_score_stats AS (
   SELECT
+    er.target_hole,
+    er.target_machine,
+    er.evaluation_days,
+    er.special_day_type,
     er.score_method,
     er.evaluation_date,
     AVG(er.total_score) AS avg_score,
@@ -856,7 +971,7 @@ evaluation_score_stats AS (
     MAX(CASE WHEN er.rank = 1 THEN er.total_score END) * 0.98 AS threshold_98pct,
     MAX(CASE WHEN er.rank = 1 THEN er.total_score END) * 0.99 AS threshold_99pct
   FROM evaluation_rankings er
-  GROUP BY er.score_method, er.evaluation_date
+  GROUP BY er.target_hole, er.target_machine, er.evaluation_days, er.special_day_type, er.score_method, er.evaluation_date
 ),
 
 -- ----------------------------------------------------------------------------
@@ -864,6 +979,10 @@ evaluation_score_stats AS (
 -- ----------------------------------------------------------------------------
 evaluation_outlier_threshold AS (
   SELECT
+    ess.target_hole,
+    ess.target_machine,
+    ess.evaluation_days,
+    ess.special_day_type,
     ess.score_method,
     ess.evaluation_date,
     ess.avg_score,
@@ -889,6 +1008,10 @@ evaluation_outlier_threshold AS (
 -- ----------------------------------------------------------------------------
 evaluation_top_n AS (
   SELECT
+    er.target_hole,
+    er.target_machine,
+    er.evaluation_days,
+    er.special_day_type,
     er.score_method,
     er.evaluation_date,
     er.machine_number,
@@ -913,10 +1036,18 @@ evaluation_top_n AS (
     CASE WHEN er.total_score >= ess.threshold_99pct THEN 1 ELSE 0 END AS is_threshold_99pct
   FROM evaluation_rankings er
   INNER JOIN evaluation_outlier_threshold eot 
-    ON er.score_method = eot.score_method
+    ON er.target_hole = eot.target_hole
+    AND er.target_machine = eot.target_machine
+    AND er.evaluation_days = eot.evaluation_days
+    AND er.special_day_type = eot.special_day_type
+    AND er.score_method = eot.score_method
     AND er.evaluation_date = eot.evaluation_date
   INNER JOIN evaluation_score_stats ess 
-    ON er.score_method = ess.score_method
+    ON er.target_hole = ess.target_hole
+    AND er.target_machine = ess.target_machine
+    AND er.evaluation_days = ess.evaluation_days
+    AND er.special_day_type = ess.special_day_type
+    AND er.score_method = ess.score_method
     AND er.evaluation_date = ess.evaluation_date
   WHERE er.rank <= 10  -- 外れ値用に少し多めに取得
 ),
@@ -926,6 +1057,10 @@ evaluation_top_n AS (
 -- ----------------------------------------------------------------------------
 evaluation_actual_performance AS (
   SELECT
+    etn.target_hole,
+    etn.target_machine,
+    etn.evaluation_days,
+    etn.special_day_type,
     etn.score_method,
     etn.evaluation_date,
     etn.machine_number,
@@ -952,7 +1087,10 @@ evaluation_actual_performance AS (
     (bd.d1_game * 3 + bd.d1_diff) / NULLIF(bd.d1_game * 3, 0) AS actual_payout_rate
   FROM evaluation_top_n etn
   INNER JOIN base_data bd 
-    ON etn.evaluation_date = bd.target_date 
+    ON etn.target_hole = bd.target_hole
+    AND etn.target_machine = bd.target_machine
+    AND etn.evaluation_days = bd.evaluation_days
+    AND etn.evaluation_date = bd.target_date 
     AND etn.machine_number = bd.machine_number
 ),
 
@@ -987,10 +1125,14 @@ result_types AS (
 -- ----------------------------------------------------------------------------
 evaluation_summary AS (
   SELECT
+    eap.target_hole,
+    eap.target_machine,
+    eap.evaluation_days,
+    eap.special_day_type,
     eap.score_method,
     rt.type_name AS top_n,
     rt.sort_order,
-    COUNT(DISTINCT eap.evaluation_date) AS evaluation_days,
+    COUNT(DISTINCT eap.evaluation_date) AS evaluation_days_count,
     COUNT(*) AS total_machines,
     ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT eap.evaluation_date), 2) AS avg_machines_per_day,
     SUM(eap.is_win) AS win_days,
@@ -1017,17 +1159,21 @@ evaluation_summary AS (
     (rt.type_name = 'THRESHOLD_97PCT' AND eap.is_threshold_97pct = 1) OR
     (rt.type_name = 'THRESHOLD_98PCT' AND eap.is_threshold_98pct = 1) OR
     (rt.type_name = 'THRESHOLD_99PCT' AND eap.is_threshold_99pct = 1)
-  GROUP BY eap.score_method, rt.type_name, rt.sort_order
+  GROUP BY eap.target_hole, eap.target_machine, eap.evaluation_days, eap.special_day_type, eap.score_method, rt.type_name, rt.sort_order
 )
 
 -- ############################################################################
 -- Part 5: 最終出力
 -- ############################################################################
 SELECT
+  target_hole,
+  target_machine,
+  evaluation_days,
+  special_day_type,
   score_method,
   top_n AS result_key,
   CAST(NULL AS STRING) AS result_detail,
-  evaluation_days,
+  evaluation_days_count,
   total_machines,
   avg_machines_per_day,
   win_days,
@@ -1038,5 +1184,5 @@ SELECT
   max_diff,
   min_diff
 FROM evaluation_summary
-ORDER BY score_method, sort_order
+ORDER BY target_hole, target_machine, evaluation_days, score_method, sort_order
 

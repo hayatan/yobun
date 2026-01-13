@@ -156,8 +156,8 @@ params AS (
 
 | タイプ | 説明 |
 |--------|------|
-| `island` | アイランド秋葉原店（6,16,26日、月末） |
-| `espas` | エスパス秋葉原駅前店（6,16,26日、14日、月末） |
+| `island` | アイランド秋葉原店（10,20,30日、1,11,21,31日、6,16,26日、月末） |
+| `espas` | エスパス秋葉原駅前店（月末のみ） |
 | `none` | 特日なし（全日を通常日として扱う） |
 
 #### スコア計算メソッド（score_method）
@@ -404,3 +404,175 @@ params AS (
 - 両クエリの `params` CTE内のパラメータが一致しているか確認
 - `score_method` が同じか確認
 - `special_day_type` が同じか確認
+
+---
+
+## 8. バッチ評価マニュアル
+
+複数の店舗・機種・評価期間を一括で評価し、最適なスコアメソッドを特定するための手順です。
+
+### 8.1 ディレクトリ構成
+
+```
+sql/analysis/
+├── README.md                               # このファイル
+├── tolove_recommendation_output.sql        # 出力クエリ
+├── tolove_recommendation_output_説明文.md  # スプレッドシート向け説明
+├── tolove_recommendation_evaluation.sql    # 評価クエリ
+├── scripts/
+│   └── analyze_batch_results.py            # 分析スクリプト
+└── results/
+    ├── README.md                           # 結果ディレクトリの説明
+    └── YYYY-MM-DD/                         # 評価実行日ごとの結果
+        ├── evaluation_results.md           # 詳細レポート
+        └── summary.md                      # サマリー
+```
+
+### 8.2 評価対象の設定
+
+`tolove_recommendation_evaluation.sql` の `params` CTE を編集して、評価対象を設定します。
+
+#### 単一評価の場合
+
+```sql
+params AS (
+  SELECT
+    'アイランド秋葉原店' AS target_hole,
+    'L+ToLOVEるダークネス' AS target_machine,
+    120 AS evaluation_days,
+    'island' AS special_day_type
+),
+```
+
+#### バッチ評価の場合（複数組み合わせを一括実行）
+
+```sql
+params AS (
+  SELECT * FROM UNNEST([
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 120 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('アイランド秋葉原店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 60 AS evaluation_days, 'island' AS special_day_type),
+    STRUCT('エスパス秋葉原駅前店' AS target_hole, 'L+ToLOVEるダークネス' AS target_machine, 120 AS evaluation_days, 'espas' AS special_day_type),
+    -- ... 必要な組み合わせを追加
+  ])
+),
+```
+
+### 8.3 特日タイプの設定
+
+| タイプ | 説明 |
+|--------|------|
+| `island` | アイランド秋葉原店（6,16,26日、月末） |
+| `espas` | エスパス秋葉原駅前店（6,16,26日、14日、月末） |
+| `none` | 特日なし（全日を通常日として扱う） |
+
+特日設定を変更する場合は、`tolove_recommendation_evaluation.sql` と `tolove_recommendation_output.sql` の両方の `special_day_logic` CTE を編集してください。
+
+### 8.4 評価の実行手順
+
+#### Step 1: BigQueryで評価クエリを実行
+
+1. `tolove_recommendation_evaluation.sql` の `params` CTE を編集
+2. BigQueryコンソールでクエリを実行
+3. 結果をCSVでエクスポート（「結果を保存」→「CSV（ローカルファイル）」）
+
+#### Step 2: 分析スクリプトの実行
+
+```bash
+cd /path/to/yobun/sql/analysis
+
+# 結果ディレクトリを作成
+mkdir -p results/$(date +%Y-%m-%d)
+
+# 分析スクリプトを実行
+python3 scripts/analyze_batch_results.py /path/to/exported.csv > results/$(date +%Y-%m-%d)/evaluation_results.md
+```
+
+#### Step 3: サマリーの作成
+
+詳細レポート（`evaluation_results.md`）を参考に、`summary.md` を作成します。
+
+**サマリーに含めるべき内容**:
+
+1. **クイックリファレンス表**: 全機種の比較表（TOP1/98%/99%の最高メソッドと機械割）
+2. **機種別詳細分析**: 各機種について以下を記載
+
+##### 機種別詳細分析の記載フォーマット
+
+```markdown
+#### [機種名]
+
+**特徴**: [機種の特徴を1行で]
+
+| 評価期間 | TOP1推奨候補 | 2〜3台狙い推奨候補 | 備考 |
+|----------|--------------|---------------------|------|
+| 60日 | `メソッド名` (機械割%) | `メソッド名` 98%/99% (機械割%) | 備考 |
+| 120日 | `メソッド名` (機械割%) | `メソッド名` 98% (機械割%) | 備考 |
+
+**🎯 推奨メソッド**:
+1. **`メソッド名`**（最推奨）- 理由
+2. **`メソッド名`** - 理由
+
+**📊 信頼度評価**: ⭐⭐⭐⭐⭐（評価）
+- **TOPいくつまで信頼可能**: 勝率○%・機械割○%
+- **THRESHOLDいくつまで推奨**: ○%でも機械割○%を維持
+- **狙い定めの効果**: ◎/○/△/✗ コメント
+```
+
+##### 信頼度評価の基準
+
+| 評価 | 星 | 勝率の目安 | 機械割の目安 | 狙い定めの効果 |
+|------|-----|-----------|-------------|---------------|
+| 非常に高い | ⭐⭐⭐⭐⭐ | 60%超 | 108%超 | ◎ 極めて有効 |
+| 高い | ⭐⭐⭐⭐ | 55〜60% | 105〜108% | ○ 有効 |
+| 中程度 | ⭐⭐⭐ | 50〜55% | 102〜105% | △〜○ 普通 |
+| 低い | ⭐⭐ | 45〜50% | 100〜102% | △ 限定的 |
+| 非常に低い | ⭐ | 45%未満 | 100%未満 | ✗ 無効（狙わない） |
+
+##### 勝率・機械割の評価基準
+
+- **勝率60%超**: 成績が良い
+- **勝率65%超**: かなり良い
+- **機械割105%後半**: 成績が良い
+- **機械割108%超**: かなり良い
+- **機械割100%未満**: 期待値マイナス（狙わない方が良い）
+
+### 8.5 結果の読み方
+
+#### 評価指標
+
+| 指標 | 説明 |
+|------|------|
+| **TOP1** | スコア1位の台のみを狙った場合の成績 |
+| **THRESHOLD_98%** | TOP1スコアの98%以上の台を狙った場合の成績（平均1.1〜1.5台程度） |
+| **THRESHOLD_99%** | TOP1スコアの99%以上の台を狙った場合の成績（平均1.0〜1.2台程度） |
+
+#### 判断ガイドライン
+
+1. **1台狙い**: TOP1の機械割が最も高いメソッドを選択
+2. **2〜3台狙い**: THRESHOLD_98%または99%の成績を重視
+3. **TOP1と98%/99%の機械割差が1%未満**: 98%/99%を選んだ方が実用的
+4. **60日と120日で傾向が異なる場合**: 直近重視なら60日、安定性重視なら120日
+
+### 8.6 出力クエリへの反映
+
+評価結果を元に、`tolove_recommendation_output.sql` の `params` CTE で最適なメソッドを設定します：
+
+```sql
+params AS (
+  SELECT
+    CAST(NULL AS DATE) AS target_date,
+    'アイランド秋葉原店' AS target_hole,
+    'L+ToLOVEるダークネス' AS target_machine,
+    'island' AS special_day_type,
+    'original' AS score_method  -- 評価結果から選択したメソッド
+)
+```
+
+### 8.7 定期的な再評価
+
+以下の場合は再評価を推奨します：
+
+- 特日設定を変更した場合
+- 新しい機種を追加した場合
+- 3ヶ月以上経過した場合
+- 実際の成績と評価結果に乖離が見られる場合
