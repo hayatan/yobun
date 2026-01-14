@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS `yobun-450512.datamart.machine_stats` (
   mtd_win_rate FLOAT64 OPTIONS(description = '当日から当月 勝率'),
   mtd_payout_rate FLOAT64 OPTIONS(description = '当日から当月 機械割'),
   
+  -- 全期間（当日〜データ開始日）
+  all_diff INT64 OPTIONS(description = '当日から全期間 総差枚'),
+  all_game INT64 OPTIONS(description = '当日から全期間 総ゲーム数'),
+  all_win_rate FLOAT64 OPTIONS(description = '当日から全期間 勝率'),
+  all_payout_rate FLOAT64 OPTIONS(description = '当日から全期間 機械割'),
+  all_days INT64 OPTIONS(description = '当日から全期間 集計日数'),
+  
   -- ========================================
   -- 前日から過去N日間（当日を含まない）
   -- ========================================
@@ -110,7 +117,14 @@ CREATE TABLE IF NOT EXISTS `yobun-450512.datamart.machine_stats` (
   prev_mtd_diff INT64 OPTIONS(description = '前日から当月 総差枚'),
   prev_mtd_game INT64 OPTIONS(description = '前日から当月 総ゲーム数'),
   prev_mtd_win_rate FLOAT64 OPTIONS(description = '前日から当月 勝率'),
-  prev_mtd_payout_rate FLOAT64 OPTIONS(description = '前日から当月 機械割')
+  prev_mtd_payout_rate FLOAT64 OPTIONS(description = '前日から当月 機械割'),
+  
+  -- 全期間（前日〜データ開始日）
+  prev_all_diff INT64 OPTIONS(description = '前日から全期間 総差枚'),
+  prev_all_game INT64 OPTIONS(description = '前日から全期間 総ゲーム数'),
+  prev_all_win_rate FLOAT64 OPTIONS(description = '前日から全期間 勝率'),
+  prev_all_payout_rate FLOAT64 OPTIONS(description = '前日から全期間 機械割'),
+  prev_all_days INT64 OPTIONS(description = '前日から全期間 集計日数')
 )
 PARTITION BY target_date
 OPTIONS (
