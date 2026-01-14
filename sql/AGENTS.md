@@ -7,6 +7,13 @@ sql/
 ├── AGENTS.md                          # このファイル（修正ガイドライン）
 ├── create_datamart_table.sql         # データマートテーブル作成DDL
 ├── datamart_machine_stats.sql        # データマート生成クエリ
+├── raw_data/                          # 元データ管理ディレクトリ
+│   ├── README.md                      # 元データのドキュメント
+│   ├── schema.js                      # 共通スキーマ定義（SQLite/BQ両対応）
+│   ├── create_raw_data_table.sql     # BigQuery DDL
+│   └── migrations/                    # マイグレーションファイル
+│       ├── README.md                  # マイグレーション手順書
+│       └── 001_add_source_column.*.sql
 └── analysis/                          # 分析クエリディレクトリ
     ├── README.md                      # 分析システムのドキュメント
     ├── recommendation_output.sql     # 狙い台一覧出力（複数店舗・機種対応）
@@ -14,6 +21,23 @@ sql/
     ├── scripts/                       # 分析スクリプト
     └── results/                       # 評価結果
 ```
+
+---
+
+## データフロー概要
+
+```
+スクレイピング → SQLite（raw_data） → BigQuery（raw_data） → データマート → 分析クエリ
+```
+
+- **元データ（raw_data）**: スクレイピングで取得した生データ
+  - 定義: `sql/raw_data/schema.js`
+  - 格納先: SQLite（scraped_data）、BigQuery（data_YYYYMMDD）
+- **データマート**: 元データを集計した分析用データ
+  - 定義: `sql/create_datamart_table.sql`
+  - 生成: `sql/datamart_machine_stats.sql`
+- **分析クエリ**: データマートを参照する分析SQL
+  - 配置: `sql/analysis/`
 
 ---
 
@@ -36,6 +60,51 @@ sql/
 - 複雑なロジックには必ずコメントを記述する
 - CTE（Common Table Expression）には目的を記載する
 - パラメータの説明はクエリ冒頭に記載する
+
+---
+
+## 元データ（Raw Data）の修正方法
+
+### `raw_data/schema.js` を修正する場合
+
+元データのスキーマを変更する場合の手順：
+
+#### 1. スキーマ変更の種類
+
+##### カラムの追加
+1. **`raw_data/schema.js` の修正**
+   - `columns` 配列に新しいカラムを追加
+   - `bqType`、`sqliteType`、`description` を定義
+
+2. **マイグレーションファイルの作成**
+   - `raw_data/migrations/` に新しいマイグレーションファイルを追加
+   - SQLite用: `NNN_description.sqlite.sql`
+   - BigQuery用: `NNN_description.bq.sql`
+   - 手順書: `migrations/README.md` に実行方法を追記
+
+3. **マイグレーションの実行**
+   - 手順書に従ってSQLite/BigQueryのマイグレーションを実行
+
+4. **アプリケーションコードの修正**
+   - `src/db/bigquery/operations.js` で新カラムを使用
+   - `src/db/sqlite/operations.js` で新カラムを使用
+
+##### ID生成ロジックの変更
+1. **`raw_data/schema.js` の `generateId` 関数を修正**
+2. **既存データへの影響を確認**
+   - IDが変わると重複チェックに影響
+   - 必要に応じてデータ移行を検討
+
+#### 2. チェックリスト
+
+元データスキーマを修正したら、以下を確認：
+
+- [ ] `raw_data/schema.js` が正しい構文か
+- [ ] マイグレーションファイルが作成されているか
+- [ ] `migrations/README.md` に実行方法が記載されているか
+- [ ] `raw_data/README.md` が最新か
+- [ ] アプリケーションコード（`src/db/*/operations.js`）が更新されているか
+- [ ] データマート生成クエリ（`datamart_machine_stats.sql`）が影響を受けないか
 
 ---
 

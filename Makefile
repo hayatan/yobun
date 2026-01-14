@@ -10,26 +10,14 @@ PORT=8080
 # ホストのユーザーID
 HOST_UID=$(shell id -u)
 
-.PHONY: help run-dev run-server-dev run-docker build clean shell
+.PHONY: help run-docker build clean shell
 
 help:
 	@echo "使えるコマンド一覧："
-	@echo "  make run-dev      	 	# ローカル実行（litestreamなし）"
-	@echo "  make run-server-dev	# ローカルサーバー起動（litestreamなし）"
 	@echo "  make build         	# Dockerイメージビルド"
 	@echo "  make run-docker    	# Dockerでアプリ起動"
 	@echo "  make shell         	# Docker内でシェル起動"
 	@echo "  make clean         	# .env削除"
-
-# ローカル開発用
-run-dev: $(ENV_DEV)
-	cp $(ENV_DEV) $(ENV)
-	node index.js
-	
-# ローカル開発用
-run-server-dev: $(ENV_DEV)
-	cp $(ENV_DEV) $(ENV)
-	node server.js
 
 # Dockerビルド
 build:

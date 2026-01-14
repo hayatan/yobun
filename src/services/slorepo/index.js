@@ -1,23 +1,81 @@
 import scrapeSlotDataByMachine from './scraper.js';
-import config from '../../config/slorepo-config.js';
+import config, { getHoles, getHolesSortedByPriority } from '../../config/slorepo-config.js';
 import util from '../../util/common.js';
 import sqlite from '../../db/sqlite/operations.js';
 import { saveToBigQuery, getBigQueryRowCount, getTable } from '../../db/bigquery/operations.js';
 
-// メイン処理
-const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate, updateProgress = () => {}) => {
+// データソース識別子
+const SOURCE = 'slorepo';
+
+/**
+ * スクレイピング結果オブジェクト
+ * @typedef {Object} ScrapeResult
+ * @property {Array<{date: string, hole: string}>} success - 成功した処理
+ * @property {Array<{date: string, hole: string, error: string}>} failed - 失敗した処理
+ * @property {Array<{date: string, hole: string, reason: string}>} skipped - スキップした処理
+ */
+
+/**
+ * スクレイピングオプション
+ * @typedef {Object} ScrapeOptions
+ * @property {boolean} continueOnError - エラー時も処理を継続する（デフォルト: true）
+ * @property {boolean} force - 既存データを無視して再取得する（デフォルト: false）
+ * @property {boolean} prioritizeHigh - 高優先度店舗を先に処理する（デフォルト: false）
+ */
+
+/**
+ * メイン処理
+ * @param {Object} bigquery - BigQueryクライアント
+ * @param {string} datasetId - データセットID
+ * @param {string} tableIdPrefix - テーブルIDプレフィックス
+ * @param {Object} db - SQLiteデータベース
+ * @param {Date} startDate - 開始日
+ * @param {Date} endDate - 終了日
+ * @param {Function} updateProgress - 進捗更新コールバック
+ * @param {ScrapeOptions} options - オプション
+ * @returns {Promise<ScrapeResult>} 処理結果
+ */
+const scrape = async (
+    bigquery, 
+    datasetId, 
+    tableIdPrefix, 
+    db, 
+    startDate, 
+    endDate, 
+    updateProgress = () => {},
+    options = {}
+) => {
+    // デフォルトオプション
+    const {
+        continueOnError = true,
+        force = false,
+        prioritizeHigh = false,
+    } = options;
+
     const dateRange = util.generateDateRange(startDate, endDate);
     console.log(`処理開始: ${dateRange[0]} - ${dateRange[dateRange.length - 1]}`);
+    console.log(`オプション: continueOnError=${continueOnError}, force=${force}, prioritizeHigh=${prioritizeHigh}`);
+
+    // 店舗リストを取得（優先度順 or 設定順）
+    const holes = prioritizeHigh ? getHolesSortedByPriority() : getHoles();
 
     const totalDates = dateRange.length;
-    const totalHoles = config.holes.length;
+    const totalHoles = holes.length;
     const totalTasks = totalDates * totalHoles;
     let completedTasks = 0;
+
+    // 結果オブジェクト
+    const result = {
+        success: [],
+        failed: [],
+        skipped: [],
+    };
 
     for (const date of dateRange) {
         const tableId = `${tableIdPrefix}${util.formatUrlDate(date)}`;
         let dateTable = await getTable(bigquery, datasetId, tableId);
-        for (const hole of config.holes) {
+        
+        for (const hole of holes) {
             try {
                 if (typeof updateProgress === 'function') {
                     updateProgress(
@@ -27,24 +85,36 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                     );
                 }
 
+                // SQLiteにデータが存在するか確認
                 const exists = await sqlite.isDiffDataExists(db, date, hole.name);
-                if (!exists) {
+                
+                if (exists && !force) {
+                    // 既存データあり、forceでない場合はスキップ
+                    console.log(`[${date}][${hole.name}] SQLiteに既存データあり、スクレイピングをスキップ`);
+                } else {
+                    // 新規スクレイピング、またはforce=trueで再取得
+                    if (force && exists) {
+                        console.log(`[${date}][${hole.name}] 強制再取得モード: 既存データを削除`);
+                        await sqlite.deleteDiffData(db, date, hole.name);
+                    }
                     const data = await scrapeSlotDataByMachine(date, hole.code);
-                    await sqlite.saveDiffData(db, data);
+                    await sqlite.saveDiffData(db, data, SOURCE);
                 }
 
-                // BigQueryに保存
+                // BigQueryに同期
                 const data = await sqlite.getDiffData(db, date, hole.name);
                 if (data.length > 0) {
                     const bigQueryRowCount = await getBigQueryRowCount(dateTable, hole.name);
                     const sqliteRowCount = data.length;
                     console.log(`[${date}][${hole.name}] BigQuery: ${bigQueryRowCount}件 SQLite: ${sqliteRowCount}件`);
-                    if (bigQueryRowCount !== sqliteRowCount) {
-                        await saveToBigQuery(dateTable, data);
+                    if (bigQueryRowCount !== sqliteRowCount || force) {
+                        await saveToBigQuery(dateTable, data, SOURCE);
                     }
                 }
 
                 completedTasks++;
+                result.success.push({ date, hole: hole.name });
+                
                 if (typeof updateProgress === 'function') {
                     updateProgress(
                         completedTasks,
@@ -54,6 +124,10 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                 }
             } catch (err) {
                 console.error(`処理エラー (${date} - ${hole.name}): ${err.message}`);
+                
+                completedTasks++;
+                result.failed.push({ date, hole: hole.name, error: err.message });
+                
                 if (typeof updateProgress === 'function') {
                     updateProgress(
                         completedTasks,
@@ -61,10 +135,19 @@ const scrape = async (bigquery, datasetId, tableIdPrefix, db, startDate, endDate
                         `[${date}][${hole.name}] エラー: ${err.message}`
                     );
                 }
-                throw err;
+                
+                // continueOnErrorがfalseの場合はエラーをthrow
+                if (!continueOnError) {
+                    throw err;
+                }
             }
         }
     }
+
+    // 結果サマリーをログ出力
+    console.log(`処理完了: 成功=${result.success.length}, 失敗=${result.failed.length}, スキップ=${result.skipped.length}`);
+    
+    return result;
 };
 
-export default scrape; 
+export default scrape;

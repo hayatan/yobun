@@ -1,44 +1,40 @@
 import puppeteer from 'puppeteer';
 import config from '../../config/slorepo-config.js';
+import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import { cleanNumber } from '../../util/slorepo.js';
 
 export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 
-    const urlDate = date.replace(/[-/]/g, '');
-    const baseUrl = `https://www.slorepo.com/hole/${holeCode}/${urlDate}/`;
+    const baseUrl = SLOREPO_SOURCE.buildUrl.hole(holeCode, date);
     console.log(`[${date}][${hole.name}] スクレイピングを開始します... ${baseUrl}`);
     const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled'
-        ]
+        headless: SLOREPO_SOURCE.puppeteer.headless,
+        args: SLOREPO_SOURCE.puppeteer.args,
     });
 
     const page = await browser.newPage();
     
     // User-Agentを設定してbot検出を回避
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    await page.setUserAgent(SLOREPO_SOURCE.userAgent);
     
     const allData = [];
 
     try {
         await new Promise(resolve => setTimeout(resolve, interval));
         console.log(`[${date}][${hole.name}] 機種一覧を取得中...`);
-        await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+        await page.goto(baseUrl, { waitUntil: SLOREPO_SOURCE.navigation.waitUntil });
 
-        const machines = await getMachines(page);
+        const machines = await getMachines(page, SLOREPO_SOURCE.selectors.machineLinks);
         console.log(`[${date}][${hole.name}] 機種一覧 (${machines.length}) を取得しました。`);
 
         for (const [index, machine] of machines.entries()) {
             await new Promise(resolve => setTimeout(resolve, interval));
             console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} を処理中...`);
 
-            const url = `${baseUrl}kishu/?kishu=${machine.encodedName}`;
-            const machineData = await scrapeMachineHtmlData(page, url, date, hole.name, decodeURIComponent(machine.encodedName));
+            const url = SLOREPO_SOURCE.buildUrl.machine(holeCode, date, machine.encodedName);
+            const machineData = await scrapeMachineHtmlData(page, url, date, hole.name, decodeURIComponent(machine.encodedName), SLOREPO_SOURCE);
             allData.push(...machineData);
 
             console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} の処理が完了しました。`);
@@ -65,17 +61,17 @@ function processSlotData(allData) {
     }));
 }
 
-async function getMachines(page) {
-    return await page.evaluate(() => {
-        const machineLinks = Array.from(document.querySelectorAll('a[href^="kishu/?kishu="]'));
+async function getMachines(page, selector) {
+    return await page.evaluate((sel) => {
+        const machineLinks = Array.from(document.querySelectorAll(sel));
         return machineLinks.map(link => ({
             name: link.textContent.trim(),
             encodedName: link.href.split('kishu/?kishu=')[1]
         }));
-    });
+    }, selector);
 }
 
-async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
+async function scrapeMachineHtmlData(page, url, date, holeName, machineName, sourceConfig) {
     
     // 既存のリスナーを削除してから新しいリスナーを追加
     page.removeAllListeners("response");
@@ -89,16 +85,19 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
         }
     });
 
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.goto(url, { waitUntil: sourceConfig.navigation.waitUntil });
 
-    return await page.evaluate((date, holeName, machineName) => {
+    const selectors = sourceConfig.selectors;
+    const requiredHeaders = sourceConfig.requiredHeaders;
+    
+    return await page.evaluate((date, holeName, machineName, selectors, requiredHeaders) => {
         const rows = [];
-        const slotDivs = document.querySelectorAll('.wp-block-column.is-vertically-aligned-top');
+        const slotDivs = document.querySelectorAll(selectors.slotDivs);
 
         // グラフデータ付きの部分から抽出
         slotDivs.forEach(div => {
-            const pTag = div.querySelector('p.has-text-align-center strong font');
-            const table = div.querySelector('table tbody');
+            const pTag = div.querySelector(selectors.machineNumber);
+            const table = div.querySelector(selectors.dataTable);
             const scripts = div.querySelectorAll('script');
 
             let graphData = [];
@@ -135,13 +134,12 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
         });
 
         // 一覧表から抽出
-        const slotTables = document.querySelectorAll('table.table2');
+        const slotTables = document.querySelectorAll(selectors.summaryTable);
         slotTables.forEach(table => {
             // テーブルのヘッダーを確認して、必要なテーブルだけを処理
             const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
             
             // 必要なヘッダーが含まれているか確認
-            const requiredHeaders = ['台番', '差枚', 'G数', 'BB', 'RB', '合成'];
             const hasRequiredHeaders = requiredHeaders.every(header => headers.includes(header));
             
             // 必要なヘッダーが含まれていない場合はスキップ
@@ -183,5 +181,5 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName) {
         });
 
         return rows;
-    }, date, holeName, machineName);
+    }, date, holeName, machineName, selectors, requiredHeaders);
 } 

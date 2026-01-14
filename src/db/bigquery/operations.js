@@ -1,27 +1,14 @@
 import util from '../../util/common.js';
+import { BIGQUERY, SCRAPING } from '../../config/constants.js';
+import { RAW_DATA_SCHEMA } from '../../../sql/raw_data/schema.js';
 
 const getTable = async (bigquery, datasetId, tableId) => {
     console.error(`テーブル ${datasetId}.${tableId} が存在しない場合は作成します`);
     try {
-        // テーブルのスキーマを定義
+        // テーブルのスキーマをschema.jsから取得
         const options = {
-            schema: [
-                { name: 'id', type: 'STRING' },
-                { name: 'date', type: 'STRING' },
-                { name: 'hole', type: 'STRING' },
-                { name: 'machine', type: 'STRING' },
-                { name: 'machine_number', type: 'INTEGER' },
-                { name: 'diff', type: 'INTEGER' },
-                { name: 'game', type: 'INTEGER' },
-                { name: 'big', type: 'INTEGER' },
-                { name: 'reg', type: 'INTEGER' },
-                { name: 'combined_rate', type: 'STRING' },
-                { name: 'max_my', type: 'INTEGER' },
-                { name: 'max_mdia', type: 'INTEGER' },
-                { name: 'win', type: 'INTEGER' },
-                { name: 'timestamp', type: 'TIMESTAMP' },
-            ],
-            location: 'US',
+            schema: RAW_DATA_SCHEMA.toBigQuerySchema(),
+            location: BIGQUERY.location,
             description: 'スロットデータの日次テーブル',
             labels: {
                 'purpose': 'slot_data',
@@ -35,7 +22,7 @@ const getTable = async (bigquery, datasetId, tableId) => {
             .createTable(tableId, options)
 
         // テーブルが完全に利用可能になるまで待機
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < SCRAPING.tableWaitRetries; i++) {
             try {
                 // メタデータの取得を試みる
                 await table.getMetadata();
@@ -53,8 +40,8 @@ const getTable = async (bigquery, datasetId, tableId) => {
                 console.log(`テーブル ${tableId} が利用可能になりました。`);
                 return table;
             } catch (error) {
-                console.log(`テーブル ${tableId} の利用可能確認中... (${i + 1}/15)`);
-                await util.delay(3000);
+                console.log(`テーブル ${tableId} の利用可能確認中... (${i + 1}/${SCRAPING.tableWaitRetries})`);
+                await util.delay(SCRAPING.tableWaitDelayMs);
             }
         }
         
@@ -71,15 +58,16 @@ const getTable = async (bigquery, datasetId, tableId) => {
     }
 }
 
-const insertWithRetry = async (table, formattedData) => {
-    const MAX_RETRIES = 10;
-    const BASE_DELAY = 1000; // 1秒
-    const BATCH_SIZE = 1000; // バッチサイズを1000件に設定
+const insertWithRetry = async (table, formattedData, source = 'slorepo') => {
+    const MAX_RETRIES = SCRAPING.insertMaxRetries;
+    const BASE_DELAY = SCRAPING.insertBaseDelayMs;
+    const BATCH_SIZE = SCRAPING.batchSize;
     
     const timestamp = new Date().toISOString();
     const formattedRows = formattedData.map(row => ({
-        id: `${row.date}_${row.hole}_${row.machine_number}`,
+        id: RAW_DATA_SCHEMA.generateId(row.date, row.hole, row.machine_number, source),
         ...row,
+        source,
         timestamp,
     }));
     
@@ -115,7 +103,7 @@ const insertWithRetry = async (table, formattedData) => {
     }
 }
 
-const saveToBigQuery = async (table, data) => {
+const saveToBigQuery = async (table, data, source = 'slorepo') => {
     const tableId = table.id;
     const formattedData = util.formatDiffData(data);
 
@@ -128,7 +116,7 @@ const saveToBigQuery = async (table, data) => {
     }
 
     try {
-        await insertWithRetry(table, formattedData, tableId);
+        await insertWithRetry(table, formattedData, source);
     } catch (error) {
         throw error;
     }
