@@ -151,17 +151,27 @@ USING (
 
   -- ============================================================================
   -- 3. 正規化データ: 台番マッピングを適用
+  --    - アイランド秋葉原店: 2025/11/02以前はマッピングテーブルで変換
+  --    - エスパス秋葉原駅前店: 2025/04/20以前の2020番台以降は+2
   -- ============================================================================
   normalized_data AS (
     SELECT
       PARSE_DATE('%Y-%m-%d', d.date) AS date,
       d.hole,
       d.machine,
-      -- アイランド秋葉原店かつ2025/11/02以前のデータは台番を変換
+      -- 台番補正
       CASE
+        -- アイランド秋葉原店: 2025/11/02以前はマッピングテーブルで変換
         WHEN d.hole = 'アイランド秋葉原店' 
              AND PARSE_DATE('%Y-%m-%d', d.date) <= DATE('2025-11-02')
         THEN COALESCE(m.new_number, d.machine_number)
+        -- エスパス秋葉原駅前店: 2025/04/20以前の2020番台以降は+2
+        WHEN d.hole = 'エスパス秋葉原駅前店' 
+             AND PARSE_DATE('%Y-%m-%d', d.date) <= DATE('2025-04-20')
+             AND d.machine_number >= 2020 
+             AND d.machine_number < 3000
+        THEN d.machine_number + 2
+        -- その他: そのまま
         ELSE d.machine_number
       END AS machine_number,
       d.diff,
