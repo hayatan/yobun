@@ -71,8 +71,12 @@ COPY . .
 COPY litestream.yml /etc/litestream.yml
 
 # 条件付きで初期DBコピー
-RUN test -f /app/data/db.sqlite && cp /app/data/db.sqlite /tmp/db.sqlite || echo "No local DB found, skipping copy" \
-    && chown -R yobunuser:yobunuser /tmp/db.sqlite
+RUN if [ -f /app/data/db.sqlite ]; then \
+        cp /app/data/db.sqlite /tmp/db.sqlite && \
+        chown -R yobunuser:yobunuser /tmp/db.sqlite; \
+    else \
+        echo "No local DB found, skipping copy"; \
+    fi
 
 # 実行スクリプトをコピーして、エントリポイントに
 COPY entrypoint.sh /app/entrypoint.sh
