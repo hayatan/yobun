@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データマート管理 - Yobun</title>
+    <script src="/js/status-header.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        input[type="date"], select {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.btn-danger {
+            background-color: var(--accent-red);
+        }
+        
+        button.btn-warning {
+            background-color: var(--accent-yellow);
+            color: #000;
+        }
+        
+        button.btn-secondary {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        button.btn-purple {
+            background-color: var(--accent-purple);
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .summary-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .summary-card h3 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .summary-card.success .value { color: var(--accent-green); }
+        .summary-card.warning .value { color: var(--accent-yellow); }
+        
+        .section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .table-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+        
+        th.hole-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 8px 4px;
+            font-size: 12px;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        th.hole-header.priority {
+            background-color: #1f2d1f;
+        }
+        
+        tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+        
+        .status-cell {
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .status-ok {
+            color: var(--accent-green);
+        }
+        
+        .status-missing {
+            color: var(--text-secondary);
+        }
+        
+        .date-cell {
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+        
+        .error-message {
+            background-color: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: var(--accent-red);
+        }
+        
+        .success-message {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: var(--accent-green);
+        }
+        
+        .warning-box {
+            background-color: rgba(210, 153, 34, 0.1);
+            border: 1px solid var(--accent-yellow);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+            color: var(--accent-yellow);
+            font-size: 14px;
+        }
+        
+        .warning-box strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .job-status {
+            padding: 16px;
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .job-status.running {
+            background-color: rgba(88, 166, 255, 0.1);
+            border: 1px solid var(--accent-blue);
+        }
+        
+        .job-status .status-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .job-status .status-detail {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal h3 {
+            margin-bottom: 16px;
+        }
+        
+        .modal p {
+            margin-bottom: 24px;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            th.hole-header {
+                font-size: 10px;
+                min-width: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 データマート管理</h1>
+        </header>
+        
+        <!-- ジョブ状態 -->
+        <div id="jobStatus" class="job-status" style="display: none;">
+            <div class="status-title" id="jobStatusTitle">-</div>
+            <div class="status-detail" id="jobStatusDetail">-</div>
+        </div>
+        
+        <!-- 検索コントロール -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🔍 検索条件</h2>
+            </div>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="startDate">開始日:</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="control-group">
+                    <label for="endDate">終了日:</label>
+                    <input type="date" id="endDate">
+                </div>
+                <button id="searchBtn">検索</button>
+                <button id="refreshBtn" class="btn-secondary">更新</button>
+            </div>
+        </div>
+        
+        <div id="messageContainer"></div>
+        
+        <!-- サマリー -->
+        <div class="summary">
+            <div class="summary-card">
+                <h3>対象日数</h3>
+                <div class="value" id="totalDates">-</div>
+            </div>
+            <div class="summary-card success">
+                <h3>総レコード数</h3>
+                <div class="value" id="totalRecords">-</div>
+            </div>
+            <div class="summary-card warning">
+                <h3>勝ち台数</h3>
+                <div class="value" id="totalWins">-</div>
+            </div>
+        </div>
+        
+        <!-- データ削除セクション -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🗑️ データマート削除</h2>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="deleteDate">日付:</label>
+                    <input type="date" id="deleteDate">
+                </div>
+                <div class="form-group">
+                    <label for="deleteHole">店舗:</label>
+                    <select id="deleteHole">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                <button id="deleteBtn" class="btn-danger">削除</button>
+            </div>
+        </div>
+        
+        <!-- データマート再実行セクション -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🔄 データマート再実行</h2>
+            </div>
+            <div class="warning-box">
+                <strong>⚠️ 重要な注意事項</strong>
+                指定した日付の <strong>1日前</strong> がデータマートの target_date になります。<br>
+                例: 2026-01-15 を指定 → データマートの target_date = 2026-01-14<br>
+                <br>
+                これは、データマートが「実行日の前日」のデータを集計するためです。<br>
+                日本時間（JST）基準で計算されます。
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="runStartDate">開始日:</label>
+                    <input type="date" id="runStartDate">
+                </div>
+                <div class="form-group">
+                    <label for="runEndDate">終了日:</label>
+                    <input type="date" id="runEndDate">
+                </div>
+                <button id="runBtn" class="btn-purple">再実行</button>
+            </div>
+        </div>
+        
+        <!-- データテーブル -->
+        <div class="table-container">
+            <table id="dataTable">
+                <thead id="tableHead">
+                    <tr>
+                        <th>日付</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td class="loading" colspan="100">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 確認モーダル -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modalTitle">確認</h3>
+            <p id="modalMessage"></p>
+            <div class="modal-actions">
+                <button id="modalCancelBtn" class="btn-secondary">キャンセル</button>
+                <button id="modalConfirmBtn" class="btn-danger">実行</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 状態管理
+        let holes = [];
+        let currentModalAction = null;
+        
+        // JST日付を取得
+        function getJSTDate(offset = 0) {
+            const now = new Date();
+            const jst = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+            jst.setDate(jst.getDate() + offset);
+            return jst.toISOString().split('T')[0];
+        }
+        
+        // 初期化（JST基準）
+        const today = getJSTDate(0);
+        const weekAgo = getJSTDate(-7);
+        
+        document.getElementById('startDate').value = weekAgo;
+        document.getElementById('endDate').value = today;
+        document.getElementById('deleteDate').value = today;
+        document.getElementById('runStartDate').value = today;
+        document.getElementById('runEndDate').value = today;
+        
+        // イベントリスナー
+        document.getElementById('searchBtn').addEventListener('click', fetchData);
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchData();
+            fetchJobStatus();
+        });
+        document.getElementById('deleteBtn').addEventListener('click', showDeleteConfirm);
+        document.getElementById('runBtn').addEventListener('click', showRunConfirm);
+        document.getElementById('modalCancelBtn').addEventListener('click', hideModal);
+        document.getElementById('modalConfirmBtn').addEventListener('click', executeModalAction);
+        
+        // 初回読み込み
+        fetchData();
+        fetchJobStatus();
+        
+        // 定期的にジョブ状態を更新
+        setInterval(fetchJobStatus, 5000);
+        
+        async function fetchJobStatus() {
+            try {
+                const response = await fetch('/api/datamart/status/job');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('jobStatus');
+                const statusTitle = document.getElementById('jobStatusTitle');
+                const statusDetail = document.getElementById('jobStatusDetail');
+                
+                if (data.isRunning) {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'job-status running';
+                    statusTitle.textContent = '🔄 データマート更新中...';
+                    statusDetail.textContent = data.progress?.message || '処理中...';
+                } else if (data.lastError) {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'job-status';
+                    statusTitle.textContent = '❌ エラー';
+                    statusDetail.textContent = data.lastError;
+                } else if (data.progress?.message && data.progress.message !== '開始...') {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'job-status';
+                    statusTitle.textContent = '✅ 完了';
+                    statusDetail.textContent = data.progress.message;
+                } else {
+                    statusDiv.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('ジョブ状態取得エラー:', error);
+            }
+        }
+        
+        async function fetchData() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            
+            if (!start || !end) {
+                showError('開始日と終了日を指定してください');
+                return;
+            }
+            
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '<tr><td class="loading" colspan="100">読み込み中...</td></tr>';
+            
+            try {
+                const response = await fetch(`/api/datamart/status?start=${start}&end=${end}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                holes = data.holes;
+                updateHoleSelector();
+                renderData(data);
+            } catch (error) {
+                console.error('データ取得エラー:', error);
+                showError(`データの取得に失敗しました: ${error.message}`);
+                tableBody.innerHTML = '<tr><td class="loading" colspan="100">データの取得に失敗しました</td></tr>';
+            }
+        }
+        
+        function updateHoleSelector() {
+            const select = document.getElementById('deleteHole');
+            select.innerHTML = '<option value="">全店舗</option>';
+            holes.forEach(hole => {
+                const option = document.createElement('option');
+                option.value = hole.name;
+                option.textContent = hole.name;
+                select.appendChild(option);
+            });
+        }
+        
+        function renderData(data) {
+            // サマリーを更新
+            document.getElementById('totalDates').textContent = data.summary.totalDates;
+            document.getElementById('totalRecords').textContent = data.summary.totalRecords.toLocaleString();
+            document.getElementById('totalWins').textContent = data.summary.totalWins.toLocaleString();
+            
+            // テーブルヘッダーを構築
+            const tableHead = document.getElementById('tableHead');
+            const headerRow = tableHead.querySelector('tr');
+            headerRow.innerHTML = '<th>日付</th><th>合計</th>';
+            
+            data.holes.forEach(hole => {
+                const th = document.createElement('th');
+                th.className = 'hole-header' + (hole.priority === 'high' ? ' priority' : '');
+                th.textContent = hole.name.replace('店', '');
+                headerRow.appendChild(th);
+            });
+            
+            // テーブルボディを構築
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            data.data.forEach(dateData => {
+                const tr = document.createElement('tr');
+                
+                // 日付セル
+                const dateTd = document.createElement('td');
+                dateTd.className = 'date-cell';
+                dateTd.textContent = dateData.date;
+                tr.appendChild(dateTd);
+                
+                // 合計セル
+                const totalTd = document.createElement('td');
+                totalTd.className = 'status-cell';
+                totalTd.textContent = dateData.totalCount > 0 ? dateData.totalCount : '-';
+                tr.appendChild(totalTd);
+                
+                // 各店舗のセル
+                data.holes.forEach(hole => {
+                    const td = document.createElement('td');
+                    td.className = 'status-cell';
+                    
+                    const holeData = dateData.holes[hole.name];
+                    if (holeData && holeData.count > 0) {
+                        td.className += ' status-ok';
+                        const winRate = Math.round((holeData.winCount / holeData.count) * 100);
+                        td.textContent = `${holeData.count} (${winRate}%)`;
+                        td.title = `勝ち: ${holeData.winCount}台\n平均差枚: ${holeData.avgDiff}`;
+                    } else {
+                        td.className += ' status-missing';
+                        td.textContent = '-';
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tableBody.appendChild(tr);
+            });
+        }
+        
+        // モーダル関連
+        function showModal(title, message, action) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            currentModalAction = action;
+            document.getElementById('confirmModal').classList.add('active');
+        }
+        
+        function hideModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            currentModalAction = null;
+        }
+        
+        function executeModalAction() {
+            if (currentModalAction) {
+                currentModalAction();
+            }
+            hideModal();
+        }
+        
+        function showDeleteConfirm() {
+            const date = document.getElementById('deleteDate').value;
+            const hole = document.getElementById('deleteHole').value;
+            
+            if (!date) {
+                showError('日付を指定してください');
+                return;
+            }
+            
+            const holeText = hole || '全店舗';
+            showModal(
+                '⚠️ データマート削除',
+                `以下のデータを削除します。この操作は元に戻せません。\n\n日付: ${date}\n店舗: ${holeText}`,
+                deleteData
+            );
+        }
+        
+        async function deleteData() {
+            const date = document.getElementById('deleteDate').value;
+            const hole = document.getElementById('deleteHole').value;
+            
+            try {
+                const response = await fetch('/api/datamart/delete', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, hole: hole || null }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(`削除完了: ${data.deleted}件`);
+                    // メッセージ表示時間を確保するため1秒待ってからデータを再取得
+                    setTimeout(fetchData, 1000);
+                } else {
+                    showError('削除に失敗しました: ' + data.error);
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showError('削除中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        function showRunConfirm() {
+            const startDate = document.getElementById('runStartDate').value;
+            const endDate = document.getElementById('runEndDate').value;
+            
+            if (!startDate || !endDate) {
+                showError('開始日と終了日を指定してください');
+                return;
+            }
+            
+            // 1日前の日付を計算して表示
+            const targetStart = new Date(startDate);
+            targetStart.setDate(targetStart.getDate() - 1);
+            const targetEnd = new Date(endDate);
+            targetEnd.setDate(targetEnd.getDate() - 1);
+            
+            showModal(
+                '🔄 データマート再実行',
+                `以下の期間でデータマートを再実行します。\n\n指定期間: ${startDate} 〜 ${endDate}\nデータマートの target_date: ${targetStart.toISOString().split('T')[0]} 〜 ${targetEnd.toISOString().split('T')[0]}\n\n既存のデータは上書きされます（MERGEによる更新）。`,
+                runDatamart
+            );
+        }
+        
+        async function runDatamart() {
+            const startDate = document.getElementById('runStartDate').value;
+            const endDate = document.getElementById('runEndDate').value;
+            
+            try {
+                const response = await fetch('/api/datamart/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startDate, endDate }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 202) {
+                    showSuccess('データマート更新を開始しました');
+                    fetchJobStatus();
+                } else {
+                    showError('再実行に失敗しました: ' + data.error);
+                }
+            } catch (error) {
+                console.error('再実行エラー:', error);
+                showError('再実行中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+        
+        function showSuccess(message) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="success-message">${message}</div>`;
+            setTimeout(hideMessage, 10000); // 10秒後にメッセージを非表示
+        }
+        
+        function hideMessage() {
+            document.getElementById('messageContainer').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

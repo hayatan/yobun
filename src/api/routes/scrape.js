@@ -9,6 +9,7 @@
 import { Router } from 'express';
 import stateManager from '../state-manager.js';
 import { runScrape } from '../../app.js';
+import { acquireLock, releaseLock, getLockStatus } from '../../util/lock.js';
 
 const JOB_TYPE = 'scraping';
 
@@ -16,8 +17,12 @@ const createScrapeRouter = (bigquery, db) => {
     const router = Router();
 
     // スクレイピングの状態を取得するエンドポイント
-    router.get('/status', (req, res) => {
-        res.json(stateManager.getState(JOB_TYPE));
+    router.get('/status', async (req, res) => {
+        const lockStatus = await getLockStatus();
+        res.json({
+            ...stateManager.getState(JOB_TYPE),
+            lock: lockStatus,
+        });
     });
 
     // Pub/Subメッセージを処理するエンドポイント
@@ -29,10 +34,22 @@ const createScrapeRouter = (bigquery, db) => {
             });
         }
 
+        // GCSロックを確認・取得
+        const lockAcquired = await acquireLock();
+        if (!lockAcquired) {
+            const lockStatus = await getLockStatus();
+            return res.status(409).json({
+                error: '別のプロセスがスクレイピングを実行中です',
+                lock: lockStatus,
+                status: stateManager.getState(JOB_TYPE)
+            });
+        }
+
         try {
             const { startDate, endDate, continueOnError, force, prioritizeHigh } = req.body;
             
             if (!startDate || !endDate) {
+                await releaseLock(); // ロック解放
                 return res.status(400).json({
                     error: '開始日と終了日を指定してください',
                     status: stateManager.getState(JOB_TYPE)
@@ -54,12 +71,14 @@ const createScrapeRouter = (bigquery, db) => {
                 force: force === true,
                 prioritizeHigh: prioritizeHigh === true,
             })
-                .then((result) => {
+                .then(async (result) => {
                     const message = `完了: 成功=${result.success.length}, 失敗=${result.failed.length}`;
                     stateManager.completeJob(JOB_TYPE, message);
+                    await releaseLock(); // ロック解放
                 })
-                .catch(error => {
+                .catch(async (error) => {
                     stateManager.failJob(JOB_TYPE, error.message);
+                    await releaseLock(); // ロック解放
                 });
 
             res.status(202).json({ 
@@ -68,6 +87,7 @@ const createScrapeRouter = (bigquery, db) => {
             });
         } catch (error) {
             stateManager.failJob(JOB_TYPE, error.message);
+            await releaseLock(); // ロック解放
             res.status(500).json({ 
                 error: 'スクレイピングの開始に失敗しました',
                 status: stateManager.getState(JOB_TYPE)

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データ取得状況 - Yobun</title>
+    <script src="/js/status-header.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        input[type="date"], select {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.btn-danger {
+            background-color: var(--accent-red);
+        }
+        
+        button.btn-warning {
+            background-color: var(--accent-yellow);
+            color: #000;
+        }
+        
+        button.btn-secondary {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .summary-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .summary-card h3 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .summary-card.success .value { color: var(--accent-green); }
+        .summary-card.warning .value { color: var(--accent-yellow); }
+        .summary-card.error .value { color: var(--accent-red); }
+        
+        .section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .table-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+        
+        th.hole-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 8px 4px;
+            font-size: 12px;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        th.hole-header.priority {
+            background-color: #1f2d1f;
+        }
+        
+        tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+        
+        .status-cell {
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .status-ok {
+            color: var(--accent-green);
+        }
+        
+        .status-missing {
+            color: var(--text-secondary);
+        }
+        
+        .status-error {
+            color: var(--accent-red);
+        }
+        
+        .date-cell {
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+        
+        .error-message {
+            background-color: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: var(--accent-red);
+        }
+        
+        .success-message {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: var(--accent-green);
+        }
+        
+        .legend {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .lock-panel {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+        
+        .lock-panel.locked {
+            background-color: rgba(210, 153, 34, 0.2);
+            border: 1px solid var(--accent-yellow);
+        }
+        
+        .lock-info {
+            flex: 1;
+        }
+        
+        .lock-info .lock-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .lock-info .lock-detail {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .delete-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal h3 {
+            margin-bottom: 16px;
+        }
+        
+        .modal p {
+            margin-bottom: 24px;
+            color: var(--text-secondary);
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            th.hole-header {
+                font-size: 10px;
+                min-width: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 データ取得状況</h1>
+        </header>
+        
+        <!-- ロック状態セクション -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🔐 ロック状態</h2>
+            </div>
+            <div id="lockPanel" class="lock-panel">
+                <div class="lock-info">
+                    <div class="lock-title" id="lockTitle">確認中...</div>
+                    <div class="lock-detail" id="lockDetail"></div>
+                </div>
+                <button id="forceUnlockBtn" class="btn-danger" style="display: none;">強制解除</button>
+            </div>
+        </div>
+        
+        <!-- 検索コントロール -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🔍 検索条件</h2>
+            </div>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="startDate">開始日:</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="control-group">
+                    <label for="endDate">終了日:</label>
+                    <input type="date" id="endDate">
+                </div>
+                <button id="searchBtn">検索</button>
+                <button id="refreshBtn" class="btn-secondary">更新</button>
+            </div>
+        </div>
+        
+        <div id="messageContainer"></div>
+        
+        <!-- サマリー -->
+        <div class="summary" id="summaryContainer">
+            <div class="summary-card">
+                <h3>対象日数</h3>
+                <div class="value" id="totalDates">-</div>
+            </div>
+            <div class="summary-card success">
+                <h3>完全取得</h3>
+                <div class="value" id="allComplete">-</div>
+            </div>
+            <div class="summary-card warning">
+                <h3>優先店舗完了</h3>
+                <div class="value" id="priorityComplete">-</div>
+            </div>
+            <div class="summary-card">
+                <h3>総レコード数</h3>
+                <div class="value" id="totalRecords">-</div>
+            </div>
+        </div>
+        
+        <!-- データ削除セクション -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🗑️ 生データ削除</h2>
+            </div>
+            <div class="delete-form">
+                <div class="form-group">
+                    <label for="deleteStartDate">開始日:</label>
+                    <input type="date" id="deleteStartDate">
+                </div>
+                <div class="form-group">
+                    <label for="deleteEndDate">終了日:</label>
+                    <input type="date" id="deleteEndDate">
+                </div>
+                <div class="form-group">
+                    <label for="deleteHole">店舗:</label>
+                    <select id="deleteHole">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                <button id="deleteBtn" class="btn-danger">削除</button>
+            </div>
+        </div>
+        
+        <!-- 凡例 -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="status-ok">●</span> 取得済
+            </div>
+            <div class="legend-item">
+                <span class="status-missing">○</span> 未取得
+            </div>
+            <div class="legend-item">
+                <span style="background-color: #1f2d1f; padding: 2px 8px; border-radius: 4px;">優先店舗</span>
+            </div>
+        </div>
+        
+        <!-- データテーブル -->
+        <div class="table-container">
+            <table id="dataTable">
+                <thead id="tableHead">
+                    <tr>
+                        <th>日付</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td class="loading" colspan="100">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 確認モーダル -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modalTitle">確認</h3>
+            <p id="modalMessage"></p>
+            <div class="modal-actions">
+                <button id="modalCancelBtn" class="btn-secondary">キャンセル</button>
+                <button id="modalConfirmBtn" class="btn-danger">実行</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 状態管理
+        let holes = [];
+        let currentModalAction = null;
+        
+        // 初期化
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 7);
+        
+        document.getElementById('startDate').value = formatDate(startDate);
+        document.getElementById('endDate').value = formatDate(today);
+        document.getElementById('deleteStartDate').value = formatDate(today);
+        document.getElementById('deleteEndDate').value = formatDate(today);
+        
+        // イベントリスナー
+        document.getElementById('searchBtn').addEventListener('click', fetchData);
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchData();
+            fetchLockStatus();
+        });
+        document.getElementById('forceUnlockBtn').addEventListener('click', showForceUnlockConfirm);
+        document.getElementById('deleteBtn').addEventListener('click', showDeleteConfirm);
+        document.getElementById('modalCancelBtn').addEventListener('click', hideModal);
+        document.getElementById('modalConfirmBtn').addEventListener('click', executeModalAction);
+        
+        // 初回読み込み
+        fetchData();
+        fetchLockStatus();
+        
+        // 定期的にロック状態を更新
+        setInterval(fetchLockStatus, 30000);
+        
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+        
+        async function fetchLockStatus() {
+            try {
+                const response = await fetch('/api/lock');
+                const data = await response.json();
+                
+                const lockPanel = document.getElementById('lockPanel');
+                const lockTitle = document.getElementById('lockTitle');
+                const lockDetail = document.getElementById('lockDetail');
+                const forceUnlockBtn = document.getElementById('forceUnlockBtn');
+                
+                if (data.locked) {
+                    lockPanel.className = 'lock-panel locked';
+                    lockTitle.textContent = '🔒 ロック中';
+                    const env = data.status?.environment || '不明';
+                    const hours = data.status?.ageHours || 0;
+                    const mins = data.status?.ageMinutes || 0;
+                    const mode = data.status?.jobMode || '不明';
+                    lockDetail.textContent = `${env} (${mode}) - 経過時間: ${hours}時間${mins}分`;
+                    forceUnlockBtn.style.display = 'block';
+                } else {
+                    lockPanel.className = 'lock-panel';
+                    lockTitle.textContent = '🔓 ロックなし';
+                    lockDetail.textContent = 'スクレイピングを実行できます';
+                    forceUnlockBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('ロック状態取得エラー:', error);
+            }
+        }
+        
+        async function fetchData() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            
+            if (!start || !end) {
+                showError('開始日と終了日を指定してください');
+                return;
+            }
+            
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '<tr><td class="loading" colspan="100">読み込み中...</td></tr>';
+            
+            try {
+                const response = await fetch(`/api/data-status?start=${start}&end=${end}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                holes = data.holes;
+                updateHoleSelector();
+                renderData(data);
+                // メッセージは上書きしない（削除成功メッセージなどを保持するため）
+            } catch (error) {
+                console.error('データ取得エラー:', error);
+                showError(`データの取得に失敗しました: ${error.message}`);
+                tableBody.innerHTML = '<tr><td class="loading" colspan="100">データの取得に失敗しました</td></tr>';
+            }
+        }
+        
+        function updateHoleSelector() {
+            const select = document.getElementById('deleteHole');
+            select.innerHTML = '<option value="">全店舗</option>';
+            holes.forEach(hole => {
+                const option = document.createElement('option');
+                option.value = hole.name;
+                option.textContent = hole.name;
+                select.appendChild(option);
+            });
+        }
+        
+        function renderData(data) {
+            // サマリーを更新
+            document.getElementById('totalDates').textContent = data.summary.totalDates;
+            document.getElementById('allComplete').textContent = data.summary.allCompleteDates;
+            document.getElementById('priorityComplete').textContent = data.summary.priorityCompleteDates;
+            
+            const totalRecords = data.data.reduce((sum, d) => sum + d.totalCount, 0);
+            document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
+            
+            // テーブルヘッダーを構築
+            const tableHead = document.getElementById('tableHead');
+            const headerRow = tableHead.querySelector('tr');
+            headerRow.innerHTML = '<th>日付</th>';
+            
+            data.holes.forEach(hole => {
+                const th = document.createElement('th');
+                th.className = 'hole-header' + (hole.priority === 'high' ? ' priority' : '');
+                th.textContent = hole.name.replace('店', '');
+                headerRow.appendChild(th);
+            });
+            
+            // テーブルボディを構築
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            data.data.forEach(dateData => {
+                const tr = document.createElement('tr');
+                
+                // 日付セル
+                const dateTd = document.createElement('td');
+                dateTd.className = 'date-cell';
+                dateTd.textContent = dateData.date;
+                tr.appendChild(dateTd);
+                
+                // 各店舗のセル
+                data.holes.forEach(hole => {
+                    const td = document.createElement('td');
+                    td.className = 'status-cell';
+                    
+                    const holeData = dateData.holes[hole.name];
+                    if (holeData && holeData.count > 0) {
+                        td.className += ' status-ok';
+                        td.textContent = `● ${holeData.count}`;
+                        td.title = `最終更新: ${holeData.lastUpdated}`;
+                    } else {
+                        td.className += ' status-missing';
+                        td.textContent = '○';
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tableBody.appendChild(tr);
+            });
+        }
+        
+        // モーダル関連
+        function showModal(title, message, action) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            currentModalAction = action;
+            document.getElementById('confirmModal').classList.add('active');
+        }
+        
+        function hideModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+            currentModalAction = null;
+        }
+        
+        function executeModalAction() {
+            if (currentModalAction) {
+                currentModalAction();
+            }
+            hideModal();
+        }
+        
+        function showForceUnlockConfirm() {
+            showModal(
+                '⚠️ ロック強制解除',
+                '本当にロックを強制解除しますか？実行中の処理が競合する可能性があります。',
+                forceUnlock
+            );
+        }
+        
+        async function forceUnlock() {
+            try {
+                const response = await fetch('/api/lock', { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('ロックを解除しました');
+                } else {
+                    showError('ロック解除に失敗しました: ' + data.message);
+                }
+                
+                fetchLockStatus();
+            } catch (error) {
+                console.error('ロック解除エラー:', error);
+                showError('ロック解除中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        function showDeleteConfirm() {
+            const startDate = document.getElementById('deleteStartDate').value;
+            const endDate = document.getElementById('deleteEndDate').value;
+            const hole = document.getElementById('deleteHole').value;
+            
+            if (!startDate || !endDate) {
+                showError('開始日と終了日を指定してください');
+                return;
+            }
+            
+            const holeText = hole || '全店舗';
+            showModal(
+                '⚠️ 生データ削除',
+                `以下のデータを削除します。この操作は元に戻せません。\n\n期間: ${startDate} 〜 ${endDate}\n店舗: ${holeText}`,
+                deleteData
+            );
+        }
+        
+        async function deleteData() {
+            const startDate = document.getElementById('deleteStartDate').value;
+            const endDate = document.getElementById('deleteEndDate').value;
+            const hole = document.getElementById('deleteHole').value;
+            
+            try {
+                const response = await fetch('/api/data-status/raw', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startDate, endDate, hole: hole || null }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = `削除完了: SQLite ${data.deleted.sqlite}件, BigQuery ${data.deleted.bigquery}件`;
+                    if (data.warnings && data.warnings.length > 0) {
+                        message += `\n警告: ${data.warnings.map(w => `${w.date}: ${w.error}`).join(', ')}`;
+                    }
+                    showSuccess(message);
+                    // データ更新は少し遅延させて、メッセージが表示される時間を確保
+                    setTimeout(() => {
+                        fetchData();
+                    }, 1000);
+                } else {
+                    showError('削除に失敗しました: ' + data.error);
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showError('削除中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+        
+        function showSuccess(message) {
+            const container = document.getElementById('messageContainer');
+            // 改行を<br>に変換
+            const formattedMessage = message.replace(/\n/g, '<br>');
+            container.innerHTML = `<div class="success-message">${formattedMessage}</div>`;
+            setTimeout(hideMessage, 10000); // 10秒に延長（警告メッセージも含むため）
+        }
+        
+        function hideMessage() {
+            document.getElementById('messageContainer').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

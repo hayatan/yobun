@@ -7,10 +7,15 @@ import { fileURLToPath } from 'url';
 import bigquery from './src/db/bigquery/init.js';
 import db from './src/db/sqlite/init.js';
 
+// ユーティリティ
+import { getLockStatus, releaseLock } from './src/util/lock.js';
+
 // ルーター
 import createScrapeRouter from './src/api/routes/scrape.js';
 import createSyncRouter from './src/api/routes/sync.js';
 import createForceRescrapeRouter from './src/api/routes/force-rescrape.js';
+import createDataStatusRouter from './src/api/routes/data-status.js';
+import createDatamartRouter from './src/api/routes/datamart.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +47,26 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// ロック状態確認エンドポイント
+app.get('/api/lock', async (req, res) => {
+    const lockStatus = await getLockStatus();
+    res.json({
+        locked: lockStatus !== null && !lockStatus.isExpired,
+        status: lockStatus,
+    });
+});
+
+// ロック強制解除エンドポイント
+app.delete('/api/lock', async (req, res) => {
+    try {
+        await releaseLock();
+        res.json({ success: true, message: 'ロックを解除しました' });
+    } catch (error) {
+        console.error('ロック解除中にエラーが発生しました:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // スクレイピング関連
 const scrapeRouter = createScrapeRouter(bigquery, db);
 app.use('/', scrapeRouter);
@@ -59,6 +84,22 @@ app.get('/util/force-rescrape', (req, res) => {
 });
 const forceRescrapeRouter = createForceRescrapeRouter(bigquery, db);
 app.use('/util/force-rescrape', forceRescrapeRouter);
+
+// データ取得状況API
+const dataStatusRouter = createDataStatusRouter(bigquery, db);
+app.use('/api/data-status', dataStatusRouter);
+
+// ダッシュボードページ
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// データマート関連（HTMLページと API）
+app.get('/datamart', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'datamart.html'));
+});
+const datamartRouter = createDatamartRouter(bigquery, db);
+app.use('/api/datamart', datamartRouter);
 
 // トップページ
 app.get('/', (req, res) => {

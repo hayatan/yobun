@@ -1,5 +1,6 @@
 import scrape from './services/slorepo/index.js';
 import { BIGQUERY, DEFAULT_SCRAPE_DAYS } from './config/constants.js';
+import { getJSTDate, generateDateRange } from './util/date.js';
 
 /**
  * スクレイピング実行処理
@@ -7,8 +8,8 @@ import { BIGQUERY, DEFAULT_SCRAPE_DAYS } from './config/constants.js';
  * @param {Object} db - SQLiteデータベース
  * @param {Function} updateProgress - 進捗更新コールバック
  * @param {Object} params - パラメータ
- * @param {string} params.startDate - 開始日
- * @param {string} params.endDate - 終了日
+ * @param {string} params.startDate - 開始日（YYYY-MM-DD形式）
+ * @param {string} params.endDate - 終了日（YYYY-MM-DD形式）
  * @param {boolean} params.continueOnError - エラー時も処理を継続する（デフォルト: true）
  * @param {boolean} params.force - 既存データを無視して再取得する（デフォルト: false）
  * @param {boolean} params.prioritizeHigh - 高優先度店舗を先に処理する（デフォルト: false）
@@ -23,9 +24,9 @@ export const runScrape = async (bigquery, db, updateProgress, {
 } = {}) => {
     const { datasetId, tableIdPrefix } = BIGQUERY;
 
-    // 日付が指定されていない場合はデフォルト値を使用
-    const start = startDate ? new Date(startDate) : new Date().setDate(new Date().getDate() - DEFAULT_SCRAPE_DAYS);
-    const end = endDate ? new Date(endDate) : new Date();
+    // 日付が指定されていない場合はJST基準でデフォルト値を使用
+    const start = startDate || getJSTDate(-DEFAULT_SCRAPE_DAYS);
+    const end = endDate || getJSTDate(0);
 
     const options = {
         continueOnError,
@@ -34,6 +35,7 @@ export const runScrape = async (bigquery, db, updateProgress, {
     };
 
     console.log('スクレイピング処理を開始します...');
+    console.log(`  期間: ${start} 〜 ${end}（JST基準）`);
     const result = await scrape(bigquery, datasetId, tableIdPrefix, db, start, end, updateProgress, options);
     console.log('スクレイピング処理が完了しました。');
     

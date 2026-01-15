@@ -10,20 +10,35 @@ PORT=8080
 # ホストのユーザーID
 HOST_UID=$(shell id -u)
 
-.PHONY: help run-docker build clean shell
+.PHONY: help build run-docker shell clean run-job-priority run-job-normal run-job-all
 
 help:
 	@echo "使えるコマンド一覧："
-	@echo "  make build         	# Dockerイメージビルド"
-	@echo "  make run-docker    	# Dockerでアプリ起動"
-	@echo "  make shell         	# Docker内でシェル起動"
-	@echo "  make clean         	# .env削除"
+	@echo ""
+	@echo "【サーバー起動】"
+	@echo "  make build            # Dockerイメージビルド"
+	@echo "  make run-docker       # Dockerでサーバー起動（Webフロントエンド）"
+	@echo "  make shell            # Docker内でシェル起動"
+	@echo ""
+	@echo "【Jobテスト】"
+	@echo "  make run-job-priority # 優先店舗のみスクレイピング（Cloud Run Jobs互換）"
+	@echo "  make run-job-normal   # 全店舗の未取得分をスクレイピング（Cloud Run Jobs互換）"
+	@echo "  make run-job-all      # 全店舗強制スクレイピング（テスト用）"
+	@echo ""
+	@echo "【その他】"
+	@echo "  make clean            # .env削除"
 
-# Dockerビルド
+# ============================================================================
+# ビルド
+# ============================================================================
+
 build:
 	docker build --build-arg HOST_UID=$(HOST_UID) -t $(IMAGE_NAME) .
 
-# Docker実行
+# ============================================================================
+# サーバー起動（Webフロントエンド）
+# ============================================================================
+
 run-docker: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
 	docker run --env-file .env -v $(PWD)/data:/tmp -p $(PORT):8080 $(IMAGE_NAME)
@@ -32,6 +47,28 @@ run-docker: $(ENV_PROD)
 shell:
 	docker run -it --env-file .env -v $(PWD)/data:/tmp -w /app $(IMAGE_NAME) /bin/sh
 
-# 片付け
+# ============================================================================
+# Job実行（Cloud Run Jobs互換）
+# ============================================================================
+
+# 優先店舗のみ（7:00-8:00の集中リトライ用）
+run-job-priority: $(ENV_PROD)
+	cp $(ENV_PROD) $(ENV)
+	docker run --env-file .env -e JOB_MODE=priority -v $(PWD)/data:/tmp $(IMAGE_NAME) node job.js
+
+# 全店舗の未取得分（8:30, 10:00, 12:30の通常実行用）
+run-job-normal: $(ENV_PROD)
+	cp $(ENV_PROD) $(ENV)
+	docker run --env-file .env -e JOB_MODE=normal -v $(PWD)/data:/tmp $(IMAGE_NAME) node job.js
+
+# 全店舗強制実行（テスト用）
+run-job-all: $(ENV_PROD)
+	cp $(ENV_PROD) $(ENV)
+	docker run --env-file .env -e JOB_MODE=all -v $(PWD)/data:/tmp $(IMAGE_NAME) node job.js
+
+# ============================================================================
+# クリーンアップ
+# ============================================================================
+
 clean:
 	rm -f .env

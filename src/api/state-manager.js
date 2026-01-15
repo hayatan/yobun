@@ -41,6 +41,7 @@ class JobStateManager {
             scraping: createInitialState(),
             sync: createInitialState(),
             forceRescrape: createInitialState(),
+            datamart: createInitialState(),
         };
     }
 

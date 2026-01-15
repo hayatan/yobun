@@ -140,6 +140,39 @@ const deleteDiffData = async (db, date, hole) => {
     });
 };
 
+// 日付範囲とホール（オプション）でデータを削除
+const deleteDiffDataRange = async (db, startDate, endDate, hole = null) => {
+    await createScrapedDataTableIfNotExists(db);
+    return new Promise((resolve, reject) => {
+        let query;
+        let params;
+        
+        if (hole) {
+            query = `
+                DELETE FROM scraped_data
+                WHERE date >= ? AND date <= ? AND hole = ?
+            `;
+            params = [startDate, endDate, hole];
+        } else {
+            query = `
+                DELETE FROM scraped_data
+                WHERE date >= ? AND date <= ?
+            `;
+            params = [startDate, endDate];
+        }
+        
+        db.run(query, params, function(err) {
+            if (err) {
+                console.error(`[${startDate}〜${endDate}][${hole || '全店舗'}] データ削除中にエラーが発生しました: ${err.message}`);
+                reject(err);
+            } else {
+                console.log(`[${startDate}〜${endDate}][${hole || '全店舗'}] データ削除結果: ${this.changes} 件削除`);
+                resolve(this.changes);
+            }
+        });
+    });
+};
+
 const sqlite = {
     createScrapedDataTableIfNotExists,
     saveDiffData,
@@ -147,6 +180,7 @@ const sqlite = {
     getDiffData,
     getDiffDataDate,
     deleteDiffData,
+    deleteDiffDataRange,
 };
 
 export default sqlite;

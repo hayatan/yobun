@@ -13,6 +13,7 @@ import { getTable, saveToBigQuery, deleteBigQueryTable } from '../../db/bigquery
 import scrapeSlotDataByMachine from '../../services/slorepo/scraper.js';
 import config, { findHoleByName } from '../../config/slorepo-config.js';
 import { BIGQUERY } from '../../config/constants.js';
+import { acquireLock, releaseLock, getLockStatus } from '../../util/lock.js';
 
 const JOB_TYPE = 'forceRescrape';
 const SOURCE = 'slorepo';
@@ -21,8 +22,12 @@ const createForceRescrapeRouter = (bigquery, db) => {
     const router = Router();
 
     // 強制再取得の状態を取得するエンドポイント
-    router.get('/status', (req, res) => {
-        res.json(stateManager.getState(JOB_TYPE));
+    router.get('/status', async (req, res) => {
+        const lockStatus = await getLockStatus();
+        res.json({
+            ...stateManager.getState(JOB_TYPE),
+            lock: lockStatus,
+        });
     });
 
     // 強制再取得のエンドポイント
@@ -34,10 +39,22 @@ const createForceRescrapeRouter = (bigquery, db) => {
             });
         }
 
+        // GCSロックを確認・取得
+        const lockAcquired = await acquireLock();
+        if (!lockAcquired) {
+            const lockStatus = await getLockStatus();
+            return res.status(409).json({
+                error: '別のプロセスがスクレイピングを実行中です',
+                lock: lockStatus,
+                status: stateManager.getState(JOB_TYPE)
+            });
+        }
+
         try {
             const { date, holeName } = req.body;
             
             if (!date || !holeName) {
+                await releaseLock(); // ロック解放
                 return res.status(400).json({
                     error: '日付とホール名を指定してください',
                     status: stateManager.getState(JOB_TYPE)
@@ -47,6 +64,7 @@ const createForceRescrapeRouter = (bigquery, db) => {
             // ホール設定を確認
             const hole = findHoleByName(holeName);
             if (!hole) {
+                await releaseLock(); // ロック解放
                 return res.status(400).json({
                     error: '指定されたホールが見つかりません',
                     status: stateManager.getState(JOB_TYPE)
@@ -92,6 +110,8 @@ const createForceRescrapeRouter = (bigquery, db) => {
                 } catch (error) {
                     console.error('強制再取得中にエラーが発生しました:', error);
                     stateManager.failJob(JOB_TYPE, error.message);
+                } finally {
+                    await releaseLock(); // ロック解放
                 }
             })();
 
@@ -101,6 +121,7 @@ const createForceRescrapeRouter = (bigquery, db) => {
             });
         } catch (error) {
             stateManager.failJob(JOB_TYPE, error.message);
+            await releaseLock(); // ロック解放
             res.status(500).json({ 
                 error: '強制再取得の開始に失敗しました',
                 status: stateManager.getState(JOB_TYPE)
