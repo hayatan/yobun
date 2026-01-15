@@ -240,14 +240,16 @@ aggregated_data AS (
     data.hole,
     data.machine,
     data.machine_number,
-    AVG(data.diff) AS avg_diff,
-    AVG(data.win) AS win_rate,
+    SAFE_DIVIDE(SUM(data.diff), COUNT(*)) AS avg_diff,
+    SAFE_DIVIDE(SUM(data.win), COUNT(*)) AS win_rate,
     MIN(data.date) AS date_from,
     MAX(data.date) AS date_to,
-    SAFE_DIVIDE((SUM(data.game) * 3 + SUM(data.diff)), (SUM(data.game) * 3)) AS payout_rate
+    SAFE_DIVIDE(SUM(data.game) * 3 + SUM(data.diff), SUM(data.game) * 3) AS payout_rate
   FROM ranked_data AS data
   CROSS JOIN params p
   WHERE data.row_num = 1
+    AND data.game IS NOT NULL
+    AND data.game > 0
     -- 特日判定
     AND (
       p.special_check = FALSE
