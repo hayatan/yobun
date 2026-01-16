@@ -15,7 +15,7 @@ import { getJSTYesterday, getJSTTimeString } from './src/util/date.js';
 import { acquireLock, releaseLock } from './src/util/lock.js';
 import { runDatamartUpdate } from './src/services/datamart/runner.js';
 import scrapeSlotDataByMachine from './src/services/slorepo/scraper.js';
-import config from './src/config/slorepo-config.js';
+import { getHoles } from './src/config/slorepo-config.js';
 import bigquery from './src/db/bigquery/init.js';
 import db from './src/db/sqlite/init.js';
 import sqlite from './src/db/sqlite/operations.js';
@@ -36,7 +36,7 @@ const main = async () => {
     console.log('='.repeat(60));
     
     // ロック取得
-    if (!await acquireLock()) {
+    if (!await acquireLock(mode)) {
         console.log('別の処理が実行中のためスキップします');
         process.exit(0);
     }
@@ -46,11 +46,11 @@ const main = async () => {
         let holes;
         if (mode === 'priority') {
             // 優先店舗のみ（7:00-8:00の集中リトライ用）
-            holes = config.getHoles({ lateUpdate: true, active: true });
+            holes = getHoles({ lateUpdate: true, active: true });
             console.log(`優先店舗モード: ${holes.length}店舗を処理`);
         } else {
             // normal または all: 全店舗を対象
-            holes = config.getHoles({ active: true });
+            holes = getHoles({ active: true });
             console.log(`全店舗モード: ${holes.length}店舗を処理`);
         }
         
