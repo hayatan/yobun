@@ -6,7 +6,7 @@
 set -e
 
 PROJECT_ID="yobun-450512"
-REGION="asia-northeast1"
+REGION="us-central1"
 
 echo "=================================================="
 echo "⚠️  警告: すべてのCloud Run JobsとSchedulerを削除します"

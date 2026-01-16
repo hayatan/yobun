@@ -7,7 +7,7 @@
 set -e
 
 PROJECT_ID="yobun-450512"
-REGION="asia-northeast1"
+REGION="us-central1"
 IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper"
 
 echo "=================================================="

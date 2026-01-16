@@ -6,7 +6,7 @@
 set -e
 
 PROJECT_ID="yobun-450512"
-REGION="asia-northeast1"
+REGION="us-central1"
 SERVICE_ACCOUNT="${PROJECT_ID}@appspot.gserviceaccount.com"
 
 echo "=================================================="

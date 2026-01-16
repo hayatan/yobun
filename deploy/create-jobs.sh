@@ -6,7 +6,7 @@
 set -e
 
 PROJECT_ID="yobun-450512"
-REGION="asia-northeast1"
+REGION="us-central1"
 IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper"
 
 echo "=================================================="
@@ -28,9 +28,7 @@ gcloud run jobs create yobun-priority-job \
   --memory 2Gi \
   --cpu 1 \
   --task-timeout 600 \
-  --max-retries 0 \
-  --command "node" \
-  --args "job.js"
+  --max-retries 0
 
 echo "✓ 優先店舗用Job を作成しました"
 
@@ -45,9 +43,7 @@ gcloud run jobs create yobun-normal-job \
   --memory 2Gi \
   --cpu 1 \
   --task-timeout 3600 \
-  --max-retries 0 \
-  --command "node" \
-  --args "job.js"
+  --max-retries 0
 
 echo "✓ 通常店舗用Job を作成しました"
 
