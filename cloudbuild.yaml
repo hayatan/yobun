@@ -18,33 +18,20 @@ steps:
       - '--build-arg'
       - 'HOST_UID=1000'
       - '-t'
-      - 'gcr.io/${PROJECT_ID}/yobun-scraper:${SHORT_SHA}'
-      - '-t'
-      - 'gcr.io/${PROJECT_ID}/yobun-scraper:latest'
+      - 'gcr.io/$PROJECT_ID/yobun-scraper:latest'
       - '.'
     timeout: 1800s  # 30分
 
-  # Container Registry へのプッシュ
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - 'gcr.io/${PROJECT_ID}/yobun-scraper:${SHORT_SHA}'
-  
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'push'
-      - 'gcr.io/${PROJECT_ID}/yobun-scraper:latest'
-
-# ビルドされたイメージ
+# ビルドされたイメージ（自動的にプッシュされる）
 images:
-  - 'gcr.io/${PROJECT_ID}/yobun-scraper:${SHORT_SHA}'
-  - 'gcr.io/${PROJECT_ID}/yobun-scraper:latest'
+  - 'gcr.io/$PROJECT_ID/yobun-scraper:latest'
 
 # ビルドオプション
 options:
   machineType: 'E2_HIGHCPU_8'  # ビルド高速化
   diskSizeGb: 100
   logging: CLOUD_LOGGING_ONLY
+  substitution_option: 'ALLOW_LOOSE'  # 変数が未定義でもエラーにしない
 
 # タイムアウト設定（全体）
 timeout: 2400s  # 40分
