@@ -7,7 +7,8 @@ set -e
 
 PROJECT_ID="yobun-450512"
 REGION="us-central1"
-IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper"
+IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper:latest"
+SERVICE_ACCOUNT="slot-data-scraper-test@yobun-450512.iam.gserviceaccount.com"
 
 echo "=================================================="
 echo "Cloud Run Jobs を作成します"
@@ -24,6 +25,7 @@ gcloud run jobs create yobun-priority-job \
   --project ${PROJECT_ID} \
   --region ${REGION} \
   --image ${IMAGE} \
+  --service-account ${SERVICE_ACCOUNT} \
   --set-env-vars "JOB_MODE=priority,NODE_ENV=production" \
   --memory 2Gi \
   --cpu 1 \
@@ -39,6 +41,7 @@ gcloud run jobs create yobun-normal-job \
   --project ${PROJECT_ID} \
   --region ${REGION} \
   --image ${IMAGE} \
+  --service-account ${SERVICE_ACCOUNT} \
   --set-env-vars "JOB_MODE=normal,NODE_ENV=production" \
   --memory 2Gi \
   --cpu 1 \

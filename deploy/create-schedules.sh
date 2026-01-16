@@ -7,7 +7,8 @@ set -e
 
 PROJECT_ID="yobun-450512"
 REGION="us-central1"
-SERVICE_ACCOUNT="${PROJECT_ID}@appspot.gserviceaccount.com"
+# 専用のサービスアカウントを使用
+SERVICE_ACCOUNT="slot-data-scraper-test@yobun-450512.iam.gserviceaccount.com"
 
 echo "=================================================="
 echo "Cloud Scheduler を設定します"

@@ -8,12 +8,14 @@ set -e
 
 PROJECT_ID="yobun-450512"
 REGION="us-central1"
-IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper"
+IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper:latest"
+SERVICE_ACCOUNT="slot-data-scraper-test@yobun-450512.iam.gserviceaccount.com"
 
 echo "=================================================="
 echo "Cloud Run Jobs を更新します"
 echo "=================================================="
 echo "イメージ: ${IMAGE}"
+echo "サービスアカウント: ${SERVICE_ACCOUNT}"
 echo "=================================================="
 
 # 優先店舗用Job
@@ -22,7 +24,8 @@ echo "1. 優先店舗用Job (yobun-priority-job) を更新中..."
 gcloud run jobs update yobun-priority-job \
   --project ${PROJECT_ID} \
   --region ${REGION} \
-  --image ${IMAGE}
+  --image ${IMAGE} \
+  --service-account ${SERVICE_ACCOUNT}
 
 echo "✓ 優先店舗用Job を更新しました"
 
@@ -32,7 +35,8 @@ echo "2. 通常店舗用Job (yobun-normal-job) を更新中..."
 gcloud run jobs update yobun-normal-job \
   --project ${PROJECT_ID} \
   --region ${REGION} \
-  --image ${IMAGE}
+  --image ${IMAGE} \
+  --service-account ${SERVICE_ACCOUNT}
 
 echo "✓ 通常店舗用Job を更新しました"
 
