@@ -10,23 +10,34 @@ Cloud Run JobsとCloud Schedulerの設定・デプロイ用スクリプト
 
 ## デプロイ手順
 
-### 1. Cloud Buildの自動ビルド設定（初回のみ）
+### 1. Dockerイメージのビルド
 
-mainブランチへのpush時に自動的にDockerイメージをビルド・プッシュします：
-
-```bash
-# Cloud Build トリガーを設定
-./deploy/setup-cloud-build.sh
-```
-
-または手動でビルド：
+**オプションA: 手動ビルド（推奨）**
 
 ```bash
-# cloudbuild.yamlを使ってビルド
+# cloudbuild.yamlを使ってビルド＆プッシュ
 gcloud builds submit --config cloudbuild.yaml --project yobun-450512
 ```
 
-### 2. サービスアカウント権限設定（初回のみ）
+**オプションB: 自動ビルド設定**
+
+mainブランチへのpush時に自動ビルドしたい場合：
+
+```bash
+# 設定ガイドを表示
+./deploy/setup-cloud-build.sh
+```
+
+ガイドに従ってCloud Consoleで設定してください。
+
+### 2. Cloud Run Jobsの作成
+
+```bash
+# 2つのJobを作成（優先店舗用・通常店舗用）
+./deploy/create-jobs.sh
+```
+
+### 3. サービスアカウント権限設定
 
 ```bash
 # 必要な権限を付与
@@ -38,19 +49,6 @@ gcloud builds submit --config cloudbuild.yaml --project yobun-450512
 - Storage Object Admin（GCSバックアップ用）
 - Cloud Run Invoker（Scheduler起動用）
 
-### 3. Cloud Run Jobsの作成
-
-```bash
-# 2つのJobを作成（優先店舗用・通常店舗用）
-./deploy/create-jobs.sh
-```
-
-**再度、権限設定を実行**：
-```bash
-# Job作成後にInvoker権限を付与
-./deploy/setup-permissions.sh
-```
-
 ### 4. Cloud Schedulerの設定
 
 ```bash
@@ -61,15 +59,17 @@ gcloud builds submit --config cloudbuild.yaml --project yobun-450512
 ### 5. イメージ更新時（コード変更後）
 
 ```bash
-# mainブランチにpushすると自動でビルド・プッシュされます
-git push origin main
-
-# または手動でビルド
+# 手動でビルド＆プッシュ
 gcloud builds submit --config cloudbuild.yaml --project yobun-450512
 
 # Jobのイメージを更新
 ./deploy/update-jobs.sh
 ```
+
+**初回デプロイ後の変更フロー**：
+1. コード変更
+2. `git commit` & `git push`
+3. 上記コマンドでイメージをビルド＆更新
 
 ## ファイル一覧
 
