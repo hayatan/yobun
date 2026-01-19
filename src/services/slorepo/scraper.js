@@ -1,7 +1,11 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import config from '../../config/slorepo-config.js';
 import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import { cleanNumber } from '../../util/slorepo.js';
+
+// Cloudflare等のボット検出を回避するためのStealthプラグインを使用
+puppeteer.use(StealthPlugin());
 
 export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
     const hole = config.holes.find(h => h.code === holeCode);
@@ -16,18 +20,36 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
 
     const page = await browser.newPage();
     
-    // User-Agentを設定してbot検出を回避
+    // User-Agentを設定
     await page.setUserAgent(SLOREPO_SOURCE.userAgent);
+    
+    // 追加のボット検出回避設定
+    await page.setExtraHTTPHeaders({
+        'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+    });
     
     const allData = [];
 
     try {
         await new Promise(resolve => setTimeout(resolve, interval));
         console.log(`[${date}][${hole.name}] 機種一覧を取得中...`);
-        await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+        await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 60000 });
+
+        // Cloudflareチャレンジページの検出と待機
+        let pageTitle = await page.title();
+        if (pageTitle.includes('Just a moment') || pageTitle.includes('Checking')) {
+            console.log(`[${date}][${hole.name}] Cloudflareチャレンジ検出、待機中...`);
+            // チャレンジが解決されるまで待機（最大30秒）
+            await page.waitForFunction(
+                () => !document.title.includes('Just a moment') && !document.title.includes('Checking'),
+                { timeout: 30000 }
+            );
+            // ページが完全にロードされるまで追加で待機
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            pageTitle = await page.title();
+        }
 
         // デバッグ: ページ情報を出力
-        const pageTitle = await page.title();
         const pageUrl = page.url();
         console.log(`[${date}][${hole.name}] ページロード完了 - タイトル: "${pageTitle}", URL: ${pageUrl}`);
         
