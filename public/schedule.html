@@ -7,16 +7,18 @@
     <script src="/js/status-header.js"></script>
     <style>
         :root {
-            --bg-primary: #0d1117;
-            --bg-secondary: #161b22;
-            --bg-tertiary: #21262d;
-            --border-color: #30363d;
-            --text-primary: #c9d1d9;
-            --text-secondary: #8b949e;
+            --bg-primary: #0a0f14;
+            --bg-secondary: #111820;
+            --bg-tertiary: #1a2330;
+            --bg-card: #151d28;
+            --border-color: #2a3544;
+            --text-primary: #e6edf3;
+            --text-secondary: #7d8590;
+            --text-muted: #484f58;
+            --accent-blue: #2f81f7;
             --accent-green: #3fb950;
             --accent-yellow: #d29922;
             --accent-red: #f85149;
-            --accent-blue: #58a6ff;
             --accent-purple: #a371f7;
         }
         
@@ -28,67 +30,269 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-            background-color: var(--bg-primary);
+            background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.5;
+            min-height: 100vh;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 24px;
         }
         
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 32px;
             padding-bottom: 16px;
             border-bottom: 1px solid var(--border-color);
         }
         
         h1 {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 600;
+            color: var(--text-primary);
         }
         
-        h2 {
+        .section-title {
             font-size: 18px;
             font-weight: 600;
-            margin-bottom: 16px;
             color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .section {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
+        /* メッセージ */
+        .message {
+            padding: 12px 16px;
             border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .message.success {
+            background: rgba(63, 185, 80, 0.15);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            display: block;
+        }
+        .message.error {
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            display: block;
         }
         
-        .section-header {
+        /* ジョブカード */
+        .job-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .job-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            padding: 16px 20px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
         }
         
+        .job-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .job-title h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .job-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .job-badge.scrape {
+            background: rgba(47, 129, 247, 0.2);
+            color: var(--accent-blue);
+        }
+        
+        .job-badge.datamart {
+            background: rgba(163, 113, 247, 0.2);
+            color: var(--accent-purple);
+        }
+        
+        .job-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.enabled {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+        
+        .status-dot.disabled {
+            background: var(--text-muted);
+        }
+        
+        .job-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .job-body {
+            padding: 20px;
+        }
+        
+        .job-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        
+        .info-value .check {
+            color: var(--accent-green);
+        }
+        
+        .info-value .cross {
+            color: var(--text-muted);
+        }
+        
+        /* スケジュールリスト */
+        .schedules-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .schedules-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .schedules-title {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .schedule-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .schedule-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .schedule-enabled {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .schedule-enabled.on {
+            background: var(--accent-green);
+            color: white;
+        }
+        
+        .schedule-enabled.off {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+        
+        .schedule-time {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .schedule-cron {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+        
+        .schedule-actions {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .no-schedules {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        
+        /* ボタン */
         button {
-            background-color: var(--accent-blue);
+            cursor: pointer;
             border: none;
             border-radius: 6px;
-            color: white;
-            padding: 8px 16px;
-            font-size: 14px;
-            cursor: pointer;
+            font-size: 13px;
             font-weight: 500;
-            transition: opacity 0.2s;
-        }
-        
-        button:hover {
-            opacity: 0.9;
+            padding: 8px 14px;
+            transition: all 0.15s;
         }
         
         button:disabled {
@@ -96,183 +300,58 @@
             cursor: not-allowed;
         }
         
-        button.btn-success {
-            background-color: var(--accent-green);
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
         }
         
-        button.btn-warning {
-            background-color: var(--accent-yellow);
-            color: #000;
+        .btn-primary:hover:not(:disabled) {
+            background: #4290f9;
         }
         
-        button.btn-secondary {
-            background-color: var(--bg-tertiary);
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
             border: 1px solid var(--border-color);
         }
         
-        button.btn-sm {
-            padding: 4px 12px;
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border-color);
+        }
+        
+        .btn-success {
+            background: var(--accent-green);
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        
+        .btn-danger {
+            background: transparent;
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(248, 81, 73, 0.1);
+        }
+        
+        .btn-small {
+            padding: 4px 10px;
             font-size: 12px;
         }
         
-        .schedule-card {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        
-        .schedule-card.disabled {
-            opacity: 0.6;
-        }
-        
-        .schedule-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
-        
-        .schedule-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .schedule-title h3 {
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .schedule-badge {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 500;
-        }
-        
-        .schedule-badge.enabled {
-            background-color: rgba(63, 185, 80, 0.2);
-            color: var(--accent-green);
-        }
-        
-        .schedule-badge.disabled {
-            background-color: rgba(139, 148, 158, 0.2);
+        .btn-icon {
+            padding: 6px 8px;
+            background: transparent;
             color: var(--text-secondary);
         }
         
-        .schedule-badge.scrape {
-            background-color: rgba(88, 166, 255, 0.2);
-            color: var(--accent-blue);
-        }
-        
-        .schedule-badge.datamart {
-            background-color: rgba(163, 113, 247, 0.2);
-            color: var(--accent-purple);
-        }
-        
-        .schedule-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .schedule-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .schedule-detail {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .schedule-detail label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-        }
-        
-        .schedule-detail .value {
-            font-family: monospace;
-            font-size: 14px;
-        }
-        
-        .schedule-description {
-            font-size: 13px;
-            color: var(--text-secondary);
-            padding-top: 12px;
-            border-top: 1px solid var(--border-color);
-        }
-        
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        
-        .history-table th,
-        .history-table td {
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .history-table th {
-            background-color: var(--bg-tertiary);
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-        
-        .history-table tr:hover {
-            background-color: var(--bg-tertiary);
-        }
-        
-        .status-success {
-            color: var(--accent-green);
-        }
-        
-        .status-failed {
-            color: var(--accent-red);
-        }
-        
-        .status-skipped {
-            color: var(--accent-yellow);
-        }
-        
-        .error-message {
-            background-color: rgba(248, 81, 73, 0.1);
-            border: 1px solid var(--accent-red);
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 24px;
-            color: var(--accent-red);
-        }
-        
-        .success-message {
-            background-color: rgba(63, 185, 80, 0.1);
-            border: 1px solid var(--accent-green);
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 24px;
-            color: var(--accent-green);
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 48px;
-            color: var(--text-secondary);
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 32px;
-            color: var(--text-secondary);
+        .btn-icon:hover:not(:disabled) {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
         }
         
         /* モーダル */
@@ -281,10 +360,10 @@
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 2000;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
             align-items: center;
             justify-content: center;
         }
@@ -294,42 +373,74 @@
         }
         
         .modal {
-            background-color: var(--bg-secondary);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 24px;
-            max-width: 500px;
+            border-radius: 12px;
             width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
-        .modal h3 {
-            margin-bottom: 16px;
-        }
-        
-        .modal-form {
+        .modal-header {
             display: flex;
-            flex-direction: column;
-            gap: 16px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
         }
         
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 20px;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* フォーム */
         .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
+            margin-bottom: 20px;
         }
         
         .form-group label {
+            display: block;
             font-size: 13px;
+            font-weight: 500;
             color: var(--text-secondary);
+            margin-bottom: 6px;
         }
         
-        .form-group input,
+        .form-group input[type="text"],
+        .form-group input[type="number"],
         .form-group select {
-            background-color: var(--bg-tertiary);
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             color: var(--text-primary);
-            padding: 10px 12px;
             font-size: 14px;
         }
         
@@ -339,28 +450,174 @@
             border-color: var(--accent-blue);
         }
         
-        .modal-actions {
+        .form-row {
             display: flex;
             gap: 12px;
-            justify-content: flex-end;
-            margin-top: 8px;
+            align-items: flex-end;
         }
         
-        .timestamp {
-            font-family: monospace;
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .radio-option:has(input:checked) {
+            border-color: var(--accent-blue);
+            background: rgba(47, 129, 247, 0.1);
+        }
+        
+        .radio-option input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .radio-option-content {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .radio-option-content span {
+            font-size: 14px;
+        }
+        
+        .radio-option input[type="number"] {
+            width: 60px;
+            padding: 6px 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .hint {
             font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        /* 履歴セクション */
+        .history-section {
+            margin-top: 32px;
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .history-table th {
+            text-align: left;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .history-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .history-table tr:hover td {
+            background: var(--bg-tertiary);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .status-badge.success {
+            background: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .status-badge.failed {
+            background: rgba(248, 81, 73, 0.2);
+            color: var(--accent-red);
+        }
+        
+        .status-badge.skipped {
+            background: rgba(210, 153, 34, 0.2);
+            color: var(--accent-yellow);
+        }
+        
+        .manual-badge {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+        
+        /* ローディング */
+        .loading {
+            text-align: center;
+            padding: 40px;
             color: var(--text-secondary);
         }
         
-        @media (max-width: 768px) {
-            .schedule-header {
-                flex-direction: column;
-                gap: 12px;
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
             }
             
-            .schedule-actions {
-                width: 100%;
-                justify-content: flex-end;
+            .job-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .radio-option-content {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -369,381 +626,480 @@
     <div class="container">
         <header>
             <h1>⏰ スケジュール管理</h1>
-            <button id="refreshBtn" class="btn-secondary">更新</button>
+            <button class="btn-secondary" onclick="loadData()">🔄 更新</button>
         </header>
         
-        <div id="messageContainer"></div>
+        <div id="message" class="message"></div>
         
-        <!-- スケジュール一覧 -->
-        <div class="section">
-            <div class="section-header">
-                <h2>📋 スケジュール一覧</h2>
-            </div>
-            <div id="scheduleList">
-                <div class="loading">読み込み中...</div>
-            </div>
+        <div class="section-title">📋 ジョブ一覧</div>
+        <div id="jobsList">
+            <div class="loading">読み込み中...</div>
         </div>
         
-        <!-- 実行履歴 -->
-        <div class="section">
-            <div class="section-header">
-                <h2>📜 実行履歴</h2>
-            </div>
-            <div id="historyContainer">
-                <div class="loading">読み込み中...</div>
+        <div class="history-section">
+            <div class="section-title">📜 実行履歴</div>
+            <div class="job-card">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>ジョブ</th>
+                            <th>開始</th>
+                            <th>状態</th>
+                            <th>メッセージ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="4" class="loading">読み込み中...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
     
-    <!-- 編集モーダル -->
-    <div id="editModal" class="modal-overlay">
+    <!-- ジョブ編集モーダル -->
+    <div id="jobModal" class="modal-overlay">
         <div class="modal">
-            <h3>スケジュール編集</h3>
-            <form id="editForm" class="modal-form">
-                <input type="hidden" id="editId">
+            <div class="modal-header">
+                <h2>ジョブ設定</h2>
+                <button class="modal-close" onclick="closeJobModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editJobId">
+                
                 <div class="form-group">
-                    <label for="editName">名前</label>
-                    <input type="text" id="editName" required>
+                    <label>ジョブ名</label>
+                    <input type="text" id="jobName" placeholder="ジョブ名">
                 </div>
+                
                 <div class="form-group">
-                    <label for="editCron">Cron式 (JST)</label>
-                    <input type="text" id="editCron" required placeholder="分 時 日 月 曜日">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="jobEnabled">
+                        <label for="jobEnabled">このジョブを有効にする</label>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="editDescription">説明</label>
-                    <input type="text" id="editDescription">
+                
+                <div class="form-group" id="dateRangeGroup">
+                    <label>対象日付範囲</label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="number" id="dateFrom" min="0" max="30" value="1">
+                            <div class="hint">日前から</div>
+                        </div>
+                        <div class="form-group">
+                            <input type="number" id="dateTo" min="0" max="30" value="1">
+                            <div class="hint">日前まで</div>
+                        </div>
+                    </div>
+                    <div class="hint">0 = 当日、1 = 昨日、2 = 一昨日...</div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" id="editCancelBtn" class="btn-secondary">キャンセル</button>
-                    <button type="submit" class="btn-success">保存</button>
+                
+                <div class="form-group" id="datamartAfterGroup">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="runDatamartAfter">
+                        <label for="runDatamartAfter">スクレイピング後にデータマートを更新</label>
+                    </div>
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeJobModal()">キャンセル</button>
+                <button class="btn-primary" onclick="saveJob()">保存</button>
+            </div>
         </div>
     </div>
     
-    <!-- 確認モーダル -->
-    <div id="confirmModal" class="modal-overlay">
+    <!-- スケジュール編集モーダル -->
+    <div id="scheduleModal" class="modal-overlay">
         <div class="modal">
-            <h3 id="confirmTitle">確認</h3>
-            <p id="confirmMessage" style="margin-bottom: 24px; color: var(--text-secondary);"></p>
-            <div class="modal-actions">
-                <button id="confirmCancelBtn" class="btn-secondary">キャンセル</button>
-                <button id="confirmOkBtn" class="btn-success">実行</button>
+            <div class="modal-header">
+                <h2 id="scheduleModalTitle">スケジュール追加</h2>
+                <button class="modal-close" onclick="closeScheduleModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editScheduleJobId">
+                <input type="hidden" id="editScheduleId">
+                
+                <div class="form-group">
+                    <label>実行タイミング</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="scheduleType" value="daily" checked onchange="toggleScheduleType()">
+                            <div class="radio-option-content">
+                                <span>毎日</span>
+                                <input type="number" id="scheduleHour" min="0" max="23" value="0">
+                                <span>時</span>
+                                <input type="number" id="scheduleMinute" min="0" max="59" value="0">
+                                <span>分</span>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="scheduleType" value="interval" onchange="toggleScheduleType()">
+                            <div class="radio-option-content">
+                                <input type="number" id="scheduleInterval" min="1" max="24" value="6">
+                                <span>時間ごと</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="scheduleEnabled" checked>
+                        <label for="scheduleEnabled">このスケジュールを有効にする</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeScheduleModal()">キャンセル</button>
+                <button class="btn-primary" onclick="saveSchedule()">保存</button>
             </div>
         </div>
     </div>
     
     <script>
-        let schedules = [];
-        let currentConfirmAction = null;
+        let currentData = null;
         
-        // 初期化
-        document.getElementById('refreshBtn').addEventListener('click', refresh);
-        document.getElementById('editCancelBtn').addEventListener('click', () => hideModal('editModal'));
-        document.getElementById('editForm').addEventListener('submit', saveSchedule);
-        document.getElementById('confirmCancelBtn').addEventListener('click', () => hideModal('confirmModal'));
-        document.getElementById('confirmOkBtn').addEventListener('click', executeConfirmAction);
-        
-        // 初回読み込み
-        refresh();
+        // 初期読み込み
+        loadData();
         
         // 定期更新
-        setInterval(refresh, 60000);
+        setInterval(loadData, 15000);
         
-        async function refresh() {
-            await Promise.all([
-                fetchSchedules(),
-                fetchHistory()
-            ]);
-        }
-        
-        async function fetchSchedules() {
+        async function loadData() {
             try {
-                const response = await fetch('/api/schedules');
-                const data = await response.json();
-                
-                if (data.success) {
-                    schedules = data.schedules;
-                    renderSchedules();
-                } else {
-                    showError('スケジュールの取得に失敗しました: ' + data.error);
-                }
+                const res = await fetch('/api/schedules');
+                if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+                currentData = await res.json();
+                renderJobs(currentData.jobs);
+                renderHistory(currentData.history);
             } catch (error) {
-                console.error('スケジュール取得エラー:', error);
-                showError('スケジュールの取得に失敗しました: ' + error.message);
+                console.error('データ取得エラー:', error);
+                showMessage('error', `データの取得に失敗しました: ${error.message}`);
             }
         }
         
-        async function fetchHistory() {
-            try {
-                const response = await fetch('/api/schedules/history?limit=20');
-                const data = await response.json();
-                
-                if (data.success) {
-                    renderHistory(data.history);
-                } else {
-                    document.getElementById('historyContainer').innerHTML = 
-                        '<div class="empty-state">履歴の取得に失敗しました</div>';
-                }
-            } catch (error) {
-                console.error('履歴取得エラー:', error);
-                document.getElementById('historyContainer').innerHTML = 
-                    '<div class="empty-state">履歴の取得に失敗しました</div>';
-            }
-        }
-        
-        function renderSchedules() {
-            const container = document.getElementById('scheduleList');
+        function renderJobs(jobs) {
+            const container = document.getElementById('jobsList');
             
-            if (schedules.length === 0) {
-                container.innerHTML = '<div class="empty-state">スケジュールが登録されていません</div>';
+            if (!jobs || jobs.length === 0) {
+                container.innerHTML = '<div class="loading">ジョブがありません</div>';
                 return;
             }
             
-            container.innerHTML = schedules.map(schedule => `
-                <div class="schedule-card ${schedule.enabled ? '' : 'disabled'}">
-                    <div class="schedule-header">
-                        <div class="schedule-title">
-                            <h3>${schedule.name}</h3>
-                            <span class="schedule-badge ${schedule.enabled ? 'enabled' : 'disabled'}">
-                                ${schedule.enabled ? '有効' : '無効'}
-                            </span>
-                            <span class="schedule-badge ${schedule.jobType}">
-                                ${schedule.jobType === 'scrape' ? 'スクレイピング' : 'データマート'}
-                            </span>
+            container.innerHTML = jobs.map(job => `
+                <div class="job-card">
+                    <div class="job-header">
+                        <div class="job-title">
+                            <h3>${escapeHtml(job.name)}</h3>
+                            <span class="job-badge ${job.jobType}">${job.jobType === 'scrape' ? 'スクレイピング' : 'データマート'}</span>
                         </div>
-                        <div class="schedule-actions">
-                            <button class="btn-sm btn-secondary" onclick="editSchedule('${schedule.id}')">編集</button>
-                            <button class="btn-sm ${schedule.enabled ? 'btn-warning' : 'btn-success'}" 
-                                    onclick="toggleSchedule('${schedule.id}')">
-                                ${schedule.enabled ? '無効化' : '有効化'}
-                            </button>
-                            <button class="btn-sm" onclick="runSchedule('${schedule.id}')">今すぐ実行</button>
+                        <div class="job-status">
+                            <span class="status-dot ${job.enabled ? 'enabled' : 'disabled'}"></span>
+                            <span>${job.enabled ? '有効' : '無効'}</span>
                         </div>
                     </div>
-                    <div class="schedule-details">
-                        <div class="schedule-detail">
-                            <label>Cron式 (JST)</label>
-                            <div class="value">${schedule.cron}</div>
+                    <div class="job-body">
+                        <div class="job-info">
+                            <div class="info-item">
+                                <span class="info-label">対象日付</span>
+                                <span class="info-value">${formatDateRange(job.dateRange)}</span>
+                            </div>
+                            ${job.jobType === 'scrape' ? `
+                            <div class="info-item">
+                                <span class="info-label">DM自動更新</span>
+                                <span class="info-value">${job.runDatamartAfter ? '<span class="check">✓ する</span>' : '<span class="cross">✗ しない</span>'}</span>
+                            </div>
+                            ` : ''}
+                            <div class="info-item">
+                                <span class="info-label">説明</span>
+                                <span class="info-value">${escapeHtml(job.description || '-')}</span>
+                            </div>
                         </div>
-                        <div class="schedule-detail">
-                            <label>実行タイミング</label>
-                            <div class="value">${describeCron(schedule.cron)}</div>
+                        
+                        <div class="job-actions" style="margin-bottom: 16px;">
+                            <button class="btn-secondary btn-small" onclick="openJobModal('${job.id}')">⚙️ 設定</button>
+                            <button class="btn-success btn-small" onclick="runJob('${job.id}')" ${job.enabled ? '' : 'disabled'}>▶ 今すぐ実行</button>
                         </div>
-                        <div class="schedule-detail">
-                            <label>状態</label>
-                            <div class="value">${schedule.isRegistered ? '🟢 登録済み' : '⚪ 未登録'}</div>
+                        
+                        <div class="schedules-section">
+                            <div class="schedules-header">
+                                <span class="schedules-title">📅 スケジュール (${job.schedules?.length || 0})</span>
+                                <button class="btn-secondary btn-small" onclick="openScheduleModal('${job.id}')">+ 追加</button>
+                            </div>
+                            ${renderScheduleList(job)}
                         </div>
                     </div>
-                    ${schedule.description ? `<div class="schedule-description">${schedule.description}</div>` : ''}
                 </div>
             `).join('');
         }
         
-        function renderHistory(history) {
-            const container = document.getElementById('historyContainer');
-            
-            if (!history || history.length === 0) {
-                container.innerHTML = '<div class="empty-state">実行履歴がありません</div>';
-                return;
+        function renderScheduleList(job) {
+            if (!job.schedules || job.schedules.length === 0) {
+                return '<div class="no-schedules">スケジュールがありません</div>';
             }
             
-            container.innerHTML = `
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>実行日時</th>
-                            <th>ジョブ</th>
-                            <th>タイプ</th>
-                            <th>結果</th>
-                            <th>メッセージ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${history.map(entry => `
-                            <tr>
-                                <td class="timestamp">${formatTimestamp(entry.startedAt)}</td>
-                                <td>${entry.scheduleName || entry.scheduleId}</td>
-                                <td>
-                                    <span class="schedule-badge ${entry.jobType}">
-                                        ${entry.jobType === 'scrape' ? 'スクレイピング' : 'データマート'}
-                                    </span>
-                                </td>
-                                <td class="status-${entry.status}">${getStatusText(entry.status)}</td>
-                                <td>${entry.message || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+            return `
+                <div class="schedule-list">
+                    ${job.schedules.map(s => `
+                        <div class="schedule-item">
+                            <div class="schedule-info">
+                                <span class="schedule-enabled ${s.enabled ? 'on' : 'off'}">${s.enabled ? '✓' : ''}</span>
+                                <span class="schedule-time">${escapeHtml(s.description)}</span>
+                                <span class="schedule-cron">${escapeHtml(s.cron)}</span>
+                            </div>
+                            <div class="schedule-actions">
+                                <button class="btn-icon btn-small" onclick="openScheduleModal('${job.id}', '${s.id}')" title="編集">✏️</button>
+                                <button class="btn-icon btn-small" onclick="deleteSchedule('${job.id}', '${s.id}')" title="削除">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
             `;
         }
         
-        function describeCron(cron) {
-            const parts = cron.split(' ');
-            if (parts.length !== 5) return cron;
+        function renderHistory(history) {
+            const tbody = document.getElementById('historyBody');
             
-            const [minute, hour, day, month, weekday] = parts;
-            
-            if (day === '*' && month === '*' && weekday === '*') {
-                return `毎日 ${hour}:${minute.padStart(2, '0')}`;
+            if (!history || history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">履歴がありません</td></tr>';
+                return;
             }
             
-            return cron;
+            tbody.innerHTML = history.map(h => `
+                <tr>
+                    <td>
+                        ${escapeHtml(h.jobName || h.jobId)}
+                        ${h.manual ? '<span class="manual-badge">(手動)</span>' : ''}
+                    </td>
+                    <td>${formatDateTime(h.startedAt)}</td>
+                    <td><span class="status-badge ${h.status}">${h.status}</span></td>
+                    <td>${escapeHtml(h.message || '-')}</td>
+                </tr>
+            `).join('');
         }
         
-        function formatTimestamp(isoString) {
+        function formatDateRange(dateRange) {
+            if (!dateRange) return '1日前のみ';
+            const from = dateRange.from ?? 1;
+            const to = dateRange.to ?? 1;
+            if (from === to) {
+                if (from === 0) return '当日のみ';
+                if (from === 1) return '1日前のみ';
+                return `${from}日前のみ`;
+            }
+            return `${from}日前 〜 ${to === 0 ? '当日' : to + '日前'}`;
+        }
+        
+        function formatDateTime(isoString) {
             if (!isoString) return '-';
             const date = new Date(isoString);
-            const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-            return jst.toISOString().replace('T', ' ').substring(0, 19);
+            return date.toLocaleString('ja-JP', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Tokyo'
+            });
         }
         
-        function getStatusText(status) {
-            switch (status) {
-                case 'success': return '✅ 成功';
-                case 'failed': return '❌ 失敗';
-                case 'skipped': return '⏭️ スキップ';
-                default: return status;
-            }
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
         
-        function editSchedule(id) {
-            const schedule = schedules.find(s => s.id === id);
-            if (!schedule) return;
+        // ジョブモーダル
+        function openJobModal(jobId) {
+            const job = currentData.jobs.find(j => j.id === jobId);
+            if (!job) return;
             
-            document.getElementById('editId').value = schedule.id;
-            document.getElementById('editName').value = schedule.name;
-            document.getElementById('editCron').value = schedule.cron;
-            document.getElementById('editDescription').value = schedule.description || '';
+            document.getElementById('editJobId').value = jobId;
+            document.getElementById('jobName').value = job.name || '';
+            document.getElementById('jobEnabled').checked = job.enabled;
+            document.getElementById('dateFrom').value = job.dateRange?.from ?? 1;
+            document.getElementById('dateTo').value = job.dateRange?.to ?? 1;
+            document.getElementById('runDatamartAfter').checked = job.runDatamartAfter ?? false;
             
-            showModal('editModal');
+            // スクレイピングジョブ以外はDM自動更新オプションを非表示
+            document.getElementById('datamartAfterGroup').style.display = 
+                job.jobType === 'scrape' ? 'block' : 'none';
+            
+            document.getElementById('jobModal').classList.add('active');
         }
         
-        async function saveSchedule(e) {
-            e.preventDefault();
-            
-            const id = document.getElementById('editId').value;
-            const updates = {
-                name: document.getElementById('editName').value,
-                cron: document.getElementById('editCron').value,
-                description: document.getElementById('editDescription').value,
+        function closeJobModal() {
+            document.getElementById('jobModal').classList.remove('active');
+        }
+        
+        async function saveJob() {
+            const jobId = document.getElementById('editJobId').value;
+            const data = {
+                name: document.getElementById('jobName').value,
+                enabled: document.getElementById('jobEnabled').checked,
+                dateRange: {
+                    from: parseInt(document.getElementById('dateFrom').value) || 1,
+                    to: parseInt(document.getElementById('dateTo').value) || 1,
+                },
+                runDatamartAfter: document.getElementById('runDatamartAfter').checked,
             };
             
             try {
-                const response = await fetch(`/api/schedules/${id}`, {
+                const res = await fetch(`/api/schedules/${jobId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updates),
+                    body: JSON.stringify(data),
                 });
                 
-                const data = await response.json();
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'エラーが発生しました');
+                }
                 
-                if (data.success) {
-                    showSuccess('スケジュールを更新しました');
-                    hideModal('editModal');
-                    fetchSchedules();
-                } else {
-                    showError('更新に失敗しました: ' + data.error);
-                }
+                showMessage('success', 'ジョブを更新しました');
+                closeJobModal();
+                loadData();
             } catch (error) {
-                console.error('更新エラー:', error);
-                showError('更新に失敗しました: ' + error.message);
+                showMessage('error', `保存に失敗しました: ${error.message}`);
             }
         }
         
-        function toggleSchedule(id) {
-            const schedule = schedules.find(s => s.id === id);
-            if (!schedule) return;
+        // スケジュールモーダル
+        function openScheduleModal(jobId, scheduleId = null) {
+            document.getElementById('editScheduleJobId').value = jobId;
+            document.getElementById('editScheduleId').value = scheduleId || '';
+            document.getElementById('scheduleModalTitle').textContent = 
+                scheduleId ? 'スケジュール編集' : 'スケジュール追加';
             
-            const action = schedule.enabled ? '無効化' : '有効化';
-            showConfirm(
-                `スケジュールを${action}`,
-                `「${schedule.name}」を${action}しますか？`,
-                async () => {
-                    try {
-                        const response = await fetch(`/api/schedules/${id}/toggle`, {
-                            method: 'POST',
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            showSuccess(data.message);
-                            fetchSchedules();
-                        } else {
-                            showError('操作に失敗しました: ' + data.error);
-                        }
-                    } catch (error) {
-                        console.error('操作エラー:', error);
-                        showError('操作に失敗しました: ' + error.message);
+            if (scheduleId) {
+                const job = currentData.jobs.find(j => j.id === jobId);
+                const schedule = job?.schedules?.find(s => s.id === scheduleId);
+                if (schedule) {
+                    if (schedule.type === 'interval') {
+                        document.querySelector('input[name="scheduleType"][value="interval"]').checked = true;
+                        document.getElementById('scheduleInterval').value = schedule.intervalHours || 6;
+                    } else {
+                        document.querySelector('input[name="scheduleType"][value="daily"]').checked = true;
+                        document.getElementById('scheduleHour').value = schedule.hour || 0;
+                        document.getElementById('scheduleMinute').value = schedule.minute || 0;
                     }
+                    document.getElementById('scheduleEnabled').checked = schedule.enabled;
                 }
-            );
-        }
-        
-        function runSchedule(id) {
-            const schedule = schedules.find(s => s.id === id);
-            if (!schedule) return;
-            
-            showConfirm(
-                '手動実行',
-                `「${schedule.name}」を今すぐ実行しますか？`,
-                async () => {
-                    try {
-                        const response = await fetch(`/api/schedules/${id}/run`, {
-                            method: 'POST',
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            showSuccess('ジョブの実行を開始しました。履歴で結果を確認してください。');
-                            // 数秒後に履歴を更新
-                            setTimeout(fetchHistory, 3000);
-                        } else {
-                            showError('実行に失敗しました: ' + data.error);
-                        }
-                    } catch (error) {
-                        console.error('実行エラー:', error);
-                        showError('実行に失敗しました: ' + error.message);
-                    }
-                }
-            );
-        }
-        
-        function showModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
-        }
-        
-        function hideModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-        
-        function showConfirm(title, message, action) {
-            document.getElementById('confirmTitle').textContent = title;
-            document.getElementById('confirmMessage').textContent = message;
-            currentConfirmAction = action;
-            showModal('confirmModal');
-        }
-        
-        function executeConfirmAction() {
-            if (currentConfirmAction) {
-                currentConfirmAction();
+            } else {
+                document.querySelector('input[name="scheduleType"][value="daily"]').checked = true;
+                document.getElementById('scheduleHour').value = 0;
+                document.getElementById('scheduleMinute').value = 0;
+                document.getElementById('scheduleInterval').value = 6;
+                document.getElementById('scheduleEnabled').checked = true;
             }
-            hideModal('confirmModal');
-            currentConfirmAction = null;
+            
+            toggleScheduleType();
+            document.getElementById('scheduleModal').classList.add('active');
         }
         
-        function showError(message) {
-            const container = document.getElementById('messageContainer');
-            container.innerHTML = `<div class="error-message">${message}</div>`;
-            setTimeout(() => { container.innerHTML = ''; }, 5000);
+        function closeScheduleModal() {
+            document.getElementById('scheduleModal').classList.remove('active');
         }
         
-        function showSuccess(message) {
-            const container = document.getElementById('messageContainer');
-            container.innerHTML = `<div class="success-message">${message}</div>`;
-            setTimeout(() => { container.innerHTML = ''; }, 5000);
+        function toggleScheduleType() {
+            const type = document.querySelector('input[name="scheduleType"]:checked').value;
+            document.getElementById('scheduleHour').disabled = type !== 'daily';
+            document.getElementById('scheduleMinute').disabled = type !== 'daily';
+            document.getElementById('scheduleInterval').disabled = type !== 'interval';
+        }
+        
+        async function saveSchedule() {
+            const jobId = document.getElementById('editScheduleJobId').value;
+            const scheduleId = document.getElementById('editScheduleId').value;
+            const type = document.querySelector('input[name="scheduleType"]:checked').value;
+            
+            const data = {
+                type,
+                enabled: document.getElementById('scheduleEnabled').checked,
+            };
+            
+            if (type === 'daily') {
+                data.hour = parseInt(document.getElementById('scheduleHour').value) || 0;
+                data.minute = parseInt(document.getElementById('scheduleMinute').value) || 0;
+            } else {
+                data.intervalHours = parseInt(document.getElementById('scheduleInterval').value) || 6;
+            }
+            
+            try {
+                const url = scheduleId 
+                    ? `/api/schedules/${jobId}/schedules/${scheduleId}`
+                    : `/api/schedules/${jobId}/schedules`;
+                const method = scheduleId ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'エラーが発生しました');
+                }
+                
+                showMessage('success', scheduleId ? 'スケジュールを更新しました' : 'スケジュールを追加しました');
+                closeScheduleModal();
+                loadData();
+            } catch (error) {
+                showMessage('error', `保存に失敗しました: ${error.message}`);
+            }
+        }
+        
+        async function deleteSchedule(jobId, scheduleId) {
+            if (!confirm('このスケジュールを削除しますか？')) return;
+            
+            try {
+                const res = await fetch(`/api/schedules/${jobId}/schedules/${scheduleId}`, {
+                    method: 'DELETE',
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'エラーが発生しました');
+                }
+                
+                showMessage('success', 'スケジュールを削除しました');
+                loadData();
+            } catch (error) {
+                showMessage('error', `削除に失敗しました: ${error.message}`);
+            }
+        }
+        
+        async function runJob(jobId) {
+            if (!confirm('このジョブを今すぐ実行しますか？')) return;
+            
+            try {
+                const res = await fetch(`/api/schedules/${jobId}/run`, {
+                    method: 'POST',
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'エラーが発生しました');
+                }
+                
+                showMessage('success', 'ジョブの実行を開始しました');
+                loadData();
+            } catch (error) {
+                showMessage('error', `実行に失敗しました: ${error.message}`);
+            }
+        }
+        
+        function showMessage(type, text) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = `message ${type}`;
+            setTimeout(() => {
+                el.className = 'message';
+            }, 5000);
         }
     </script>
 </body>

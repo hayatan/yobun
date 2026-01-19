@@ -1,71 +1,76 @@
 /**
- * スケジュール管理 API ルーター
+ * スケジュール管理API v2
  * 
- * /api/schedules - スケジュール一覧取得
- * /api/schedules/:id - スケジュール設定変更
- * /api/schedules/:id/run - 手動実行
- * /api/schedules/history - 実行履歴取得
+ * エンドポイント:
+ * - GET  /api/schedules          - 全ジョブ一覧と履歴
+ * - PUT  /api/schedules/:jobId   - ジョブの更新
+ * - POST /api/schedules/:jobId/run - ジョブの手動実行
+ * - POST /api/schedules/:jobId/schedules - スケジュール追加
+ * - PUT  /api/schedules/:jobId/schedules/:scheduleId - スケジュール更新
+ * - DELETE /api/schedules/:jobId/schedules/:scheduleId - スケジュール削除
  */
 
 import { Router } from 'express';
-import { getScheduleStatus, runJobManually, updateScheduleAndReload } from '../../scheduler/index.js';
-import { getHistory } from '../../scheduler/storage.js';
+import { 
+    loadConfig, 
+    updateJob, 
+    addSchedule, 
+    updateSchedule, 
+    deleteSchedule,
+    getHistory,
+    describeSchedule,
+    scheduleToCron,
+} from '../../scheduler/storage.js';
+import { runJobManually, reloadSchedules } from '../../scheduler/index.js';
 
-const createScheduleRouter = (bigquery, db) => {
+const createScheduleRouter = () => {
     const router = Router();
-
+    
     /**
-     * スケジュール一覧取得
      * GET /api/schedules
+     * 全ジョブ一覧と履歴を取得
      */
     router.get('/', async (req, res) => {
         try {
-            const schedules = await getScheduleStatus();
+            const config = await loadConfig();
+            const history = await getHistory(50);
+            
+            // 各ジョブにスケジュールの説明を追加
+            const jobs = config.jobs.map(job => ({
+                ...job,
+                schedules: (job.schedules || []).map(s => ({
+                    ...s,
+                    description: describeSchedule(s),
+                    cron: scheduleToCron(s),
+                })),
+            }));
+            
             res.json({
                 success: true,
-                schedules,
-            });
-        } catch (error) {
-            console.error('スケジュール一覧取得エラー:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message,
-            });
-        }
-    });
-
-    /**
-     * 実行履歴取得
-     * GET /api/schedules/history
-     */
-    router.get('/history', async (req, res) => {
-        try {
-            const limit = parseInt(req.query.limit) || 20;
-            const history = await getHistory(limit);
-            res.json({
-                success: true,
+                jobs,
                 history,
+                updatedAt: config.updatedAt,
             });
         } catch (error) {
-            console.error('実行履歴取得エラー:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message,
-            });
+            console.error('スケジュール取得エラー:', error);
+            res.status(500).json({ success: false, message: error.message });
         }
     });
-
+    
     /**
-     * スケジュール設定変更
-     * PUT /api/schedules/:id
+     * PUT /api/schedules/:jobId
+     * ジョブの更新
      */
-    router.put('/:id', async (req, res) => {
+    router.put('/:jobId', async (req, res) => {
         try {
-            const { id } = req.params;
+            const { jobId } = req.params;
             const updates = req.body;
             
-            // 許可するフィールドのみ更新
-            const allowedFields = ['name', 'description', 'cron', 'enabled', 'options'];
+            // 許可するフィールド
+            const allowedFields = [
+                'name', 'description', 'enabled', 
+                'runDatamartAfter', 'dateRange', 'options'
+            ];
             const filteredUpdates = {};
             for (const field of allowedFields) {
                 if (updates[field] !== undefined) {
@@ -73,84 +78,168 @@ const createScheduleRouter = (bigquery, db) => {
                 }
             }
             
-            const schedule = await updateScheduleAndReload(id, filteredUpdates, bigquery, db);
+            const updatedJob = await updateJob(jobId, filteredUpdates);
+            
+            // スケジュールを再読み込み
+            await reloadSchedules();
             
             res.json({
                 success: true,
-                schedule,
+                job: updatedJob,
+                message: 'ジョブを更新しました',
+            });
+        } catch (error) {
+            console.error('ジョブ更新エラー:', error);
+            res.status(400).json({ success: false, message: error.message });
+        }
+    });
+    
+    /**
+     * POST /api/schedules/:jobId/run
+     * ジョブの手動実行
+     */
+    router.post('/:jobId/run', async (req, res) => {
+        try {
+            const { jobId } = req.params;
+            
+            // 非同期で実行開始（すぐにレスポンス返す）
+            runJobManually(jobId).catch(error => {
+                console.error('ジョブ手動実行エラー:', error);
+            });
+            
+            res.json({
+                success: true,
+                message: 'ジョブの実行を開始しました',
+            });
+        } catch (error) {
+            console.error('ジョブ手動実行エラー:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
+    
+    /**
+     * POST /api/schedules/:jobId/schedules
+     * スケジュール追加
+     */
+    router.post('/:jobId/schedules', async (req, res) => {
+        try {
+            const { jobId } = req.params;
+            const scheduleData = req.body;
+            
+            // バリデーション
+            if (!scheduleData.type || !['daily', 'interval'].includes(scheduleData.type)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'スケジュールタイプが無効です (daily または interval)' 
+                });
+            }
+            
+            if (scheduleData.type === 'daily') {
+                if (typeof scheduleData.hour !== 'number' || scheduleData.hour < 0 || scheduleData.hour > 23) {
+                    return res.status(400).json({ success: false, message: '時間は0-23の範囲で指定してください' });
+                }
+                if (typeof scheduleData.minute !== 'number' || scheduleData.minute < 0 || scheduleData.minute > 59) {
+                    return res.status(400).json({ success: false, message: '分は0-59の範囲で指定してください' });
+                }
+            } else if (scheduleData.type === 'interval') {
+                if (typeof scheduleData.intervalHours !== 'number' || scheduleData.intervalHours < 1 || scheduleData.intervalHours > 24) {
+                    return res.status(400).json({ success: false, message: '間隔は1-24の範囲で指定してください' });
+                }
+            }
+            
+            const newSchedule = await addSchedule(jobId, scheduleData);
+            
+            // スケジュールを再読み込み
+            await reloadSchedules();
+            
+            res.json({
+                success: true,
+                schedule: {
+                    ...newSchedule,
+                    description: describeSchedule(newSchedule),
+                    cron: scheduleToCron(newSchedule),
+                },
+                message: 'スケジュールを追加しました',
+            });
+        } catch (error) {
+            console.error('スケジュール追加エラー:', error);
+            res.status(400).json({ success: false, message: error.message });
+        }
+    });
+    
+    /**
+     * PUT /api/schedules/:jobId/schedules/:scheduleId
+     * スケジュール更新
+     */
+    router.put('/:jobId/schedules/:scheduleId', async (req, res) => {
+        try {
+            const { jobId, scheduleId } = req.params;
+            const updates = req.body;
+            
+            // バリデーション
+            if (updates.type && !['daily', 'interval'].includes(updates.type)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'スケジュールタイプが無効です (daily または interval)' 
+                });
+            }
+            
+            if (updates.type === 'daily' || updates.hour !== undefined || updates.minute !== undefined) {
+                if (updates.hour !== undefined && (updates.hour < 0 || updates.hour > 23)) {
+                    return res.status(400).json({ success: false, message: '時間は0-23の範囲で指定してください' });
+                }
+                if (updates.minute !== undefined && (updates.minute < 0 || updates.minute > 59)) {
+                    return res.status(400).json({ success: false, message: '分は0-59の範囲で指定してください' });
+                }
+            }
+            
+            if (updates.intervalHours !== undefined && (updates.intervalHours < 1 || updates.intervalHours > 24)) {
+                return res.status(400).json({ success: false, message: '間隔は1-24の範囲で指定してください' });
+            }
+            
+            const updatedSchedule = await updateSchedule(jobId, scheduleId, updates);
+            
+            // スケジュールを再読み込み
+            await reloadSchedules();
+            
+            res.json({
+                success: true,
+                schedule: {
+                    ...updatedSchedule,
+                    description: describeSchedule(updatedSchedule),
+                    cron: scheduleToCron(updatedSchedule),
+                },
                 message: 'スケジュールを更新しました',
             });
         } catch (error) {
             console.error('スケジュール更新エラー:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message,
-            });
+            res.status(400).json({ success: false, message: error.message });
         }
     });
-
+    
     /**
-     * 手動実行
-     * POST /api/schedules/:id/run
+     * DELETE /api/schedules/:jobId/schedules/:scheduleId
+     * スケジュール削除
      */
-    router.post('/:id/run', async (req, res) => {
+    router.delete('/:jobId/schedules/:scheduleId', async (req, res) => {
         try {
-            const { id } = req.params;
+            const { jobId, scheduleId } = req.params;
             
-            // 非同期で実行開始（すぐにレスポンスを返す）
-            res.json({
-                success: true,
-                message: 'ジョブの実行を開始しました',
-                scheduleId: id,
-            });
+            await deleteSchedule(jobId, scheduleId);
             
-            // バックグラウンドで実行
-            runJobManually(id, bigquery, db).catch(error => {
-                console.error(`手動実行エラー (${id}):`, error);
-            });
-            
-        } catch (error) {
-            console.error('手動実行エラー:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message,
-            });
-        }
-    });
-
-    /**
-     * スケジュールの有効/無効切り替え
-     * POST /api/schedules/:id/toggle
-     */
-    router.post('/:id/toggle', async (req, res) => {
-        try {
-            const { id } = req.params;
-            const schedules = await getScheduleStatus();
-            const current = schedules.find(s => s.id === id);
-            
-            if (!current) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'スケジュールが見つかりません',
-                });
-            }
-            
-            const schedule = await updateScheduleAndReload(id, { enabled: !current.enabled }, bigquery, db);
+            // スケジュールを再読み込み
+            await reloadSchedules();
             
             res.json({
                 success: true,
-                schedule,
-                message: schedule.enabled ? 'スケジュールを有効化しました' : 'スケジュールを無効化しました',
+                message: 'スケジュールを削除しました',
             });
         } catch (error) {
-            console.error('スケジュール切り替えエラー:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message,
-            });
+            console.error('スケジュール削除エラー:', error);
+            res.status(400).json({ success: false, message: error.message });
         }
     });
-
+    
     return router;
 };
 
