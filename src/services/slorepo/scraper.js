@@ -20,12 +20,33 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
 
     const page = await browser.newPage();
     
+    // ビューポート設定（自然なブラウザに見せる）
+    await page.setViewport({
+        width: 1920,
+        height: 1080,
+        deviceScaleFactor: 1,
+    });
+    
     // User-Agentを設定
     await page.setUserAgent(SLOREPO_SOURCE.userAgent);
     
     // 追加のボット検出回避設定
     await page.setExtraHTTPHeaders({
         'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+    });
+    
+    // webdriver プロパティを削除
+    await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
     });
     
     const allData = [];
@@ -35,18 +56,30 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
         console.log(`[${date}][${hole.name}] 機種一覧を取得中...`);
         await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 60000 });
 
-        // Cloudflareチャレンジページの検出と待機
+        // Cloudflareチャレンジページの検出と待機（日本語・英語両対応）
         let pageTitle = await page.title();
-        if (pageTitle.includes('Just a moment') || pageTitle.includes('Checking')) {
-            console.log(`[${date}][${hole.name}] Cloudflareチャレンジ検出、待機中...`);
-            // チャレンジが解決されるまで待機（最大30秒）
-            await page.waitForFunction(
-                () => !document.title.includes('Just a moment') && !document.title.includes('Checking'),
-                { timeout: 30000 }
-            );
-            // ページが完全にロードされるまで追加で待機
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            pageTitle = await page.title();
+        const cloudflareIndicators = ['Just a moment', 'Checking', 'しばらくお待ちください', 'Cloudflare'];
+        const isCloudflare = cloudflareIndicators.some(indicator => pageTitle.includes(indicator));
+        
+        if (isCloudflare) {
+            console.log(`[${date}][${hole.name}] Cloudflareチャレンジ検出 ("${pageTitle}")、待機中...`);
+            // チャレンジが解決されるまで待機（最大60秒）
+            try {
+                await page.waitForFunction(
+                    (indicators) => {
+                        const title = document.title;
+                        return !indicators.some(ind => title.includes(ind));
+                    },
+                    { timeout: 60000 },
+                    cloudflareIndicators
+                );
+                // ページが完全にロードされるまで追加で待機
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                pageTitle = await page.title();
+                console.log(`[${date}][${hole.name}] Cloudflareチャレンジ通過: "${pageTitle}"`);
+            } catch (e) {
+                console.log(`[${date}][${hole.name}] Cloudflareチャレンジのタイムアウト - 続行を試みます`);
+            }
         }
 
         // デバッグ: ページ情報を出力
