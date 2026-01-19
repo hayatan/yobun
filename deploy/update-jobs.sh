@@ -9,7 +9,7 @@ set -e
 PROJECT_ID="yobun-450512"
 REGION="us-central1"
 IMAGE="gcr.io/${PROJECT_ID}/yobun-scraper:latest"
-SERVICE_ACCOUNT="slot-data-scraper-test@yobun-450512.iam.gserviceaccount.com"
+SERVICE_ACCOUNT="slot-data-scraper@yobun-450512.iam.gserviceaccount.com"
 
 echo "=================================================="
 echo "Cloud Run Jobs を更新します"

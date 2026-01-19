@@ -1,0 +1,29 @@
+steps:
+  # Dockerイメージをビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yobun-scraper:latest'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yobun-scraper:$SHORT_SHA'
+      - '.'
+
+  # イメージをContainer Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/yobun-scraper:latest'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/yobun-scraper:$SHORT_SHA'
+
+images:
+  - 'gcr.io/$PROJECT_ID/yobun-scraper:latest'
+  - 'gcr.io/$PROJECT_ID/yobun-scraper:$SHORT_SHA'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
