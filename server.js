@@ -16,6 +16,10 @@ import createSyncRouter from './src/api/routes/sync.js';
 import createForceRescrapeRouter from './src/api/routes/force-rescrape.js';
 import createDataStatusRouter from './src/api/routes/data-status.js';
 import createDatamartRouter from './src/api/routes/datamart.js';
+import createScheduleRouter from './src/api/routes/schedule.js';
+
+// スケジューラー
+import { initScheduler } from './src/scheduler/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -101,6 +105,13 @@ app.get('/datamart', (req, res) => {
 const datamartRouter = createDatamartRouter(bigquery, db);
 app.use('/api/datamart', datamartRouter);
 
+// スケジュール管理（HTMLページと API）
+app.get('/schedule', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'schedule.html'));
+});
+const scheduleRouter = createScheduleRouter(bigquery, db);
+app.use('/api/schedules', scheduleRouter);
+
 // トップページ
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -165,5 +176,14 @@ app.listen(PORT, async () => {
     console.log(`サーバーがポート ${PORT} で起動しました。`);
     if (process.env.NODE_ENV === 'development') {
         console.log('開発環境で起動中...');
+    }
+    
+    // スケジューラーを初期化（ローカル実行時のみ）
+    if (process.env.ENABLE_SCHEDULER !== 'false') {
+        try {
+            await initScheduler(bigquery, db);
+        } catch (error) {
+            console.error('スケジューラーの初期化に失敗しました:', error);
+        }
     }
 });

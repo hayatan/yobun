@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スケジュール管理 - Yobun</title>
+    <script src="/js/status-header.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        button {
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.btn-success {
+            background-color: var(--accent-green);
+        }
+        
+        button.btn-warning {
+            background-color: var(--accent-yellow);
+            color: #000;
+        }
+        
+        button.btn-secondary {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        button.btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+        
+        .schedule-card {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .schedule-card.disabled {
+            opacity: 0.6;
+        }
+        
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .schedule-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .schedule-title h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .schedule-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .schedule-badge.enabled {
+            background-color: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .schedule-badge.disabled {
+            background-color: rgba(139, 148, 158, 0.2);
+            color: var(--text-secondary);
+        }
+        
+        .schedule-badge.scrape {
+            background-color: rgba(88, 166, 255, 0.2);
+            color: var(--accent-blue);
+        }
+        
+        .schedule-badge.datamart {
+            background-color: rgba(163, 113, 247, 0.2);
+            color: var(--accent-purple);
+        }
+        
+        .schedule-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .schedule-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .schedule-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .schedule-detail label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        
+        .schedule-detail .value {
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .schedule-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .history-table th,
+        .history-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .history-table th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        .history-table tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+        
+        .status-success {
+            color: var(--accent-green);
+        }
+        
+        .status-failed {
+            color: var(--accent-red);
+        }
+        
+        .status-skipped {
+            color: var(--accent-yellow);
+        }
+        
+        .error-message {
+            background-color: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: var(--accent-red);
+        }
+        
+        .success-message {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid var(--accent-green);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            color: var(--accent-green);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-secondary);
+        }
+        
+        /* モーダル */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal h3 {
+            margin-bottom: 16px;
+        }
+        
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .form-group label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .form-group input,
+        .form-group select {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 8px;
+        }
+        
+        .timestamp {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        @media (max-width: 768px) {
+            .schedule-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .schedule-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⏰ スケジュール管理</h1>
+            <button id="refreshBtn" class="btn-secondary">更新</button>
+        </header>
+        
+        <div id="messageContainer"></div>
+        
+        <!-- スケジュール一覧 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📋 スケジュール一覧</h2>
+            </div>
+            <div id="scheduleList">
+                <div class="loading">読み込み中...</div>
+            </div>
+        </div>
+        
+        <!-- 実行履歴 -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📜 実行履歴</h2>
+            </div>
+            <div id="historyContainer">
+                <div class="loading">読み込み中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 編集モーダル -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal">
+            <h3>スケジュール編集</h3>
+            <form id="editForm" class="modal-form">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editName">名前</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editCron">Cron式 (JST)</label>
+                    <input type="text" id="editCron" required placeholder="分 時 日 月 曜日">
+                </div>
+                <div class="form-group">
+                    <label for="editDescription">説明</label>
+                    <input type="text" id="editDescription">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="editCancelBtn" class="btn-secondary">キャンセル</button>
+                    <button type="submit" class="btn-success">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 確認モーダル -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="confirmTitle">確認</h3>
+            <p id="confirmMessage" style="margin-bottom: 24px; color: var(--text-secondary);"></p>
+            <div class="modal-actions">
+                <button id="confirmCancelBtn" class="btn-secondary">キャンセル</button>
+                <button id="confirmOkBtn" class="btn-success">実行</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let schedules = [];
+        let currentConfirmAction = null;
+        
+        // 初期化
+        document.getElementById('refreshBtn').addEventListener('click', refresh);
+        document.getElementById('editCancelBtn').addEventListener('click', () => hideModal('editModal'));
+        document.getElementById('editForm').addEventListener('submit', saveSchedule);
+        document.getElementById('confirmCancelBtn').addEventListener('click', () => hideModal('confirmModal'));
+        document.getElementById('confirmOkBtn').addEventListener('click', executeConfirmAction);
+        
+        // 初回読み込み
+        refresh();
+        
+        // 定期更新
+        setInterval(refresh, 60000);
+        
+        async function refresh() {
+            await Promise.all([
+                fetchSchedules(),
+                fetchHistory()
+            ]);
+        }
+        
+        async function fetchSchedules() {
+            try {
+                const response = await fetch('/api/schedules');
+                const data = await response.json();
+                
+                if (data.success) {
+                    schedules = data.schedules;
+                    renderSchedules();
+                } else {
+                    showError('スケジュールの取得に失敗しました: ' + data.error);
+                }
+            } catch (error) {
+                console.error('スケジュール取得エラー:', error);
+                showError('スケジュールの取得に失敗しました: ' + error.message);
+            }
+        }
+        
+        async function fetchHistory() {
+            try {
+                const response = await fetch('/api/schedules/history?limit=20');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderHistory(data.history);
+                } else {
+                    document.getElementById('historyContainer').innerHTML = 
+                        '<div class="empty-state">履歴の取得に失敗しました</div>';
+                }
+            } catch (error) {
+                console.error('履歴取得エラー:', error);
+                document.getElementById('historyContainer').innerHTML = 
+                    '<div class="empty-state">履歴の取得に失敗しました</div>';
+            }
+        }
+        
+        function renderSchedules() {
+            const container = document.getElementById('scheduleList');
+            
+            if (schedules.length === 0) {
+                container.innerHTML = '<div class="empty-state">スケジュールが登録されていません</div>';
+                return;
+            }
+            
+            container.innerHTML = schedules.map(schedule => `
+                <div class="schedule-card ${schedule.enabled ? '' : 'disabled'}">
+                    <div class="schedule-header">
+                        <div class="schedule-title">
+                            <h3>${schedule.name}</h3>
+                            <span class="schedule-badge ${schedule.enabled ? 'enabled' : 'disabled'}">
+                                ${schedule.enabled ? '有効' : '無効'}
+                            </span>
+                            <span class="schedule-badge ${schedule.jobType}">
+                                ${schedule.jobType === 'scrape' ? 'スクレイピング' : 'データマート'}
+                            </span>
+                        </div>
+                        <div class="schedule-actions">
+                            <button class="btn-sm btn-secondary" onclick="editSchedule('${schedule.id}')">編集</button>
+                            <button class="btn-sm ${schedule.enabled ? 'btn-warning' : 'btn-success'}" 
+                                    onclick="toggleSchedule('${schedule.id}')">
+                                ${schedule.enabled ? '無効化' : '有効化'}
+                            </button>
+                            <button class="btn-sm" onclick="runSchedule('${schedule.id}')">今すぐ実行</button>
+                        </div>
+                    </div>
+                    <div class="schedule-details">
+                        <div class="schedule-detail">
+                            <label>Cron式 (JST)</label>
+                            <div class="value">${schedule.cron}</div>
+                        </div>
+                        <div class="schedule-detail">
+                            <label>実行タイミング</label>
+                            <div class="value">${describeCron(schedule.cron)}</div>
+                        </div>
+                        <div class="schedule-detail">
+                            <label>状態</label>
+                            <div class="value">${schedule.isRegistered ? '🟢 登録済み' : '⚪ 未登録'}</div>
+                        </div>
+                    </div>
+                    ${schedule.description ? `<div class="schedule-description">${schedule.description}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function renderHistory(history) {
+            const container = document.getElementById('historyContainer');
+            
+            if (!history || history.length === 0) {
+                container.innerHTML = '<div class="empty-state">実行履歴がありません</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>実行日時</th>
+                            <th>ジョブ</th>
+                            <th>タイプ</th>
+                            <th>結果</th>
+                            <th>メッセージ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${history.map(entry => `
+                            <tr>
+                                <td class="timestamp">${formatTimestamp(entry.startedAt)}</td>
+                                <td>${entry.scheduleName || entry.scheduleId}</td>
+                                <td>
+                                    <span class="schedule-badge ${entry.jobType}">
+                                        ${entry.jobType === 'scrape' ? 'スクレイピング' : 'データマート'}
+                                    </span>
+                                </td>
+                                <td class="status-${entry.status}">${getStatusText(entry.status)}</td>
+                                <td>${entry.message || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        function describeCron(cron) {
+            const parts = cron.split(' ');
+            if (parts.length !== 5) return cron;
+            
+            const [minute, hour, day, month, weekday] = parts;
+            
+            if (day === '*' && month === '*' && weekday === '*') {
+                return `毎日 ${hour}:${minute.padStart(2, '0')}`;
+            }
+            
+            return cron;
+        }
+        
+        function formatTimestamp(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+            return jst.toISOString().replace('T', ' ').substring(0, 19);
+        }
+        
+        function getStatusText(status) {
+            switch (status) {
+                case 'success': return '✅ 成功';
+                case 'failed': return '❌ 失敗';
+                case 'skipped': return '⏭️ スキップ';
+                default: return status;
+            }
+        }
+        
+        function editSchedule(id) {
+            const schedule = schedules.find(s => s.id === id);
+            if (!schedule) return;
+            
+            document.getElementById('editId').value = schedule.id;
+            document.getElementById('editName').value = schedule.name;
+            document.getElementById('editCron').value = schedule.cron;
+            document.getElementById('editDescription').value = schedule.description || '';
+            
+            showModal('editModal');
+        }
+        
+        async function saveSchedule(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('editId').value;
+            const updates = {
+                name: document.getElementById('editName').value,
+                cron: document.getElementById('editCron').value,
+                description: document.getElementById('editDescription').value,
+            };
+            
+            try {
+                const response = await fetch(`/api/schedules/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('スケジュールを更新しました');
+                    hideModal('editModal');
+                    fetchSchedules();
+                } else {
+                    showError('更新に失敗しました: ' + data.error);
+                }
+            } catch (error) {
+                console.error('更新エラー:', error);
+                showError('更新に失敗しました: ' + error.message);
+            }
+        }
+        
+        function toggleSchedule(id) {
+            const schedule = schedules.find(s => s.id === id);
+            if (!schedule) return;
+            
+            const action = schedule.enabled ? '無効化' : '有効化';
+            showConfirm(
+                `スケジュールを${action}`,
+                `「${schedule.name}」を${action}しますか？`,
+                async () => {
+                    try {
+                        const response = await fetch(`/api/schedules/${id}/toggle`, {
+                            method: 'POST',
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showSuccess(data.message);
+                            fetchSchedules();
+                        } else {
+                            showError('操作に失敗しました: ' + data.error);
+                        }
+                    } catch (error) {
+                        console.error('操作エラー:', error);
+                        showError('操作に失敗しました: ' + error.message);
+                    }
+                }
+            );
+        }
+        
+        function runSchedule(id) {
+            const schedule = schedules.find(s => s.id === id);
+            if (!schedule) return;
+            
+            showConfirm(
+                '手動実行',
+                `「${schedule.name}」を今すぐ実行しますか？`,
+                async () => {
+                    try {
+                        const response = await fetch(`/api/schedules/${id}/run`, {
+                            method: 'POST',
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showSuccess('ジョブの実行を開始しました。履歴で結果を確認してください。');
+                            // 数秒後に履歴を更新
+                            setTimeout(fetchHistory, 3000);
+                        } else {
+                            showError('実行に失敗しました: ' + data.error);
+                        }
+                    } catch (error) {
+                        console.error('実行エラー:', error);
+                        showError('実行に失敗しました: ' + error.message);
+                    }
+                }
+            );
+        }
+        
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        
+        function showConfirm(title, message, action) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            currentConfirmAction = action;
+            showModal('confirmModal');
+        }
+        
+        function executeConfirmAction() {
+            if (currentConfirmAction) {
+                currentConfirmAction();
+            }
+            hideModal('confirmModal');
+            currentConfirmAction = null;
+        }
+        
+        function showError(message) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="error-message">${message}</div>`;
+            setTimeout(() => { container.innerHTML = ''; }, 5000);
+        }
+        
+        function showSuccess(message) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="success-message">${message}</div>`;
+            setTimeout(() => { container.innerHTML = ''; }, 5000);
+        }
+    </script>
+</body>
+</html>
