@@ -24,7 +24,19 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
     try {
         await new Promise(resolve => setTimeout(resolve, interval));
         console.log(`[${date}][${hole.name}] 機種一覧を取得中...`);
-        await page.goto(baseUrl, { waitUntil: SLOREPO_SOURCE.navigation.waitUntil });
+        await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+
+        // デバッグ: ページ情報を出力
+        const pageTitle = await page.title();
+        const pageUrl = page.url();
+        console.log(`[${date}][${hole.name}] ページロード完了 - タイトル: "${pageTitle}", URL: ${pageUrl}`);
+        
+        // デバッグ: 機種リンクのセレクタをチェック
+        const allLinks = await page.evaluate(() => {
+            const links = Array.from(document.querySelectorAll('a'));
+            return links.filter(l => l.href.includes('kishu')).map(l => ({ href: l.href, text: l.textContent.trim() })).slice(0, 5);
+        });
+        console.log(`[${date}][${hole.name}] kishuリンク候補 (最大5件):`, JSON.stringify(allLinks));
 
         const machines = await getMachines(page, SLOREPO_SOURCE.selectors.machineLinks);
         console.log(`[${date}][${hole.name}] 機種一覧 (${machines.length}) を取得しました。`);
