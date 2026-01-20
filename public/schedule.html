@@ -589,6 +589,11 @@
             color: var(--accent-yellow);
         }
         
+        .status-badge.stopped {
+            background: rgba(139, 148, 158, 0.2);
+            color: var(--text-secondary);
+        }
+        
         .manual-badge {
             font-size: 10px;
             color: var(--text-muted);
@@ -819,7 +824,10 @@
                         
                         <div class="job-actions" style="margin-bottom: 16px;">
                             <button class="btn-secondary btn-small" onclick="openJobModal('${job.id}')">⚙️ 設定</button>
-                            <button class="btn-success btn-small" onclick="runJob('${job.id}')" ${job.enabled ? '' : 'disabled'}>▶ 今すぐ実行</button>
+                            ${currentData.currentJobId === job.id 
+                                ? '<button class="btn-danger btn-small" onclick="stopJob()">⏹ 停止</button>'
+                                : `<button class="btn-success btn-small" onclick="runJob('${job.id}')" ${job.enabled && !currentData.currentJobId ? '' : 'disabled'}>▶ 今すぐ実行</button>`
+                            }
                         </div>
                         
                         <div class="schedules-section">
@@ -881,8 +889,11 @@
         
         function formatDateRange(dateRange) {
             if (!dateRange) return '1日前のみ';
-            const from = dateRange.from ?? 1;
-            const to = dateRange.to ?? 1;
+            const rawFrom = dateRange.from ?? 1;
+            const rawTo = dateRange.to ?? 1;
+            // 正規化: 大きい方が古い日付、小さい方が新しい日付
+            const from = Math.max(rawFrom, rawTo);
+            const to = Math.min(rawFrom, rawTo);
             if (from === to) {
                 if (from === 0) return '当日のみ';
                 if (from === 1) return '1日前のみ';
@@ -937,12 +948,14 @@
         
         async function saveJob() {
             const jobId = document.getElementById('editJobId').value;
+            const fromVal = parseInt(document.getElementById('dateFrom').value);
+            const toVal = parseInt(document.getElementById('dateTo').value);
             const data = {
                 name: document.getElementById('jobName').value,
                 enabled: document.getElementById('jobEnabled').checked,
                 dateRange: {
-                    from: parseInt(document.getElementById('dateFrom').value) || 1,
-                    to: parseInt(document.getElementById('dateTo').value) || 1,
+                    from: Number.isNaN(fromVal) ? 1 : fromVal,
+                    to: Number.isNaN(toVal) ? 1 : toVal,
                 },
                 runDatamartAfter: document.getElementById('runDatamartAfter').checked,
             };
@@ -1090,6 +1103,26 @@
                 loadData();
             } catch (error) {
                 showMessage('error', `実行に失敗しました: ${error.message}`);
+            }
+        }
+        
+        async function stopJob() {
+            if (!confirm('実行中のジョブを停止しますか？')) return;
+            
+            try {
+                const res = await fetch('/api/schedules/stop', {
+                    method: 'POST',
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'エラーが発生しました');
+                }
+                
+                showMessage('success', 'ジョブの停止をリクエストしました');
+                loadData();
+            } catch (error) {
+                showMessage('error', `停止に失敗しました: ${error.message}`);
             }
         }
         

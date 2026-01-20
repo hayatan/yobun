@@ -12,7 +12,7 @@ import { getJSTDate, generateDateRange } from './util/date.js';
  * @param {string} params.endDate - 終了日（YYYY-MM-DD形式）
  * @param {boolean} params.continueOnError - エラー時も処理を継続する（デフォルト: true）
  * @param {boolean} params.force - 既存データを無視して再取得する（デフォルト: false）
- * @param {boolean} params.prioritizeHigh - 高優先度店舗を先に処理する（デフォルト: false）
+ * @param {string|null} params.priorityFilter - 対象店舗の優先度フィルター（'high', 'normal', 'low', null=全て）
  * @returns {Promise<Object>} スクレイピング結果
  */
 export const runScrape = async (bigquery, db, updateProgress, { 
@@ -20,7 +20,7 @@ export const runScrape = async (bigquery, db, updateProgress, {
     endDate,
     continueOnError = true,
     force = false,
-    prioritizeHigh = false,
+    priorityFilter = null,
 } = {}) => {
     const { datasetId, tableIdPrefix } = BIGQUERY;
 
@@ -31,7 +31,7 @@ export const runScrape = async (bigquery, db, updateProgress, {
     const options = {
         continueOnError,
         force,
-        prioritizeHigh,
+        priorityFilter,
     };
 
     console.log('スクレイピング処理を開始します...');

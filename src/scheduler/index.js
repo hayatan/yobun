@@ -25,6 +25,7 @@ const cronJobs = new Map();
 let currentConfig = null;
 let bigqueryClient = null;
 let sqliteDb = null;
+let currentRunningJobId = null;
 
 /**
  * スケジューラーを初期化
@@ -102,15 +103,20 @@ const unregisterJobSchedules = (jobId) => {
 
 /**
  * 日付範囲から対象日付の配列を生成
+ * from/toの順序に関わらず、より古い日付からより新しい日付の範囲を生成
  */
 const getTargetDates = (dateRange) => {
     const today = getJSTToday();
     const dates = [];
     
-    const from = dateRange?.from ?? 1;
-    const to = dateRange?.to ?? 1;
+    const rawFrom = dateRange?.from ?? 1;
+    const rawTo = dateRange?.to ?? 1;
     
-    // fromの方が大きい数値（より古い日付）
+    // 正規化: 大きい方が古い日付（from）、小さい方が新しい日付（to）
+    const from = Math.max(rawFrom, rawTo);
+    const to = Math.min(rawFrom, rawTo);
+    
+    // fromの方が大きい数値（より古い日付）から降順で生成
     for (let i = from; i >= to; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
@@ -126,6 +132,9 @@ const getTargetDates = (dateRange) => {
 export const executeJob = async (job, options = {}) => {
     const { manual = false } = options;
     const startedAt = new Date().toISOString();
+    
+    // 現在実行中のジョブIDを設定
+    currentRunningJobId = job.id;
     
     console.log(`[スケジューラー] ジョブ開始: ${job.name}${manual ? ' (手動実行)' : ''}`);
     
@@ -176,7 +185,7 @@ export const executeJob = async (job, options = {}) => {
                         endDate: targetDate,
                         continueOnError: job.options?.continueOnError ?? true,
                         force: false,
-                        prioritizeHigh: job.options?.prioritizeHigh ?? false,
+                        priorityFilter: job.options?.priorityFilter ?? null,
                     });
                     
                     totalSuccess += result.success.length;
@@ -247,6 +256,9 @@ export const executeJob = async (job, options = {}) => {
         console.error(`[スケジューラー] ジョブ実行中にエラー: ${job.name}`, error);
     }
     
+    // 現在実行中のジョブIDをクリア
+    currentRunningJobId = null;
+    
     // 履歴に記録
     await addHistory({
         jobId: job.id,
@@ -308,6 +320,31 @@ export const reloadSchedules = async () => {
 export const getConfig = () => currentConfig;
 
 /**
+ * 現在実行中のジョブIDを取得
+ */
+export const getCurrentJobId = () => currentRunningJobId;
+
+/**
+ * 現在実行中のジョブを停止
+ */
+export const stopCurrentJob = async () => {
+    if (!currentRunningJobId) {
+        return { success: false, message: '実行中のジョブがありません' };
+    }
+    
+    console.log(`[スケジューラー] ジョブ停止要求: ${currentRunningJobId}`);
+    
+    // ロックを解放してジョブを停止可能にする
+    try {
+        await releaseLock();
+    } catch (error) {
+        console.error('ロック解放エラー:', error);
+    }
+    
+    return { success: true, message: `ジョブ ${currentRunningJobId} の停止を要求しました` };
+};
+
+/**
  * スケジューラーを停止
  */
 export const stopScheduler = () => {
@@ -327,5 +364,7 @@ export default {
     runJobManually,
     reloadSchedules,
     getConfig,
+    getCurrentJobId,
+    stopCurrentJob,
     stopScheduler,
 };

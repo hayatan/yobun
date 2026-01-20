@@ -5,6 +5,7 @@
  * - GET  /api/schedules          - 全ジョブ一覧と履歴
  * - PUT  /api/schedules/:jobId   - ジョブの更新
  * - POST /api/schedules/:jobId/run - ジョブの手動実行
+ * - POST /api/schedules/stop     - 実行中ジョブを停止
  * - POST /api/schedules/:jobId/schedules - スケジュール追加
  * - PUT  /api/schedules/:jobId/schedules/:scheduleId - スケジュール更新
  * - DELETE /api/schedules/:jobId/schedules/:scheduleId - スケジュール削除
@@ -21,7 +22,7 @@ import {
     describeSchedule,
     scheduleToCron,
 } from '../../scheduler/storage.js';
-import { runJobManually, reloadSchedules } from '../../scheduler/index.js';
+import { runJobManually, reloadSchedules, getCurrentJobId, stopCurrentJob } from '../../scheduler/index.js';
 
 const createScheduleRouter = () => {
     const router = Router();
@@ -50,6 +51,7 @@ const createScheduleRouter = () => {
                 jobs,
                 history,
                 updatedAt: config.updatedAt,
+                currentJobId: getCurrentJobId(),
             });
         } catch (error) {
             console.error('スケジュール取得エラー:', error);
@@ -113,6 +115,20 @@ const createScheduleRouter = () => {
             });
         } catch (error) {
             console.error('ジョブ手動実行エラー:', error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
+    
+    /**
+     * POST /api/schedules/stop
+     * 実行中ジョブを停止
+     */
+    router.post('/stop', async (req, res) => {
+        try {
+            const result = await stopCurrentJob();
+            res.json(result);
+        } catch (error) {
+            console.error('ジョブ停止エラー:', error);
             res.status(500).json({ success: false, message: error.message });
         }
     });

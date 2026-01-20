@@ -34,9 +34,11 @@ class StatusHeader {
             <nav class="header-nav">
                 <a href="/" class="header-brand">Yobun</a>
                 <div class="header-links">
-                    <a href="/" class="nav-link">トップ</a>
-                    <a href="/dashboard" class="nav-link">ダッシュボード</a>
+                    <a href="/" class="nav-link">ダッシュボード</a>
+                    <a href="/schedule" class="nav-link">スケジュール</a>
                     <a href="/datamart" class="nav-link">データマート</a>
+                    <a href="/util/sync" class="nav-link">同期</a>
+                    <a href="/util/force-rescrape" class="nav-link">再取得</a>
                 </div>
                 <div id="status-indicator" class="status-indicator">
                     <span class="status-dot"></span>
@@ -186,7 +188,10 @@ class StatusHeader {
         const links = document.querySelectorAll('.nav-link');
         links.forEach(link => {
             const href = link.getAttribute('href');
-            if (path === href || (href !== '/' && path.startsWith(href))) {
+            // / は / と /dashboard の両方でアクティブ
+            if (href === '/' && (path === '/' || path === '/dashboard')) {
+                link.classList.add('active');
+            } else if (href !== '/' && path.startsWith(href)) {
                 link.classList.add('active');
             }
         });

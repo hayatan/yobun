@@ -55,12 +55,12 @@ export const DEFAULT_JOBS = [
     {
         id: 'priority_scrape',
         name: '優先店舗スクレイピング',
-        description: '高優先度店舗（lateUpdate: true）のデータを取得',
+        description: '高優先度店舗（priority: high）のデータのみを取得',
         jobType: 'scrape',
         enabled: true,
         runDatamartAfter: true,
         dateRange: { from: 1, to: 1 },
-        options: { prioritizeHigh: true, continueOnError: true },
+        options: { priorityFilter: 'high', continueOnError: true },
         schedules: [
             {
                 id: 'priority_daily',
@@ -79,7 +79,7 @@ export const DEFAULT_JOBS = [
         enabled: true,
         runDatamartAfter: true,
         dateRange: { from: 1, to: 1 },
-        options: { prioritizeHigh: false, continueOnError: true },
+        options: { priorityFilter: null, continueOnError: true },
         schedules: [
             {
                 id: 'normal_daily',
@@ -93,11 +93,11 @@ export const DEFAULT_JOBS = [
     {
         id: 'datamart_update',
         name: 'データマート更新',
-        description: 'BigQueryのmachine_statsテーブルを更新',
+        description: 'BigQueryのmachine_statsテーブルを更新（指定日の前日データを集計）',
         jobType: 'datamart',
         enabled: true,
         runDatamartAfter: false,
-        dateRange: { from: 1, to: 1 },
+        dateRange: { from: 0, to: 0 },
         options: {},
         schedules: [
             {
@@ -153,6 +153,31 @@ const migrateV1toV2 = (v1Config) => {
 };
 
 /**
+ * v2設定のoptionsを最新形式に更新
+ * prioritizeHigh を priorityFilter に変換
+ */
+const migrateV2Options = (config) => {
+    let updated = false;
+    
+    for (const job of config.jobs) {
+        if (job.options?.prioritizeHigh !== undefined && job.options?.priorityFilter === undefined) {
+            // prioritizeHigh: true → priorityFilter: 'high'
+            // prioritizeHigh: false → priorityFilter: null
+            if (job.options.prioritizeHigh) {
+                job.options.priorityFilter = 'high';
+            } else {
+                job.options.priorityFilter = null;
+            }
+            delete job.options.prioritizeHigh;
+            updated = true;
+            console.log(`[${job.name}] options を更新: priorityFilter=${job.options.priorityFilter}`);
+        }
+    }
+    
+    return updated;
+};
+
+/**
  * GCSから設定を読み込み
  */
 export const loadConfig = async () => {
@@ -179,6 +204,11 @@ export const loadConfig = async () => {
             const migratedConfig = migrateV1toV2(config);
             await saveConfig(migratedConfig);
             return migratedConfig;
+        }
+        
+        // v2内でのoptionsマイグレーション
+        if (migrateV2Options(config)) {
+            await saveConfig(config);
         }
         
         console.log(`スケジュール設定を読み込みました: ${config.jobs.length}件のジョブ`);

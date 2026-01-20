@@ -20,7 +20,7 @@ const SOURCE = 'slorepo';
  * @typedef {Object} ScrapeOptions
  * @property {boolean} continueOnError - エラー時も処理を継続する（デフォルト: true）
  * @property {boolean} force - 既存データを無視して再取得する（デフォルト: false）
- * @property {boolean} prioritizeHigh - 高優先度店舗を先に処理する（デフォルト: false）
+ * @property {string|null} priorityFilter - 優先度フィルタ ('high', 'normal', 'low' または null で全て)
  */
 
 /**
@@ -49,15 +49,24 @@ const scrape = async (
     const {
         continueOnError = true,
         force = false,
-        prioritizeHigh = false,
+        priorityFilter = null, // 'high', 'normal', 'low' または null（全て）
     } = options;
 
     const dateRange = util.generateDateRange(startDate, endDate);
     console.log(`処理開始: ${dateRange[0]} - ${dateRange[dateRange.length - 1]}`);
-    console.log(`オプション: continueOnError=${continueOnError}, force=${force}, prioritizeHigh=${prioritizeHigh}`);
+    console.log(`オプション: continueOnError=${continueOnError}, force=${force}, priorityFilter=${priorityFilter}`);
 
-    // 店舗リストを取得（優先度順 or 設定順）
-    const holes = prioritizeHigh ? getHolesSortedByPriority() : getHoles();
+    // 店舗リストを取得（常に優先度順でソート）
+    let holes;
+    if (priorityFilter) {
+        // 特定の優先度のみ
+        holes = getHoles({ priority: priorityFilter });
+    } else {
+        // 全店舗（優先度順）
+        holes = getHolesSortedByPriority();
+    }
+    
+    console.log(`対象店舗: ${holes.length}件 (${holes.map(h => h.name).join(', ')})`);
 
     const totalDates = dateRange.length;
     const totalHoles = holes.length;

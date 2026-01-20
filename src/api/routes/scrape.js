@@ -46,7 +46,7 @@ const createScrapeRouter = (bigquery, db) => {
         }
 
         try {
-            const { startDate, endDate, continueOnError, force, prioritizeHigh } = req.body;
+            const { startDate, endDate, continueOnError, force, priorityFilter } = req.body;
             
             if (!startDate || !endDate) {
                 await releaseLock(); // ロック解放
@@ -69,7 +69,7 @@ const createScrapeRouter = (bigquery, db) => {
                 endDate,
                 continueOnError: continueOnError !== false, // デフォルトtrue
                 force: force === true,
-                prioritizeHigh: prioritizeHigh === true,
+                priorityFilter: priorityFilter || null,
             })
                 .then(async (result) => {
                     const message = `完了: 成功=${result.success.length}, 失敗=${result.failed.length}`;

@@ -93,8 +93,13 @@ app.use('/util/force-rescrape', forceRescrapeRouter);
 const dataStatusRouter = createDataStatusRouter(bigquery, db);
 app.use('/api/data-status', dataStatusRouter);
 
-// ダッシュボードページ
+// ダッシュボードページ（トップページとしても使用）
 app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// トップページ → ダッシュボード
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
@@ -111,61 +116,6 @@ app.get('/schedule', (req, res) => {
 });
 const scheduleRouter = createScheduleRouter(bigquery, db);
 app.use('/api/schedules', scheduleRouter);
-
-// トップページ
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ============================================================================
-// テスト用エンドポイント（開発時のみ）
-// ============================================================================
-
-// Promise 化ヘルパー
-const execAsync = (sql) => new Promise((resolve, reject) => {
-    db.exec(sql, (err) => {
-        if (err) reject(err);
-        else resolve();
-    });
-});
-
-const allAsync = (sql) => new Promise((resolve, reject) => {
-    db.all(sql, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-    });
-});
-
-app.get('/test-write', async (req, res) => {
-    try {
-        await execAsync(`
-            CREATE TABLE IF NOT EXISTS test (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            message TEXT
-            );
-        `);
-
-        await execAsync(`
-            INSERT INTO test (message) VALUES ('妹が作ったデータです♥');
-        `);
-
-        const rows = await allAsync("SELECT * FROM test");
-        res.json(rows);
-    } catch (err) {
-        console.error("やらかしたわね…", err);
-        res.status(500).send("ちょっと失敗したかも…💦");
-    }
-});
-
-app.get('/test-read', async (req, res) => {
-    try {
-        const rows = await allAsync("SELECT * FROM test");
-        res.json(rows);
-    } catch (err) {
-        console.error("読めなかったんだけど！？💢", err);
-        res.status(500).send("読み込み失敗…妹のせいじゃないんだからねっ！");
-    }
-});
 
 // ============================================================================
 // サーバー起動
