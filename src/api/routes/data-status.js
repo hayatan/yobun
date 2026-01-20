@@ -10,6 +10,8 @@ import { Router } from 'express';
 import config, { getHoles } from '../../config/slorepo-config.js';
 import sqlite from '../../db/sqlite/operations.js';
 import util from '../../util/common.js';
+import { getTable, deleteBigQueryTable } from '../../db/bigquery/operations.js';
+import { BIGQUERY } from '../../config/constants.js';
 
 const createDataStatusRouter = (bigquery, db) => {
     const router = Router();
@@ -194,6 +196,7 @@ const createDataStatusRouter = (bigquery, db) => {
 
             // BigQueryから削除
             let bqDeleted = 0;
+            let bqTablesDeleted = 0;
             const bqErrors = [];
             
             // 日付範囲を生成してテーブルごとに削除
@@ -204,34 +207,35 @@ const createDataStatusRouter = (bigquery, db) => {
                 const tableName = `\`yobun-450512.slot_data.${tableId}\``;
                 
                 try {
-                    let deleteQuery;
-                    let params;
-                    
                     if (hole) {
-                        deleteQuery = `DELETE FROM ${tableName} WHERE date = @date AND hole = @hole`;
-                        params = { date, hole };
+                        // 特定店舗の場合: DELETEクエリを使用
+                        const deleteQuery = `DELETE FROM ${tableName} WHERE date = @date AND hole = @hole`;
+                        const params = { date, hole };
+                        
+                        const [job] = await bigquery.createQueryJob({
+                            query: deleteQuery,
+                            params,
+                            location: 'US',
+                        });
+                        
+                        const [results] = await job.getQueryResults();
+                        const metadata = await job.getMetadata();
+                        const numDeletedRows = metadata[0]?.statistics?.query?.numDmlAffectedRows || 0;
+                        bqDeleted += parseInt(numDeletedRows);
+                        console.log(`[${date}] BigQueryから ${numDeletedRows} 件削除`);
                     } else {
-                        deleteQuery = `DELETE FROM ${tableName} WHERE date = @date`;
-                        params = { date };
+                        // 全店舗の場合: テーブル全体を削除（ストリーミングバッファー対策）
+                        const table = bigquery.dataset(BIGQUERY.datasetId).table(tableId);
+                        await deleteBigQueryTable(table);
+                        bqTablesDeleted++;
+                        console.log(`[${date}] BigQueryテーブル全体を削除`);
                     }
-                    
-                    const [job] = await bigquery.createQueryJob({
-                        query: deleteQuery,
-                        params,
-                        location: 'US',
-                    });
-                    
-                    const [results] = await job.getQueryResults();
-                    const metadata = await job.getMetadata();
-                    const numDeletedRows = metadata[0]?.statistics?.query?.numDmlAffectedRows || 0;
-                    bqDeleted += parseInt(numDeletedRows);
-                    console.log(`[${date}] BigQueryから ${numDeletedRows} 件削除`);
                 } catch (tableError) {
                     // テーブルが存在しない場合はスキップ
-                    if (tableError.message.includes('Not found: Table')) {
+                    if (tableError.message.includes('Not found: Table') || tableError.code === 404) {
                         console.log(`[${date}] テーブルが存在しないためスキップ`);
                     } else if (tableError.message.includes('streaming buffer')) {
-                        // ストリーミングバッファーエラーの場合は警告として記録
+                        // ストリーミングバッファーエラーの場合は警告として記録（特定店舗削除時のみ発生）
                         console.warn(`[${date}] BigQuery削除スキップ: ストリーミングバッファーにデータがあります`);
                         bqErrors.push({
                             date,
@@ -243,17 +247,22 @@ const createDataStatusRouter = (bigquery, db) => {
                 }
             }
 
-            console.log(`生データ削除完了: SQLite ${sqliteDeleted} 件, BigQuery ${bqDeleted} 件`);
+            const bqDeletedInfo = hole 
+                ? `BigQuery ${bqDeleted} 件` 
+                : `BigQueryテーブル ${bqTablesDeleted} 個削除`;
+            console.log(`生データ削除完了: SQLite ${sqliteDeleted} 件, ${bqDeletedInfo}`);
 
+            // レスポンスを作成
+            const deletedInfo = hole
+                ? { sqlite: sqliteDeleted, bigquery: bqDeleted }
+                : { sqlite: sqliteDeleted, bigqueryTables: bqTablesDeleted };
+            
             // ストリーミングバッファーエラーがある場合は警告付きで返す
             if (bqErrors.length > 0) {
                 res.json({
                     success: true,
                     message: '生データを削除しました（一部のBigQueryテーブルはストリーミングバッファーのためスキップ）',
-                    deleted: {
-                        sqlite: sqliteDeleted,
-                        bigquery: bqDeleted,
-                    },
+                    deleted: deletedInfo,
                     warnings: bqErrors,
                     period: { startDate, endDate },
                     hole: hole || '全店舗',
@@ -262,10 +271,7 @@ const createDataStatusRouter = (bigquery, db) => {
                 res.json({
                     success: true,
                     message: '生データを削除しました',
-                    deleted: {
-                        sqlite: sqliteDeleted,
-                        bigquery: bqDeleted,
-                    },
+                    deleted: deletedInfo,
                     period: { startDate, endDate },
                     hole: hole || '全店舗',
                 });

@@ -1,4 +1,4 @@
-import scrapeSlotDataByMachine from './scraper.js';
+import scrapeSlotDataByMachine, { scrapeMachineList } from './scraper.js';
 import config, { getHoles, getHolesSortedByPriority } from '../../config/slorepo-config.js';
 import util from '../../util/common.js';
 import sqlite from '../../db/sqlite/operations.js';
@@ -94,20 +94,41 @@ const scrape = async (
                     );
                 }
 
-                // SQLiteにデータが存在するか確認
-                const exists = await sqlite.isDiffDataExists(db, date, hole.name);
-                
-                if (exists && !force) {
-                    // 既存データあり、forceでない場合はスキップ
-                    console.log(`[${date}][${hole.name}] SQLiteに既存データあり、スクレイピングをスキップ`);
-                } else {
-                    // 新規スクレイピング、またはforce=trueで再取得
-                    if (force && exists) {
+                // 強制再取得の場合は既存データを削除してスクレイピング
+                if (force) {
+                    const exists = await sqlite.isDiffDataExists(db, date, hole.name);
+                    if (exists) {
                         console.log(`[${date}][${hole.name}] 強制再取得モード: 既存データを削除`);
                         await sqlite.deleteDiffData(db, date, hole.name);
                     }
                     const data = await scrapeSlotDataByMachine(date, hole.code);
                     await sqlite.saveDiffData(db, data, SOURCE);
+                } else {
+                    // 機種一覧を取得して機種数を比較
+                    const savedMachineCount = await sqlite.getMachineCount(db, date, hole.name);
+                    
+                    if (savedMachineCount === 0) {
+                        // 保存済みデータがない場合は新規スクレイピング
+                        console.log(`[${date}][${hole.name}] 保存済みデータなし、スクレイピングを実行`);
+                        const data = await scrapeSlotDataByMachine(date, hole.code);
+                        await sqlite.saveDiffData(db, data, SOURCE);
+                    } else {
+                        // 機種一覧を取得して機種数を比較
+                        const machineList = await scrapeMachineList(date, hole.code);
+                        const scrapedMachineCount = machineList.count;
+                        
+                        if (savedMachineCount !== scrapedMachineCount) {
+                            // 機種数が異なる場合はスクレイピング実行
+                            console.log(`[${date}][${hole.name}] 機種数が変更: 保存済み=${savedMachineCount}, スクレイピング=${scrapedMachineCount} → 再取得`);
+                            await sqlite.deleteDiffData(db, date, hole.name);
+                            const data = await scrapeSlotDataByMachine(date, hole.code);
+                            await sqlite.saveDiffData(db, data, SOURCE);
+                        } else {
+                            // 機種数が同じ場合はスキップ
+                            console.log(`[${date}][${hole.name}] 機種数一致: ${savedMachineCount}種 → スキップ`);
+                            result.skipped.push({ date, hole: hole.name, reason: '機種数一致' });
+                        }
+                    }
                 }
 
                 // BigQueryに同期

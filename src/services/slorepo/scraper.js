@@ -7,12 +7,10 @@ import { cleanNumber } from '../../util/slorepo.js';
 // Cloudflare等のボット検出を回避するためのStealthプラグインを使用
 puppeteer.use(StealthPlugin());
 
-export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
-    const hole = config.holes.find(h => h.code === holeCode);
-    if (!hole) throw new Error('指定された店舗コードが見つかりません。');
-
-    const baseUrl = SLOREPO_SOURCE.buildUrl.hole(holeCode, date);
-    console.log(`[${date}][${hole.name}] スクレイピングを開始します... ${baseUrl}`);
+/**
+ * ブラウザの初期化（ボット検出回避設定込み）
+ */
+async function initBrowser() {
     const browser = await puppeteer.launch({
         headless: SLOREPO_SOURCE.puppeteer.headless,
         args: SLOREPO_SOURCE.puppeteer.args,
@@ -48,7 +46,84 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
     await page.evaluateOnNewDocument(() => {
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
     });
+
+    return { browser, page };
+}
+
+/**
+ * Cloudflareチャレンジを処理
+ */
+async function handleCloudflareChallenge(page, date, holeName) {
+    let pageTitle = await page.title();
+    const cloudflareIndicators = ['Just a moment', 'Checking', 'しばらくお待ちください', 'Cloudflare'];
+    const isCloudflare = cloudflareIndicators.some(indicator => pageTitle.includes(indicator));
     
+    if (isCloudflare) {
+        console.log(`[${date}][${holeName}] Cloudflareチャレンジ検出 ("${pageTitle}")、待機中...`);
+        try {
+            await page.waitForFunction(
+                (indicators) => {
+                    const title = document.title;
+                    return !indicators.some(ind => title.includes(ind));
+                },
+                { timeout: 60000 },
+                cloudflareIndicators
+            );
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            pageTitle = await page.title();
+            console.log(`[${date}][${holeName}] Cloudflareチャレンジ通過: "${pageTitle}"`);
+        } catch (e) {
+            console.log(`[${date}][${holeName}] Cloudflareチャレンジのタイムアウト - 続行を試みます`);
+        }
+    }
+    return pageTitle;
+}
+
+/**
+ * 機種一覧のみを取得（機種数比較用）
+ * @param {string} date - 日付
+ * @param {string} holeCode - 店舗コード
+ * @param {number} interval - 待機時間（ミリ秒）
+ * @returns {Promise<{count: number, machines: Array}>} 機種数と機種一覧
+ */
+export async function scrapeMachineList(date, holeCode, interval = 1000) {
+    const hole = config.holes.find(h => h.code === holeCode);
+    if (!hole) throw new Error('指定された店舗コードが見つかりません。');
+
+    const baseUrl = SLOREPO_SOURCE.buildUrl.hole(holeCode, date);
+    console.log(`[${date}][${hole.name}] 機種一覧を取得中... ${baseUrl}`);
+    
+    const { browser, page } = await initBrowser();
+
+    try {
+        await new Promise(resolve => setTimeout(resolve, interval));
+        await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 60000 });
+
+        const pageTitle = await handleCloudflareChallenge(page, date, hole.name);
+        
+        const pageUrl = page.url();
+        console.log(`[${date}][${hole.name}] ページロード完了 - タイトル: "${pageTitle}", URL: ${pageUrl}`);
+
+        const machines = await getMachines(page, SLOREPO_SOURCE.selectors.machineLinks);
+        console.log(`[${date}][${hole.name}] 機種一覧 (${machines.length}) を取得しました。`);
+
+        return {
+            count: machines.length,
+            machines: machines.map(m => m.name),
+        };
+    } finally {
+        await browser.close();
+    }
+}
+
+export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
+    const hole = config.holes.find(h => h.code === holeCode);
+    if (!hole) throw new Error('指定された店舗コードが見つかりません。');
+
+    const baseUrl = SLOREPO_SOURCE.buildUrl.hole(holeCode, date);
+    console.log(`[${date}][${hole.name}] スクレイピングを開始します... ${baseUrl}`);
+    
+    const { browser, page } = await initBrowser();
     const allData = [];
 
     try {
@@ -56,31 +131,7 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
         console.log(`[${date}][${hole.name}] 機種一覧を取得中...`);
         await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 60000 });
 
-        // Cloudflareチャレンジページの検出と待機（日本語・英語両対応）
-        let pageTitle = await page.title();
-        const cloudflareIndicators = ['Just a moment', 'Checking', 'しばらくお待ちください', 'Cloudflare'];
-        const isCloudflare = cloudflareIndicators.some(indicator => pageTitle.includes(indicator));
-        
-        if (isCloudflare) {
-            console.log(`[${date}][${hole.name}] Cloudflareチャレンジ検出 ("${pageTitle}")、待機中...`);
-            // チャレンジが解決されるまで待機（最大60秒）
-            try {
-                await page.waitForFunction(
-                    (indicators) => {
-                        const title = document.title;
-                        return !indicators.some(ind => title.includes(ind));
-                    },
-                    { timeout: 60000 },
-                    cloudflareIndicators
-                );
-                // ページが完全にロードされるまで追加で待機
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                pageTitle = await page.title();
-                console.log(`[${date}][${hole.name}] Cloudflareチャレンジ通過: "${pageTitle}"`);
-            } catch (e) {
-                console.log(`[${date}][${hole.name}] Cloudflareチャレンジのタイムアウト - 続行を試みます`);
-            }
-        }
+        const pageTitle = await handleCloudflareChallenge(page, date, hole.name);
 
         // デバッグ: ページ情報を出力
         const pageUrl = page.url();

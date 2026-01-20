@@ -173,6 +173,33 @@ const deleteDiffDataRange = async (db, startDate, endDate, hole = null) => {
     });
 };
 
+/**
+ * 特定の日付・店舗の機種数（ユニーク数）を取得
+ * @param {object} db - SQLiteデータベース接続
+ * @param {string} date - 日付
+ * @param {string} hole - 店舗名
+ * @returns {Promise<number>} 機種数
+ */
+const getMachineCount = async (db, date, hole) => {
+    await createScrapedDataTableIfNotExists(db);
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT COUNT(DISTINCT machine) as count
+            FROM scraped_data
+            WHERE date = ? AND hole = ?
+        `;
+        db.get(query, [date, hole], (err, row) => {
+            if (err) {
+                console.error(`[${date}][${hole}] 機種数取得中にエラーが発生しました: ${err.message}`);
+                reject(err);
+            } else {
+                console.log(`[${date}][${hole}] 保存済み機種数: ${row.count}`);
+                resolve(row.count);
+            }
+        });
+    });
+};
+
 const sqlite = {
     createScrapedDataTableIfNotExists,
     saveDiffData,
@@ -181,6 +208,7 @@ const sqlite = {
     getDiffDataDate,
     deleteDiffData,
     deleteDiffDataRange,
+    getMachineCount,
 };
 
 export default sqlite;

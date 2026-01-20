@@ -451,6 +451,41 @@
             </div>
         </div>
         
+        <!-- 再取得セクション -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🔄 データ再取得</h2>
+            </div>
+            <div class="delete-form">
+                <div class="form-group">
+                    <label for="rescrapeStartDate">開始日:</label>
+                    <input type="date" id="rescrapeStartDate">
+                </div>
+                <div class="form-group">
+                    <label for="rescrapeEndDate">終了日:</label>
+                    <input type="date" id="rescrapeEndDate">
+                </div>
+                <div class="form-group">
+                    <label for="rescrapeHole">店舗:</label>
+                    <select id="rescrapeHole">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="rescrapeForce" style="width: auto;">
+                    <label for="rescrapeForce" style="margin: 0;">強制再取得（既存データも再取得）</label>
+                </div>
+                <button id="rescrapeBtn" class="btn-warning">再取得</button>
+            </div>
+            <!-- 再取得進捗表示 -->
+            <div id="rescrapeProgress" style="display: none; margin-top: 16px;">
+                <div style="background-color: var(--bg-tertiary); border-radius: 8px; overflow: hidden; height: 24px; margin-bottom: 8px;">
+                    <div id="rescrapeProgressBar" style="background-color: var(--accent-blue); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+                <div id="rescrapeProgressMessage" style="font-size: 14px; color: var(--text-secondary);"></div>
+            </div>
+        </div>
+        
         <!-- 凡例 -->
         <div class="legend">
             <div class="legend-item">
@@ -507,15 +542,19 @@
         document.getElementById('endDate').value = formatDate(today);
         document.getElementById('deleteStartDate').value = formatDate(today);
         document.getElementById('deleteEndDate').value = formatDate(today);
+        document.getElementById('rescrapeStartDate').value = formatDate(today);
+        document.getElementById('rescrapeEndDate').value = formatDate(today);
         
         // イベントリスナー
         document.getElementById('searchBtn').addEventListener('click', fetchData);
         document.getElementById('refreshBtn').addEventListener('click', () => {
             fetchData();
             fetchLockStatus();
+            checkRescrapeStatus();
         });
         document.getElementById('forceUnlockBtn').addEventListener('click', showForceUnlockConfirm);
         document.getElementById('deleteBtn').addEventListener('click', showDeleteConfirm);
+        document.getElementById('rescrapeBtn').addEventListener('click', showRescrapeConfirm);
         document.getElementById('modalCancelBtn').addEventListener('click', hideModal);
         document.getElementById('modalConfirmBtn').addEventListener('click', executeModalAction);
         
@@ -592,13 +631,16 @@
         }
         
         function updateHoleSelector() {
-            const select = document.getElementById('deleteHole');
-            select.innerHTML = '<option value="">全店舗</option>';
-            holes.forEach(hole => {
-                const option = document.createElement('option');
-                option.value = hole.name;
-                option.textContent = hole.name;
-                select.appendChild(option);
+            const selectors = ['deleteHole', 'rescrapeHole'];
+            selectors.forEach(selectorId => {
+                const select = document.getElementById(selectorId);
+                select.innerHTML = '<option value="">全店舗</option>';
+                holes.forEach(hole => {
+                    const option = document.createElement('option');
+                    option.value = hole.name;
+                    option.textContent = hole.name;
+                    select.appendChild(option);
+                });
             });
         }
         
@@ -754,6 +796,124 @@
                 showError('削除中にエラーが発生しました: ' + error.message);
             }
         }
+        
+        // 再取得関連
+        let rescrapeStatusInterval = null;
+        
+        function showRescrapeConfirm() {
+            const startDate = document.getElementById('rescrapeStartDate').value;
+            const endDate = document.getElementById('rescrapeEndDate').value;
+            const hole = document.getElementById('rescrapeHole').value;
+            const force = document.getElementById('rescrapeForce').checked;
+            
+            if (!startDate || !endDate) {
+                showError('開始日と終了日を指定してください');
+                return;
+            }
+            
+            const holeText = hole || '全店舗';
+            const forceText = force ? '（強制再取得）' : '（機種数比較あり）';
+            showModal(
+                '🔄 データ再取得',
+                `以下の条件でデータを再取得します。${forceText}\n\n期間: ${startDate} 〜 ${endDate}\n店舗: ${holeText}`,
+                startRescrape
+            );
+        }
+        
+        async function startRescrape() {
+            const startDate = document.getElementById('rescrapeStartDate').value;
+            const endDate = document.getElementById('rescrapeEndDate').value;
+            const hole = document.getElementById('rescrapeHole').value;
+            const force = document.getElementById('rescrapeForce').checked;
+            
+            try {
+                const response = await fetch('/util/force-rescrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        startDate, 
+                        endDate, 
+                        hole: hole || null, 
+                        force 
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(`再取得を開始しました: ${data.params.startDate} 〜 ${data.params.endDate}`);
+                    document.getElementById('rescrapeBtn').disabled = true;
+                    startRescrapeStatusCheck();
+                } else {
+                    showError('再取得の開始に失敗しました: ' + (data.error || data.message));
+                }
+            } catch (error) {
+                console.error('再取得エラー:', error);
+                showError('再取得の開始中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        function startRescrapeStatusCheck() {
+            const progressContainer = document.getElementById('rescrapeProgress');
+            const progressBar = document.getElementById('rescrapeProgressBar');
+            const progressMessage = document.getElementById('rescrapeProgressMessage');
+            
+            progressContainer.style.display = 'block';
+            
+            rescrapeStatusInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/util/force-rescrape/status');
+                    const status = await response.json();
+                    
+                    if (status.progress.total > 0) {
+                        const progress = (status.progress.current / status.progress.total) * 100;
+                        progressBar.style.width = `${progress}%`;
+                    }
+                    
+                    progressMessage.textContent = status.progress.message;
+                    
+                    if (!status.isRunning) {
+                        clearInterval(rescrapeStatusInterval);
+                        rescrapeStatusInterval = null;
+                        document.getElementById('rescrapeBtn').disabled = false;
+                        
+                        if (status.lastError) {
+                            progressBar.style.backgroundColor = 'var(--accent-red)';
+                            showError('再取得中にエラーが発生しました: ' + status.lastError);
+                        } else {
+                            progressBar.style.backgroundColor = 'var(--accent-green)';
+                            showSuccess('再取得が完了しました');
+                            // データを更新
+                            setTimeout(() => {
+                                fetchData();
+                            }, 1000);
+                        }
+                    }
+                } catch (error) {
+                    clearInterval(rescrapeStatusInterval);
+                    rescrapeStatusInterval = null;
+                    progressMessage.textContent = `エラー: ${error.message}`;
+                    document.getElementById('rescrapeBtn').disabled = false;
+                }
+            }, 1000);
+        }
+        
+        async function checkRescrapeStatus() {
+            try {
+                const response = await fetch('/util/force-rescrape/status');
+                const status = await response.json();
+                
+                if (status.isRunning && !rescrapeStatusInterval) {
+                    document.getElementById('rescrapeBtn').disabled = true;
+                    startRescrapeStatusCheck();
+                }
+            } catch (error) {
+                console.error('再取得状態確認エラー:', error);
+            }
+        }
+        
+        // 初回読み込み時に再取得状態をチェック
+        checkRescrapeStatus();
         
         function showError(message) {
             const container = document.getElementById('messageContainer');
