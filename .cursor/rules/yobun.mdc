@@ -262,7 +262,8 @@ alwaysApply: true
   - `POST /pubsub` - スクレイピング開始
   - `GET /status` - スクレイピング状態取得
   - `POST /util/sync` - SQLite→BigQuery同期
-  - `POST /util/force-rescrape` - 強制再取得
+  - `POST /util/force-rescrape` - データ再取得（日付範囲・forceオプション対応）
+  - `GET /util/force-rescrape/status` - 再取得状態取得
   - `GET /health` - ヘルスチェック
 
 ### 7.3 データベース管理

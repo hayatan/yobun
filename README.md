@@ -152,7 +152,6 @@ yobun/
 | `/schedule` | スケジュール管理 |
 | `/datamart` | データマート管理 |
 | `/util/sync` | SQLite→BigQuery同期 |
-| `/util/force-rescrape` | 強制再取得 |
 
 ### API
 
@@ -172,6 +171,8 @@ yobun/
 | `/api/schedules/:jobId/schedules/:id` | PUT/DELETE | スケジュール更新/削除 |
 | `/api/datamart/status` | GET | データマート状態 |
 | `/api/datamart/delete` | DELETE | データマート削除 |
+| `/util/force-rescrape` | POST | データ再取得（日付範囲・force対応） |
+| `/util/force-rescrape/status` | GET | 再取得状態 |
 | `/api/datamart/run` | POST | データマート再実行 |
 | `/health` | GET | ヘルスチェック |
 

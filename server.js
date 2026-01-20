@@ -82,10 +82,7 @@ app.get('/util/sync', (req, res) => {
 const syncRouter = createSyncRouter(bigquery, db);
 app.use('/util/sync', syncRouter);
 
-// 強制再取得関連（HTMLページと API）
-app.get('/util/force-rescrape', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'util', 'force-rescrape.html'));
-});
+// 再取得API（ダッシュボードから使用）
 const forceRescrapeRouter = createForceRescrapeRouter(bigquery, db);
 app.use('/util/force-rescrape', forceRescrapeRouter);
 

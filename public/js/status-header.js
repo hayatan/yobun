@@ -38,7 +38,6 @@ class StatusHeader {
                     <a href="/schedule" class="nav-link">スケジュール</a>
                     <a href="/datamart" class="nav-link">データマート</a>
                     <a href="/util/sync" class="nav-link">同期</a>
-                    <a href="/util/force-rescrape" class="nav-link">再取得</a>
                 </div>
                 <div id="status-indicator" class="status-indicator">
                     <span class="status-dot"></span>
