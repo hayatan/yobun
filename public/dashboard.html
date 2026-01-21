@@ -538,17 +538,35 @@
         let holes = [];
         let currentModalAction = null;
         
-        // 初期化
-        const today = new Date();
-        const startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 7);
+        // 日付フォーマット関数（初期化より先に定義）
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
         
-        document.getElementById('startDate').value = formatDate(startDate);
-        document.getElementById('endDate').value = formatDate(today);
-        document.getElementById('deleteStartDate').value = formatDate(today);
-        document.getElementById('deleteEndDate').value = formatDate(today);
-        document.getElementById('rescrapeStartDate').value = formatDate(today);
-        document.getElementById('rescrapeEndDate').value = formatDate(today);
+        // デフォルト日付を設定
+        async function setDefaultDates() {
+            const today = new Date();
+            let days = 7; // フォールバック値
+            
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                days = config.defaultDateRanges?.dashboard ?? 7;
+            } catch (e) {
+                console.warn('設定取得に失敗、デフォルト値を使用:', e);
+            }
+            
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - days);
+            
+            document.getElementById('startDate').value = formatDate(startDate);
+            document.getElementById('endDate').value = formatDate(today);
+            // 削除・再取得は誤操作防止のため今日固定
+            document.getElementById('deleteStartDate').value = formatDate(today);
+            document.getElementById('deleteEndDate').value = formatDate(today);
+            document.getElementById('rescrapeStartDate').value = formatDate(today);
+            document.getElementById('rescrapeEndDate').value = formatDate(today);
+        }
         
         // イベントリスナー
         document.getElementById('searchBtn').addEventListener('click', fetchData);
@@ -563,16 +581,15 @@
         document.getElementById('modalCancelBtn').addEventListener('click', hideModal);
         document.getElementById('modalConfirmBtn').addEventListener('click', executeModalAction);
         
-        // 初回読み込み
-        fetchData();
-        fetchLockStatus();
+        // 初期化（日付設定後にデータ取得）
+        (async () => {
+            await setDefaultDates();
+            fetchData();
+            fetchLockStatus();
+        })();
         
         // 定期的にロック状態を更新
         setInterval(fetchLockStatus, 30000);
-        
-        function formatDate(date) {
-            return date.toISOString().split('T')[0];
-        }
         
         async function fetchLockStatus() {
             try {

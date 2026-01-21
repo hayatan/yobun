@@ -54,9 +54,21 @@
         let statusCheckInterval;
 
         // デフォルトの日付を設定
-        function setDefaultDate() {
+        async function setDefaultDate() {
             const today = new Date();
-            document.getElementById('date').value = today.toISOString().split('T')[0];
+            let days = 0; // フォールバック値（今日のみ）
+            
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                days = config.defaultDateRanges?.sync ?? 0;
+            } catch (e) {
+                console.warn('設定取得に失敗、デフォルト値を使用:', e);
+            }
+            
+            const targetDate = new Date(today);
+            targetDate.setDate(targetDate.getDate() - days);
+            document.getElementById('date').value = targetDate.toISOString().split('T')[0];
         }
 
         // ページ読み込み時にデフォルト日付を設定

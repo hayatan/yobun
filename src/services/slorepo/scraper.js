@@ -3,6 +3,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import config from '../../config/slorepo-config.js';
 import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import { cleanNumber } from '../../util/slorepo.js';
+import { SCRAPING } from '../../config/constants.js';
 
 // Cloudflare等のボット検出を回避するためのStealthプラグインを使用
 puppeteer.use(StealthPlugin());
@@ -256,6 +257,30 @@ function classifyHttpError(status) {
     return 'unknown';
 }
 
+/**
+ * リトライ可能なHTTPエラーかどうかを判定
+ * @param {number} status - HTTPステータスコード
+ * @returns {boolean} リトライ可能な場合true
+ */
+function isRetryableError(status) {
+    // 429 (Rate Limit) と 5xx (Server Error) はリトライ可能
+    return status === 429 || status >= 500;
+}
+
+/**
+ * 指数バックオフ遅延を計算
+ * @param {number} attempt - 現在の試行回数（0始まり）
+ * @param {number} baseDelay - ベース遅延（ミリ秒）
+ * @param {number} maxDelay - 最大遅延（ミリ秒）
+ * @returns {number} 遅延時間（ミリ秒）
+ */
+function calculateBackoffDelay(attempt, baseDelay, maxDelay) {
+    // delay = baseDelay * (2 ^ attempt) + ランダムジッター（0-1000ms）
+    const exponentialDelay = baseDelay * Math.pow(2, attempt);
+    const jitter = Math.random() * 1000;
+    return Math.min(exponentialDelay + jitter, maxDelay);
+}
+
 // データ処理関数
 function processSlotData(allData) {
     return allData.map(item => ({
@@ -279,132 +304,156 @@ async function getMachines(page, selector) {
 }
 
 async function scrapeMachineHtmlData(page, url, date, holeName, machineName, sourceConfig) {
-    
-    // 既存のリスナーを削除してから新しいリスナーを追加
-    page.removeAllListeners("response");
-    
-    // HTTPエラー情報を収集
-    let httpError = null;
-    
-    page.on("response", async response => {
-        const status = response.status();
-        const responseUrl = response.url();
-        
-        // メインリクエストのエラーのみを記録（favicon等は除外）
-        if (status >= 400 && responseUrl === url) {
-            const method = response.request().method();
-            console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${responseUrl}`);
-            httpError = {
-                status,
-                method,
-                url: responseUrl,
-                message: `HTTP ${status} エラー`,
-            };
-        } else if (status >= 400) {
-            // その他のリクエスト（favicon等）はログのみ
-            const method = response.request().method();
-            console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${responseUrl}`);
-        }
-    });
-
-    await page.goto(url, { waitUntil: sourceConfig.navigation.waitUntil });
-
+    const { machineRetryMaxAttempts, machineRetryBaseDelayMs, machineRetryMaxDelayMs } = SCRAPING;
     const selectors = sourceConfig.selectors;
     const requiredHeaders = sourceConfig.requiredHeaders;
     
-    const rows = await page.evaluate((date, holeName, machineName, selectors, requiredHeaders) => {
-        const rows = [];
-        const slotDivs = document.querySelectorAll(selectors.slotDivs);
-
-        // グラフデータ付きの部分から抽出
-        slotDivs.forEach(div => {
-            const pTag = div.querySelector(selectors.machineNumber);
-            const table = div.querySelector(selectors.dataTable);
-            const scripts = div.querySelectorAll('script');
-
-            let graphData = [];
-            scripts.forEach(script => {
-                if (script.textContent.includes('data: [')) {
-                    const match = script.textContent.match(/data:\s*\[([^\]]*)\]/);
-                    if (match && match[1]) graphData = match[1].split(',').map(v => parseInt(v.trim()));
+    // リトライループ
+    for (let attempt = 0; attempt <= machineRetryMaxAttempts; attempt++) {
+        // 既存のリスナーを削除してから新しいリスナーを追加
+        page.removeAllListeners("response");
+        
+        // HTTPエラー情報を収集
+        let httpError = null;
+        
+        page.on("response", async response => {
+            const status = response.status();
+            const responseUrl = response.url();
+            
+            // メインリクエストのエラーのみを記録（favicon等は除外）
+            if (status >= 400 && responseUrl === url) {
+                const method = response.request().method();
+                if (attempt === 0) {
+                    console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${responseUrl}`);
                 }
-            });
-
-            if (pTag && table) {
-                const machineNumber = pTag.textContent.trim();
-                const tableRows = table.querySelectorAll('tr');
-                if (tableRows.length >= 2) {
-                    const headers = Array.from(tableRows[0].querySelectorAll('th')).map(th => th.textContent.trim());
-                    const dataRow = tableRows[1].querySelectorAll('td');
-
-                    if (dataRow.length === headers.length) {
-                        rows.push({
-                            date: date,
-                            hole: holeName,
-                            machine: machineName,
-                            machineNumber,
-                            diff: dataRow[headers.indexOf('差枚')].textContent.trim(),
-                            game: dataRow[headers.indexOf('G数')].textContent.trim(),
-                            big: dataRow[headers.indexOf('BB')].textContent.trim(),
-                            reg: dataRow[headers.indexOf('RB')].textContent.trim(),
-                            combinedRate: dataRow[headers.indexOf('合成')].textContent.trim(),
-                            graphData
-                        });
-                    }
+                httpError = {
+                    status,
+                    method,
+                    url: responseUrl,
+                    message: `HTTP ${status} エラー`,
+                };
+            } else if (status >= 400) {
+                // その他のリクエスト（favicon等）はログのみ（初回のみ）
+                if (attempt === 0) {
+                    const method = response.request().method();
+                    console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${responseUrl}`);
                 }
             }
         });
 
-        // 一覧表から抽出
-        const slotTables = document.querySelectorAll(selectors.summaryTable);
-        slotTables.forEach(table => {
-            // テーブルのヘッダーを確認して、必要なテーブルだけを処理
-            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
-            
-            // 必要なヘッダーが含まれているか確認
-            const hasRequiredHeaders = requiredHeaders.every(header => headers.includes(header));
-            
-            // 必要なヘッダーが含まれていない場合はスキップ
-            if (!hasRequiredHeaders) {
-                return;
+        await page.goto(url, { waitUntil: sourceConfig.navigation.waitUntil });
+
+        // リトライ可能なエラーの場合、バックオフして再試行
+        if (httpError && isRetryableError(httpError.status)) {
+            if (attempt < machineRetryMaxAttempts) {
+                const delay = calculateBackoffDelay(attempt, machineRetryBaseDelayMs, machineRetryMaxDelayMs);
+                console.log(`[${date}][${holeName}] 機種: ${machineName} - リトライ ${attempt + 1}/${machineRetryMaxAttempts} (HTTP ${httpError.status}) - ${Math.round(delay)}ms後に再試行...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            } else {
+                // 最大リトライ回数に達した場合
+                console.log(`[${date}][${holeName}] 機種: ${machineName} - 最大リトライ回数（${machineRetryMaxAttempts}回）に達しました。失敗として記録します。`);
             }
+        }
+        
+        // エラーがない場合、またはリトライ不可能なエラーの場合はデータを取得
+        const rows = await page.evaluate((date, holeName, machineName, selectors, requiredHeaders) => {
+            const rows = [];
+            const slotDivs = document.querySelectorAll(selectors.slotDivs);
 
-            const tbody = table.querySelector('tbody');
-            const trs = tbody.querySelectorAll('tr');
+            // グラフデータ付きの部分から抽出
+            slotDivs.forEach(div => {
+                const pTag = div.querySelector(selectors.machineNumber);
+                const table = div.querySelector(selectors.dataTable);
+                const scripts = div.querySelectorAll('script');
 
-            trs.forEach(tr => {
-                const tds = tr.querySelectorAll('td');
+                let graphData = [];
+                scripts.forEach(script => {
+                    if (script.textContent.includes('data: [')) {
+                        const match = script.textContent.match(/data:\s*\[([^\]]*)\]/);
+                        if (match && match[1]) graphData = match[1].split(',').map(v => parseInt(v.trim()));
+                    }
+                });
 
-                if (tds.length > 0 && tds[0].textContent.trim() !== '平均') {
-                    const machineNumber = tds[headers.indexOf('台番')].textContent.trim();
-                    const existingRow = rows.find(row => row.machineNumber === machineNumber);
-                    if (existingRow) {
-                        existingRow.diff = tds[headers.indexOf('差枚')].textContent.trim();
-                        existingRow.game = tds[headers.indexOf('G数')].textContent.trim();
-                        existingRow.big = tds[headers.indexOf('BB')].textContent.trim();
-                        existingRow.reg = tds[headers.indexOf('RB')].textContent.trim();
-                        existingRow.combinedRate = tds[headers.indexOf('合成')].textContent.trim();
-                    } else {
-                        rows.push({
-                            date: date,
-                            hole: holeName,
-                            machine: machineName,
-                            machineNumber,
-                            diff: tds[headers.indexOf('差枚')].textContent.trim(),
-                            game: tds[headers.indexOf('G数')].textContent.trim(),
-                            big: tds[headers.indexOf('BB')].textContent.trim(),
-                            reg: tds[headers.indexOf('RB')].textContent.trim(),
-                            combinedRate: tds[headers.indexOf('合成')].textContent.trim(),
-                            graphData: []
-                        });
+                if (pTag && table) {
+                    const machineNumber = pTag.textContent.trim();
+                    const tableRows = table.querySelectorAll('tr');
+                    if (tableRows.length >= 2) {
+                        const headers = Array.from(tableRows[0].querySelectorAll('th')).map(th => th.textContent.trim());
+                        const dataRow = tableRows[1].querySelectorAll('td');
+
+                        if (dataRow.length === headers.length) {
+                            rows.push({
+                                date: date,
+                                hole: holeName,
+                                machine: machineName,
+                                machineNumber,
+                                diff: dataRow[headers.indexOf('差枚')].textContent.trim(),
+                                game: dataRow[headers.indexOf('G数')].textContent.trim(),
+                                big: dataRow[headers.indexOf('BB')].textContent.trim(),
+                                reg: dataRow[headers.indexOf('RB')].textContent.trim(),
+                                combinedRate: dataRow[headers.indexOf('合成')].textContent.trim(),
+                                graphData
+                            });
+                        }
                     }
                 }
             });
-        });
 
-        return rows;
-    }, date, holeName, machineName, selectors, requiredHeaders);
+            // 一覧表から抽出
+            const slotTables = document.querySelectorAll(selectors.summaryTable);
+            slotTables.forEach(table => {
+                // テーブルのヘッダーを確認して、必要なテーブルだけを処理
+                const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                
+                // 必要なヘッダーが含まれているか確認
+                const hasRequiredHeaders = requiredHeaders.every(header => headers.includes(header));
+                
+                // 必要なヘッダーが含まれていない場合はスキップ
+                if (!hasRequiredHeaders) {
+                    return;
+                }
+
+                const tbody = table.querySelector('tbody');
+                const trs = tbody.querySelectorAll('tr');
+
+                trs.forEach(tr => {
+                    const tds = tr.querySelectorAll('td');
+
+                    if (tds.length > 0 && tds[0].textContent.trim() !== '平均') {
+                        const machineNumber = tds[headers.indexOf('台番')].textContent.trim();
+                        const existingRow = rows.find(row => row.machineNumber === machineNumber);
+                        if (existingRow) {
+                            existingRow.diff = tds[headers.indexOf('差枚')].textContent.trim();
+                            existingRow.game = tds[headers.indexOf('G数')].textContent.trim();
+                            existingRow.big = tds[headers.indexOf('BB')].textContent.trim();
+                            existingRow.reg = tds[headers.indexOf('RB')].textContent.trim();
+                            existingRow.combinedRate = tds[headers.indexOf('合成')].textContent.trim();
+                        } else {
+                            rows.push({
+                                date: date,
+                                hole: holeName,
+                                machine: machineName,
+                                machineNumber,
+                                diff: tds[headers.indexOf('差枚')].textContent.trim(),
+                                game: tds[headers.indexOf('G数')].textContent.trim(),
+                                big: tds[headers.indexOf('BB')].textContent.trim(),
+                                reg: tds[headers.indexOf('RB')].textContent.trim(),
+                                combinedRate: tds[headers.indexOf('合成')].textContent.trim(),
+                                graphData: []
+                            });
+                        }
+                    }
+                });
+            });
+
+            return rows;
+        }, date, holeName, machineName, selectors, requiredHeaders);
+        
+        // データとエラー情報を返す
+        return { data: rows, error: httpError };
+    }
     
-    // データとエラー情報を返す
-    return { data: rows, error: httpError };
+    // ここには到達しないはずだが、念のため
+    return { data: [], error: { status: 0, message: 'Unknown error' } };
 } 

@@ -647,8 +647,8 @@
         // ============================================
         // 初期化
         // ============================================
-        document.addEventListener('DOMContentLoaded', () => {
-            initDates();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initDates();
             initTabs();
             initEventListeners();
             loadStats();
@@ -656,17 +656,27 @@
             loadHoles();
         });
         
-        function initDates() {
+        async function initDates() {
             const today = new Date();
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
+            let days = 7; // フォールバック値
+            
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                days = config.defaultDateRanges?.failures ?? 7;
+            } catch (e) {
+                console.warn('設定取得に失敗、デフォルト値を使用:', e);
+            }
+            
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - days);
             
             const todayStr = formatDate(today);
-            const weekAgoStr = formatDate(weekAgo);
+            const startDateStr = formatDate(startDate);
             
-            document.getElementById('filterStartDate').value = weekAgoStr;
+            document.getElementById('filterStartDate').value = startDateStr;
             document.getElementById('filterEndDate').value = todayStr;
-            document.getElementById('historyStartDate').value = weekAgoStr;
+            document.getElementById('historyStartDate').value = startDateStr;
             document.getElementById('historyEndDate').value = todayStr;
         }
         

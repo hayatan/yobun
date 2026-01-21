@@ -359,22 +359,32 @@
         let statusCheckInterval = null;
 
         // デフォルトの日付を設定
-        function setDefaultDates() {
+        async function setDefaultDates() {
             const today = new Date();
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
+            let days = 7; // フォールバック値
+            
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                days = config.defaultDateRanges?.dedupe ?? 7;
+            } catch (e) {
+                console.warn('設定取得に失敗、デフォルト値を使用:', e);
+            }
+
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - days);
 
             const formatDate = (d) => d.toISOString().split('T')[0];
 
-            document.getElementById('checkStartDate').value = formatDate(weekAgo);
+            document.getElementById('checkStartDate').value = formatDate(startDate);
             document.getElementById('checkEndDate').value = formatDate(today);
-            document.getElementById('bqStartDate').value = formatDate(weekAgo);
+            document.getElementById('bqStartDate').value = formatDate(startDate);
             document.getElementById('bqEndDate').value = formatDate(today);
         }
 
         // ページ読み込み時の初期化
-        window.onload = function() {
-            setDefaultDates();
+        window.onload = async function() {
+            await setDefaultDates();
             checkSqliteDuplicates();
         };
 

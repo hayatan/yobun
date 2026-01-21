@@ -504,15 +504,28 @@
             return jst.toISOString().split('T')[0];
         }
         
-        // 初期化（JST基準）
-        const today = getJSTDate(0);
-        const weekAgo = getJSTDate(-7);
-        
-        document.getElementById('startDate').value = weekAgo;
-        document.getElementById('endDate').value = today;
-        document.getElementById('deleteDate').value = today;
-        document.getElementById('runStartDate').value = today;
-        document.getElementById('runEndDate').value = today;
+        // デフォルト日付を設定
+        async function setDefaultDates() {
+            let days = 7; // フォールバック値
+            
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                days = config.defaultDateRanges?.datamart ?? 7;
+            } catch (e) {
+                console.warn('設定取得に失敗、デフォルト値を使用:', e);
+            }
+            
+            const today = getJSTDate(0);
+            const startDate = getJSTDate(-days);
+            
+            document.getElementById('startDate').value = startDate;
+            document.getElementById('endDate').value = today;
+            // 削除・再実行は誤操作防止のため今日固定
+            document.getElementById('deleteDate').value = today;
+            document.getElementById('runStartDate').value = today;
+            document.getElementById('runEndDate').value = today;
+        }
         
         // イベントリスナー
         document.getElementById('searchBtn').addEventListener('click', fetchData);
@@ -525,9 +538,12 @@
         document.getElementById('modalCancelBtn').addEventListener('click', hideModal);
         document.getElementById('modalConfirmBtn').addEventListener('click', executeModalAction);
         
-        // 初回読み込み
-        fetchData();
-        fetchJobStatus();
+        // 初期化（日付設定後にデータ取得）
+        (async () => {
+            await setDefaultDates();
+            fetchData();
+            fetchJobStatus();
+        })();
         
         // 定期的にジョブ状態を更新
         setInterval(fetchJobStatus, 5000);
