@@ -39,7 +39,7 @@ const createTableIfNotExists = async (db) => {
 };
 
 /**
- * 失敗レコードを追加
+ * 失敗レコードを追加（同じ日付・店舗・機種のpendingレコードがあれば上書き）
  * @param {object} db - SQLiteデータベース接続
  * @param {object} failure - 失敗情報
  * @param {string} failure.date - 対象日付
@@ -49,43 +49,90 @@ const createTableIfNotExists = async (db) => {
  * @param {string} [failure.machineUrl] - 機種ページURL
  * @param {string} failure.errorType - エラー種別
  * @param {string} [failure.errorMessage] - エラー詳細
- * @returns {Promise<string>} 作成されたレコードのID
+ * @returns {Promise<string>} 作成または更新されたレコードのID
  */
 const addFailure = async (db, failure) => {
     await createTableIfNotExists(db);
     
-    const id = SCRAPE_FAILURES_SCHEMA.generateId();
     const now = new Date().toISOString();
+    const machine = failure.machine || null;
     
-    return new Promise((resolve, reject) => {
+    // 同じ日付・店舗・機種のpendingレコードを検索
+    const existing = await new Promise((resolve, reject) => {
         const query = `
-            INSERT INTO scrape_failures (
-                id, date, hole, hole_code, machine, machine_url,
-                error_type, error_message, failed_at, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            SELECT id FROM scrape_failures 
+            WHERE date = ? AND hole = ? AND (machine = ? OR (machine IS NULL AND ? IS NULL))
+            AND status = 'pending'
         `;
-        
-        db.run(query, [
-            id,
-            failure.date,
-            failure.hole,
-            failure.holeCode,
-            failure.machine || null,
-            failure.machineUrl || null,
-            failure.errorType,
-            failure.errorMessage || null,
-            now,
-            SCRAPE_FAILURES_SCHEMA.statuses.PENDING,
-        ], function(err) {
-            if (err) {
-                console.error(`[${failure.date}][${failure.hole}] 失敗記録の追加中にエラー: ${err.message}`);
-                reject(err);
-            } else {
-                console.log(`[${failure.date}][${failure.hole}] 失敗記録を追加: ${id}`);
-                resolve(id);
-            }
+        db.get(query, [failure.date, failure.hole, machine, machine], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
         });
     });
+    
+    if (existing) {
+        // 既存レコードを更新
+        return new Promise((resolve, reject) => {
+            const query = `
+                UPDATE scrape_failures SET
+                    hole_code = ?,
+                    machine_url = ?,
+                    error_type = ?,
+                    error_message = ?,
+                    failed_at = ?
+                WHERE id = ?
+            `;
+            
+            db.run(query, [
+                failure.holeCode,
+                failure.machineUrl || null,
+                failure.errorType,
+                failure.errorMessage || null,
+                now,
+                existing.id,
+            ], function(err) {
+                if (err) {
+                    console.error(`[${failure.date}][${failure.hole}] 失敗記録の更新中にエラー: ${err.message}`);
+                    reject(err);
+                } else {
+                    console.log(`[${failure.date}][${failure.hole}] 失敗記録を更新: ${existing.id}`);
+                    resolve(existing.id);
+                }
+            });
+        });
+    } else {
+        // 新規レコードを作成
+        const id = SCRAPE_FAILURES_SCHEMA.generateId();
+        return new Promise((resolve, reject) => {
+            const query = `
+                INSERT INTO scrape_failures (
+                    id, date, hole, hole_code, machine, machine_url,
+                    error_type, error_message, failed_at, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            
+            db.run(query, [
+                id,
+                failure.date,
+                failure.hole,
+                failure.holeCode,
+                machine,
+                failure.machineUrl || null,
+                failure.errorType,
+                failure.errorMessage || null,
+                now,
+                SCRAPE_FAILURES_SCHEMA.statuses.PENDING,
+            ], function(err) {
+                if (err) {
+                    console.error(`[${failure.date}][${failure.hole}] 失敗記録の追加中にエラー: ${err.message}`);
+                    reject(err);
+                } else {
+                    console.log(`[${failure.date}][${failure.hole}] 失敗記録を追加: ${id}`);
+                    resolve(id);
+                }
+            });
+        });
+    }
 };
 
 /**
@@ -291,6 +338,33 @@ const getStats = async (db) => {
     });
 };
 
+/**
+ * 失敗レコード一括削除
+ * @param {Object} db - SQLiteデータベース接続
+ * @param {Array<string>} ids - 削除するIDの配列
+ * @returns {Promise<number>} 削除件数
+ */
+const deleteFailuresBulk = async (db, ids) => {
+    await createTableIfNotExists(db);
+    
+    if (!ids || ids.length === 0) {
+        return 0;
+    }
+    
+    const placeholders = ids.map(() => '?').join(',');
+    
+    return new Promise((resolve, reject) => {
+        db.run(`DELETE FROM scrape_failures WHERE id IN (${placeholders})`, ids, function(err) {
+            if (err) {
+                console.error(`失敗レコード一括削除中にエラー: ${err.message}`);
+                reject(err);
+            } else {
+                resolve(this.changes);
+            }
+        });
+    });
+};
+
 const failures = {
     createTableIfNotExists,
     addFailure,
@@ -298,6 +372,7 @@ const failures = {
     getFailureById,
     updateFailureStatus,
     deleteFailure,
+    deleteFailuresBulk,
     getPendingCount,
     getStats,
     // スキーマの定数をエクスポート

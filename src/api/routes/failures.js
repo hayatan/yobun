@@ -145,6 +145,38 @@ const createFailuresRouter = (db) => {
     });
 
     /**
+     * 失敗レコード一括削除
+     * DELETE /api/failures/bulk
+     * Body: { ids: string[] }
+     */
+    router.delete('/bulk', async (req, res) => {
+        try {
+            const { ids } = req.body;
+            
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'idsは1つ以上の配列で指定してください',
+                });
+            }
+            
+            const count = await failures.deleteFailuresBulk(db, ids);
+            
+            res.json({
+                success: true,
+                count,
+                message: `${count}件の失敗レコードを削除しました`,
+            });
+        } catch (error) {
+            console.error('失敗レコード一括削除エラー:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    });
+
+    /**
      * 失敗レコード削除
      * DELETE /api/failures/:id
      */

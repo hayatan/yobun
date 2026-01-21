@@ -240,8 +240,66 @@
             top: 0;
         }
         
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        th.sortable:hover {
+            background-color: var(--bg-primary);
+        }
+        
+        th.sortable::after {
+            content: '';
+            display: inline-block;
+            margin-left: 6px;
+            opacity: 0.3;
+        }
+        
+        th.sortable.asc::after {
+            content: '▲';
+            opacity: 1;
+        }
+        
+        th.sortable.desc::after {
+            content: '▼';
+            opacity: 1;
+        }
+        
         tr:hover {
             background-color: var(--bg-tertiary);
+        }
+        
+        /* チェックボックス */
+        th.checkbox-col, td.checkbox-col {
+            width: 40px;
+            text-align: center;
+            padding: 12px 8px;
+        }
+        
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            padding: 12px;
+            background-color: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+        
+        .bulk-actions.hidden {
+            display: none;
+        }
+        
+        .selected-count {
+            font-size: 14px;
+            color: var(--text-secondary);
         }
         
         /* ステータスバッジ */
@@ -396,6 +454,19 @@
             color: var(--text-secondary);
         }
         
+        .selected-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .selected-actions button {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
         .hidden {
             display: none !important;
         }
@@ -475,6 +546,12 @@
                     <button id="searchFailuresBtn">検索</button>
                     <button id="refreshFailuresBtn" class="btn-secondary">更新</button>
                 </div>
+                
+                <!-- 一括操作 -->
+                <div id="failuresBulkActions" class="bulk-actions hidden">
+                    <span class="selected-count"><span id="failuresSelectedCount">0</span>件選択中</span>
+                    <button id="deleteSelectedFailuresBtn" class="btn-danger">選択を削除</button>
+                </div>
             </div>
             
             <!-- 失敗一覧テーブル -->
@@ -482,17 +559,18 @@
                 <table id="failuresTable">
                     <thead>
                         <tr>
-                            <th>日付</th>
-                            <th>店舗</th>
-                            <th>機種</th>
-                            <th>エラー種別</th>
-                            <th>ステータス</th>
-                            <th>失敗日時</th>
+                            <th class="checkbox-col"><input type="checkbox" id="failuresSelectAll" title="全選択"></th>
+                            <th class="sortable" data-sort="date">日付</th>
+                            <th class="sortable" data-sort="hole">店舗</th>
+                            <th class="sortable" data-sort="machine">機種</th>
+                            <th class="sortable" data-sort="error_type">エラー種別</th>
+                            <th class="sortable" data-sort="status">ステータス</th>
+                            <th class="sortable" data-sort="failed_at">失敗日時</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="failuresTableBody">
-                        <tr><td colspan="7" style="text-align: center;">読み込み中...</td></tr>
+                        <tr><td colspan="8" style="text-align: center;">読み込み中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -509,6 +587,12 @@
                     <div><span>日付:</span> <strong id="selectedDate">-</strong></div>
                     <div><span>店舗:</span> <strong id="selectedHole">-</strong></div>
                     <div><span>機種:</span> <strong id="selectedMachine">-</strong></div>
+                    <div><span>ステータス:</span> <strong id="selectedStatus">-</strong></div>
+                </div>
+                <div class="selected-actions" id="selectedActions">
+                    <button id="markResolvedBtn" class="btn-success">解決済みにする</button>
+                    <button id="markIgnoredBtn" class="btn-secondary">無視する</button>
+                    <button id="deleteFailureBtn" class="btn-danger">削除</button>
                 </div>
             </div>
             
@@ -613,6 +697,12 @@
                     </div>
                     <button id="searchHistoryBtn">検索</button>
                 </div>
+                
+                <!-- 一括操作 -->
+                <div id="historyBulkActions" class="bulk-actions hidden">
+                    <span class="selected-count"><span id="historySelectedCount">0</span>件選択中</span>
+                    <button id="deleteSelectedHistoryBtn" class="btn-danger">選択を削除</button>
+                </div>
             </div>
             
             <!-- 補正履歴テーブル -->
@@ -620,16 +710,17 @@
                 <table id="historyTable">
                     <thead>
                         <tr>
-                            <th>日付</th>
-                            <th>店舗</th>
-                            <th>機種</th>
-                            <th>件数</th>
-                            <th>補正日時</th>
+                            <th class="checkbox-col"><input type="checkbox" id="historySelectAll" title="全選択"></th>
+                            <th class="sortable" data-sort="date">日付</th>
+                            <th class="sortable" data-sort="hole">店舗</th>
+                            <th class="sortable" data-sort="machine">機種</th>
+                            <th class="sortable" data-sort="count">件数</th>
+                            <th class="sortable" data-sort="last_corrected">補正日時</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
-                        <tr><td colspan="6" style="text-align: center;">読み込み中...</td></tr>
+                        <tr><td colspan="7" style="text-align: center;">読み込み中...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -641,9 +732,18 @@
         // 状態管理
         // ============================================
         let failures = [];
+        let history = [];
         let previewData = [];
         let selectedFailure = null;
         let slorepoUrl = null;
+        
+        // ソート状態
+        let failuresSort = { key: 'failed_at', order: 'desc' };
+        let historySort = { key: 'last_corrected', order: 'desc' };
+        
+        // 選択状態
+        let selectedFailureIds = new Set();
+        let selectedHistoryItems = new Set(); // `${date}|${hole}|${machine}` 形式
         
         // ============================================
         // 初期化
@@ -652,6 +752,8 @@
             initDates();
             initTabs();
             initEventListeners();
+            initSortHandlers();
+            initCheckboxHandlers();
             loadStats();
             loadFailures();
             loadHoles();
@@ -701,6 +803,99 @@
             
             // 補正履歴
             document.getElementById('searchHistoryBtn').addEventListener('click', loadHistory);
+            
+            // 一括削除
+            document.getElementById('deleteSelectedFailuresBtn').addEventListener('click', deleteSelectedFailures);
+            document.getElementById('deleteSelectedHistoryBtn').addEventListener('click', deleteSelectedHistory);
+            
+            // 選択中レコードのアクション
+            document.getElementById('markResolvedBtn').addEventListener('click', () => markSelectedAs('resolved'));
+            document.getElementById('markIgnoredBtn').addEventListener('click', () => markSelectedAs('ignored'));
+            document.getElementById('deleteFailureBtn').addEventListener('click', deleteSelectedFailure);
+        }
+        
+        // ソートハンドラー初期化
+        function initSortHandlers() {
+            // 失敗一覧のソート
+            document.querySelectorAll('#failuresTable th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const key = th.dataset.sort;
+                    if (failuresSort.key === key) {
+                        failuresSort.order = failuresSort.order === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        failuresSort.key = key;
+                        failuresSort.order = 'asc';
+                    }
+                    updateSortIndicators('failuresTable', failuresSort);
+                    renderFailuresTable();
+                });
+            });
+            
+            // 補正履歴のソート
+            document.querySelectorAll('#historyTable th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const key = th.dataset.sort;
+                    if (historySort.key === key) {
+                        historySort.order = historySort.order === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        historySort.key = key;
+                        historySort.order = 'asc';
+                    }
+                    updateSortIndicators('historyTable', historySort);
+                    renderHistoryTable();
+                });
+            });
+        }
+        
+        // ソートインジケーター更新
+        function updateSortIndicators(tableId, sortState) {
+            const table = document.getElementById(tableId);
+            table.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+                if (th.dataset.sort === sortState.key) {
+                    th.classList.add(sortState.order);
+                }
+            });
+        }
+        
+        // チェックボックスハンドラー初期化
+        function initCheckboxHandlers() {
+            // 失敗一覧の全選択
+            document.getElementById('failuresSelectAll').addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                selectedFailureIds.clear();
+                if (checked) {
+                    failures.forEach(f => selectedFailureIds.add(f.id));
+                }
+                renderFailuresTable();
+                updateBulkActionsVisibility('failures');
+            });
+            
+            // 補正履歴の全選択
+            document.getElementById('historySelectAll').addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                selectedHistoryItems.clear();
+                if (checked) {
+                    history.forEach(h => selectedHistoryItems.add(`${h.date}|${h.hole}|${h.machine}`));
+                }
+                renderHistoryTable();
+                updateBulkActionsVisibility('history');
+            });
+        }
+        
+        // 一括操作バーの表示/非表示
+        function updateBulkActionsVisibility(type) {
+            if (type === 'failures') {
+                const bulkActions = document.getElementById('failuresBulkActions');
+                const countEl = document.getElementById('failuresSelectedCount');
+                countEl.textContent = selectedFailureIds.size;
+                bulkActions.classList.toggle('hidden', selectedFailureIds.size === 0);
+            } else {
+                const bulkActions = document.getElementById('historyBulkActions');
+                const countEl = document.getElementById('historySelectedCount');
+                countEl.textContent = selectedHistoryItems.size;
+                bulkActions.classList.toggle('hidden', selectedHistoryItems.size === 0);
+            }
         }
         
         // ============================================
@@ -740,6 +935,9 @@
                 
                 if (result.success) {
                     failures = result.data;
+                    selectedFailureIds.clear();
+                    document.getElementById('failuresSelectAll').checked = false;
+                    updateBulkActionsVisibility('failures');
                     renderFailuresTable();
                 }
             } catch (error) {
@@ -785,7 +983,11 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    renderHistoryTable(result.data);
+                    history = result.data;
+                    selectedHistoryItems.clear();
+                    document.getElementById('historySelectAll').checked = false;
+                    updateBulkActionsVisibility('history');
+                    renderHistoryTable();
                 }
             } catch (error) {
                 console.error('補正履歴取得エラー:', error);
@@ -795,16 +997,44 @@
         // ============================================
         // テーブル描画
         // ============================================
+        // ソート関数
+        function sortData(data, sortState) {
+            return [...data].sort((a, b) => {
+                let aVal = a[sortState.key];
+                let bVal = b[sortState.key];
+                
+                // nullチェック
+                if (aVal == null) aVal = '';
+                if (bVal == null) bVal = '';
+                
+                // 数値比較
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return sortState.order === 'asc' ? aVal - bVal : bVal - aVal;
+                }
+                
+                // 文字列比較
+                const comparison = String(aVal).localeCompare(String(bVal), 'ja');
+                return sortState.order === 'asc' ? comparison : -comparison;
+            });
+        }
+        
         function renderFailuresTable() {
             const tbody = document.getElementById('failuresTableBody');
             
             if (failures.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">該当するデータがありません</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">該当するデータがありません</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = failures.map(f => `
+            const sorted = sortData(failures, failuresSort);
+            
+            tbody.innerHTML = sorted.map(f => `
                 <tr>
+                    <td class="checkbox-col">
+                        <input type="checkbox" 
+                               ${selectedFailureIds.has(f.id) ? 'checked' : ''} 
+                               onchange="toggleFailureSelection('${f.id}', this.checked)">
+                    </td>
                     <td>${f.date}</td>
                     <td>${f.hole}</td>
                     <td>${f.machine || '-'}</td>
@@ -819,18 +1049,31 @@
                     </td>
                 </tr>
             `).join('');
+            
+            // 全選択チェックボックスの状態更新
+            const allSelected = failures.length > 0 && failures.every(f => selectedFailureIds.has(f.id));
+            document.getElementById('failuresSelectAll').checked = allSelected;
         }
         
-        function renderHistoryTable(data) {
+        function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">該当するデータがありません</td></tr>';
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">該当するデータがありません</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = data.map(h => `
+            const sorted = sortData(history, historySort);
+            
+            tbody.innerHTML = sorted.map(h => {
+                const key = `${h.date}|${h.hole}|${h.machine}`;
+                return `
                 <tr>
+                    <td class="checkbox-col">
+                        <input type="checkbox" 
+                               ${selectedHistoryItems.has(key) ? 'checked' : ''} 
+                               onchange="toggleHistorySelection('${h.date}', '${h.hole}', '${h.machine}', this.checked)">
+                    </td>
                     <td>${h.date}</td>
                     <td>${h.hole}</td>
                     <td>${h.machine}</td>
@@ -840,7 +1083,37 @@
                         <button class="btn-danger" onclick="deleteCorrections('${h.date}', '${h.hole}', '${h.machine}')" style="padding: 4px 8px; font-size: 12px;">削除</button>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
+            
+            // 全選択チェックボックスの状態更新
+            const allSelected = history.length > 0 && history.every(h => selectedHistoryItems.has(`${h.date}|${h.hole}|${h.machine}`));
+            document.getElementById('historySelectAll').checked = allSelected;
+        }
+        
+        // 選択トグル関数
+        function toggleFailureSelection(id, checked) {
+            if (checked) {
+                selectedFailureIds.add(id);
+            } else {
+                selectedFailureIds.delete(id);
+            }
+            updateBulkActionsVisibility('failures');
+            // 全選択チェックボックスの状態更新
+            const allSelected = failures.length > 0 && failures.every(f => selectedFailureIds.has(f.id));
+            document.getElementById('failuresSelectAll').checked = allSelected;
+        }
+        
+        function toggleHistorySelection(date, hole, machine, checked) {
+            const key = `${date}|${hole}|${machine}`;
+            if (checked) {
+                selectedHistoryItems.add(key);
+            } else {
+                selectedHistoryItems.delete(key);
+            }
+            updateBulkActionsVisibility('history');
+            // 全選択チェックボックスの状態更新
+            const allSelected = history.length > 0 && history.every(h => selectedHistoryItems.has(`${h.date}|${h.hole}|${h.machine}`));
+            document.getElementById('historySelectAll').checked = allSelected;
         }
         
         function renderPreviewTable() {
@@ -883,6 +1156,12 @@
             document.getElementById('selectedDate').textContent = selectedFailure.date;
             document.getElementById('selectedHole').textContent = selectedFailure.hole;
             document.getElementById('selectedMachine').textContent = selectedFailure.machine || '不明';
+            document.getElementById('selectedStatus').textContent = getStatusLabel(selectedFailure.status);
+            
+            // ステータスに応じてボタンを表示/非表示
+            const isPending = selectedFailure.status === 'pending';
+            document.getElementById('markResolvedBtn').style.display = isPending ? '' : 'none';
+            document.getElementById('markIgnoredBtn').style.display = isPending ? '' : 'none';
             
             // 機種名を自動入力
             if (selectedFailure.machine) {
@@ -894,6 +1173,74 @@
             
             // iframeを読み込み
             loadIframe();
+        }
+        
+        // 選択中レコードのステータス変更
+        async function markSelectedAs(status) {
+            if (!selectedFailure) return;
+            
+            const statusLabel = status === 'resolved' ? '解決済み' : '無視';
+            if (!confirm(`このレコードを「${statusLabel}」にしますか？`)) return;
+            
+            try {
+                const response = await fetch(`/api/failures/${selectedFailure.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        status, 
+                        resolvedMethod: status === 'resolved' ? 'manual' : undefined 
+                    }),
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`ステータスを「${statusLabel}」に更新しました`, 'success');
+                    // 選択中レコードを更新
+                    selectedFailure.status = status;
+                    document.getElementById('selectedStatus').textContent = getStatusLabel(status);
+                    document.getElementById('markResolvedBtn').style.display = 'none';
+                    document.getElementById('markIgnoredBtn').style.display = 'none';
+                    // 一覧を更新
+                    loadStats();
+                    loadFailures();
+                } else {
+                    showMessage(result.error || '更新に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('ステータス更新エラー:', error);
+                showMessage('更新中にエラーが発生しました', 'error');
+            }
+        }
+        
+        // 選択中レコードの削除
+        async function deleteSelectedFailure() {
+            if (!selectedFailure) return;
+            
+            if (!confirm('この失敗レコードを削除しますか？')) return;
+            
+            try {
+                const response = await fetch(`/api/failures/${selectedFailure.id}`, {
+                    method: 'DELETE',
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('失敗レコードを削除しました', 'success');
+                    // 選択をクリア
+                    selectedFailure = null;
+                    document.getElementById('selectedFailure').classList.add('hidden');
+                    // 一覧を更新
+                    loadStats();
+                    loadFailures();
+                } else {
+                    showMessage(result.error || '削除に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showMessage('削除中にエラーが発生しました', 'error');
+            }
         }
         
         function loadIframe() {
@@ -1072,6 +1419,76 @@
                 console.error('削除エラー:', error);
                 showMessage('削除中にエラーが発生しました', 'error');
             }
+        }
+        
+        // 失敗レコード一括削除
+        async function deleteSelectedFailures() {
+            if (selectedFailureIds.size === 0) return;
+            
+            if (!confirm(`${selectedFailureIds.size}件の失敗レコードを削除しますか？`)) return;
+            
+            try {
+                const response = await fetch('/api/failures/bulk', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: Array.from(selectedFailureIds) }),
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`${result.count}件の失敗レコードを削除しました`, 'success');
+                    selectedFailureIds.clear();
+                    updateBulkActionsVisibility('failures');
+                    loadStats();
+                    loadFailures();
+                } else {
+                    showMessage(result.error || '削除に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('一括削除エラー:', error);
+                showMessage('削除中にエラーが発生しました', 'error');
+            }
+        }
+        
+        // 補正履歴一括削除
+        async function deleteSelectedHistory() {
+            if (selectedHistoryItems.size === 0) return;
+            
+            if (!confirm(`${selectedHistoryItems.size}件の補正データを削除しますか？`)) return;
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const key of selectedHistoryItems) {
+                const [date, hole, machine] = key.split('|');
+                try {
+                    const response = await fetch('/api/corrections/bulk', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date, hole, machine }),
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (error) {
+                    errorCount++;
+                }
+            }
+            
+            if (successCount > 0) {
+                showMessage(`${successCount}件の補正データを削除しました${errorCount > 0 ? `（${errorCount}件失敗）` : ''}`, errorCount > 0 ? 'warning' : 'success');
+            } else {
+                showMessage('削除に失敗しました', 'error');
+            }
+            
+            selectedHistoryItems.clear();
+            updateBulkActionsVisibility('history');
+            loadHistory();
         }
         
         // ============================================
