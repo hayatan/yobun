@@ -899,65 +899,30 @@
         }
         
         function loadIframe() {
+            // スロレポはiframe埋め込みをブロックしているため、
+            // 常に「新しいタブで開く」UIを表示
+            const fallback = document.getElementById('iframeFallback');
+            fallback.classList.remove('hidden');
+            
             if (!slorepoUrl) {
-                document.getElementById('iframeFallback').innerHTML = `
-                    <p>URLが設定されていません</p>
-                    <p style="font-size: 12px;">スロレポを手動で開いてください</p>
+                fallback.innerHTML = `
+                    <p>失敗レコードを選択してください</p>
+                    <p style="font-size: 12px;">選択後、下のボタンでスロレポを開けます</p>
                 `;
                 return;
             }
             
-            const container = document.getElementById('iframeContent');
-            const fallback = document.getElementById('iframeFallback');
-            
-            // 既存のiframeを削除
-            const existingIframe = container.querySelector('iframe');
-            if (existingIframe) {
-                existingIframe.remove();
-            }
-            
-            // iframeを作成
-            const iframe = document.createElement('iframe');
-            iframe.src = slorepoUrl;
-            iframe.style.display = 'none';
-            
-            // 読み込み成功時
-            iframe.onload = () => {
-                try {
-                    // クロスオリジンチェック（アクセスできなくても表示はできている）
-                    iframe.contentWindow.location.href;
-                } catch (e) {
-                    // クロスオリジンエラー = 正常に読み込めている
-                    iframe.style.display = 'block';
-                    fallback.classList.add('hidden');
-                    return;
-                }
-                // 同一オリジン（ありえないが念のため）
-                iframe.style.display = 'block';
-                fallback.classList.add('hidden');
-            };
-            
-            // 読み込み失敗時
-            iframe.onerror = () => {
-                showIframeFallback();
-            };
-            
-            container.appendChild(iframe);
-            
-            // タイムアウトでフォールバック表示
-            setTimeout(() => {
-                if (iframe.style.display === 'none') {
-                    showIframeFallback();
-                }
-            }, 10000);
-        }
-        
-        function showIframeFallback() {
-            document.getElementById('iframeFallback').classList.remove('hidden');
-            document.getElementById('iframeFallback').innerHTML = `
-                <p>iframeでの表示に失敗しました</p>
-                <p style="font-size: 12px;">下のボタンで新しいタブで開いてください</p>
-                <button onclick="openSlorepoInNewTab()" style="margin-top: 16px;">新しいタブで開く</button>
+            fallback.innerHTML = `
+                <p style="margin-bottom: 8px; font-weight: bold;">スロレポでデータを確認</p>
+                <p style="font-size: 12px; margin-bottom: 16px; color: var(--text-secondary);">
+                    スロレポのページからデータをコピーして、<br>右側の入力エリアに貼り付けてください
+                </p>
+                <button onclick="openSlorepoInNewTab()" class="btn-primary" style="padding: 12px 24px; font-size: 14px;">
+                    スロレポを新しいタブで開く
+                </button>
+                <p style="font-size: 11px; margin-top: 12px; color: var(--text-secondary);">
+                    URL: ${slorepoUrl}
+                </p>
             `;
         }
         
