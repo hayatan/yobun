@@ -6,6 +6,7 @@
     <title>SQLite to BigQuery 同期</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="/js/status-header.js"></script>
+    <script src="/js/config.js"></script>
     <style>
         .progress {
             height: 25px;
@@ -54,21 +55,9 @@
         let statusCheckInterval;
 
         // デフォルトの日付を設定
-        async function setDefaultDate() {
-            const today = new Date();
-            let days = 0; // フォールバック値（今日のみ）
-            
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                days = config.defaultDateRanges?.sync ?? 0;
-            } catch (e) {
-                console.warn('設定取得に失敗、デフォルト値を使用:', e);
-            }
-            
-            const targetDate = new Date(today);
-            targetDate.setDate(targetDate.getDate() - days);
-            document.getElementById('date').value = targetDate.toISOString().split('T')[0];
+        function setDefaultDate() {
+            const days = CONFIG.defaultDateRanges.sync;
+            document.getElementById('date').value = getJSTDate(-days);
         }
 
         // ページ読み込み時にデフォルト日付を設定

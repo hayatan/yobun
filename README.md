@@ -77,11 +77,20 @@ make run-job-normal
 
 ### BigQuery同期の仕組み
 
-SQLiteからBigQueryへの同期はLoad Jobを使用し、重複が発生しない設計になっています。
+SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が発生しない設計になっています。
 
-- **単一店舗データ**: DELETE後にINSERT（店舗+日付単位で既存データを置換）
-- **複数店舗データ**: WRITE_TRUNCATE（日付テーブル全体を置換）
-- **ストリーミングバッファ問題なし**: Load Jobはストリーミングバッファを使用しないため、DML操作が常に可能
+**処理フロー:**
+1. データをNDJSON形式でGCS（`youbun-sqlite/temp/`）に一時アップロード
+2. BigQuery Load Jobでテーブルにロード
+3. 一時ファイルを削除
+
+**同期モード:**
+- **単一店舗データ**: DELETE後にLoad Job (WRITE_APPEND)（店舗+日付単位で既存データを置換）
+- **複数店舗データ**: Load Job (WRITE_TRUNCATE)（日付テーブル全体を置換）
+
+**利点:**
+- ストリーミングバッファを使用しないため、DML操作が常に可能
+- 重複が確実に発生しない
 
 ## 機能一覧
 

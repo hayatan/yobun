@@ -14,7 +14,7 @@ export const BIGQUERY = {
 
 // スクレイピング関連
 export const SCRAPING = {
-    intervalMs: 1000,           // リクエスト間隔（ミリ秒）
+    intervalMs: 2000,           // リクエスト間隔（ミリ秒）
     maxRetries: 3,              // 最大リトライ回数
     batchSize: 1000,            // BigQuery挿入時のバッチサイズ
     tableWaitRetries: 15,       // テーブル作成待機のリトライ回数
@@ -32,13 +32,18 @@ export const SCRAPING = {
 export const DEFAULT_SCRAPE_DAYS = 3;
 
 // ページごとのデフォルト表示期間（日数、0=今日のみ）
+// ※フロントエンドでは public/js/config.js を使用（こちらは参考用）
 export const DEFAULT_DATE_RANGES = {
     dashboard: 28,      // ダッシュボード検索
     datamart: 28,       // データマート検索
     failures: 28,       // 失敗管理フィルタ
     dedupe: 28,         // 重複削除チェック
-    sync: 0,           // 同期（今日のみ）
-    schedule: 1,       // スケジュール設定
+    sync: 0,            // 同期（今日のみ）
+    schedule: 1,        // スケジュール設定
+    // 破壊的操作（誤操作防止のため短め推奨）
+    rescrape: 1,        // データ再取得（ダッシュボード）
+    datamartRun: 1,     // データマート再実行
+    delete: 0,          // データ削除（今日のみ）
 };
 
 export default {

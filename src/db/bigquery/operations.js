@@ -1,6 +1,11 @@
+import { Storage } from '@google-cloud/storage';
 import util from '../../util/common.js';
 import { BIGQUERY, SCRAPING } from '../../config/constants.js';
 import { RAW_DATA_SCHEMA } from '../../../sql/raw_data/schema.js';
+
+// GCS設定（一時ファイル用）
+const storage = new Storage();
+const TEMP_BUCKET = 'youbun-sqlite';  // 既存バケットを再利用
 
 /**
  * テーブルが存在することを確認し、存在しない場合は作成
@@ -30,11 +35,62 @@ const ensureTableExists = async (bigquery, datasetId, tableId) => {
 };
 
 /**
- * Load Jobでデータをロード（重複防止）
+ * GCS経由でBigQuery Load Jobを実行
+ * 
+ * ストリーミングINSERTではなくLoad Jobを使用することで、
+ * ストリーミングバッファの問題を回避し、重複を確実に防止する。
+ * 
+ * @param {Object} table - BigQueryテーブルオブジェクト
+ * @param {Array} rows - 挿入するデータ行
+ * @param {string} writeDisposition - 書き込みモード (WRITE_APPEND or WRITE_TRUNCATE)
+ * @returns {Promise<void>}
+ */
+const loadViaGcs = async (table, rows, writeDisposition = 'WRITE_APPEND') => {
+    const tableId = table.id;
+    const tempFileName = `temp/bq_load_${tableId}_${Date.now()}_${Math.random().toString(36).substring(7)}.json`;
+    const bucket = storage.bucket(TEMP_BUCKET);
+    const file = bucket.file(tempFileName);
+    
+    // NDJSONにシリアライズしてGCSにアップロード
+    const ndjson = rows.map(r => JSON.stringify(r)).join('\n');
+    await file.save(ndjson, { contentType: 'application/x-ndjson' });
+    
+    try {
+        // Load Jobでロード（GCSファイルを指定）
+        // テーブルは既に作成済みなので、schema.fieldsで明示的に指定
+        const [job] = await table.load(file, {
+            sourceFormat: 'NEWLINE_DELIMITED_JSON',
+            writeDisposition: writeDisposition,
+            schema: { fields: RAW_DATA_SCHEMA.toBigQuerySchema() },
+        });
+        
+        // ジョブ完了を待機
+        await job.promise();
+        
+        // エラーチェック
+        const [metadata] = await job.getMetadata();
+        if (metadata.status.errors && metadata.status.errors.length > 0) {
+            throw new Error(`Load Job エラー: ${JSON.stringify(metadata.status.errors)}`);
+        }
+    } finally {
+        // 一時ファイルを削除
+        try {
+            await file.delete({ ignoreNotFound: true });
+        } catch (deleteError) {
+            console.warn(`一時ファイル削除中の警告: ${deleteError.message}`);
+        }
+    }
+};
+
+/**
+ * データをBigQueryにロード（GCS経由Load Job、重複防止）
  * 
  * データの内容に応じて自動的にモードを選択:
- * - 単一店舗のデータ: その店舗のデータをDELETE後にINSERT
- * - 複数店舗のデータ: テーブル全体をWRITE_TRUNCATE
+ * - 単一店舗のデータ: その店舗のデータをDELETE後にLoad Job (WRITE_APPEND)
+ * - 複数店舗のデータ: Load Job (WRITE_TRUNCATE) でテーブル全体を置換
+ * 
+ * Load Jobはストリーミングバッファを使用しないため、
+ * DML操作が即座に可能で、重複が発生しない。
  * 
  * @param {Object} bigquery - BigQueryクライアント
  * @param {string} datasetId - データセットID
@@ -73,12 +129,12 @@ const loadData = async (bigquery, datasetId, tableId, data, source = 'slorepo') 
     const uniqueHoles = [...new Set(rows.map(r => r.hole))];
     
     if (uniqueHoles.length === 1) {
-        // 単一店舗: DELETE後にINSERT
+        // 単一店舗: DELETE後にLoad Job (WRITE_APPEND)
         const hole = uniqueHoles[0];
         const date = rows[0].date;
         console.log(`[${tableId}][${hole}] 店舗データを置換モードで同期 (${rows.length}件)`);
         
-        // 既存データを削除
+        // 既存データを削除（Load Jobはストリーミングバッファを使わないため即座に削除可能）
         const deleteQuery = `
             DELETE FROM \`${projectId}.${datasetId}.${tableId}\`
             WHERE date = '${date}' AND hole = '${hole}'
@@ -93,39 +149,18 @@ const loadData = async (bigquery, datasetId, tableId, data, source = 'slorepo') 
             }
         }
         
-        // Load Jobでデータ挿入（WRITE_APPEND）
-        const ndjson = rows.map(r => JSON.stringify(r)).join('\n');
-        const [job] = await table.load(Buffer.from(ndjson), {
-            sourceFormat: 'NEWLINE_DELIMITED_JSON',
-            writeDisposition: 'WRITE_APPEND',
-            schema: RAW_DATA_SCHEMA.toBigQuerySchema(),
-        });
+        // GCS経由でLoad Job実行
+        await loadViaGcs(table, rows, 'WRITE_APPEND');
         
-        // ジョブ完了を待機
-        const [metadata] = await job.getMetadata();
-        if (metadata.status.errors && metadata.status.errors.length > 0) {
-            throw new Error(`Load Job エラー: ${metadata.status.errors.map(e => e.message).join(', ')}`);
-        }
-        
-        console.log(`[${tableId}][${hole}] ${rows.length}件を挿入しました`);
+        console.log(`[${tableId}][${hole}] ${rows.length}件を挿入しました（Load Job）`);
     } else {
-        // 複数店舗（日付全体）: WRITE_TRUNCATEでテーブル置換
+        // 複数店舗（日付全体）: Load Job (WRITE_TRUNCATE) でテーブル置換
         console.log(`[${tableId}] テーブル全体を置換モードで同期 (${rows.length}件, ${uniqueHoles.length}店舗)`);
         
-        const ndjson = rows.map(r => JSON.stringify(r)).join('\n');
-        const [job] = await table.load(Buffer.from(ndjson), {
-            sourceFormat: 'NEWLINE_DELIMITED_JSON',
-            writeDisposition: 'WRITE_TRUNCATE',
-            schema: RAW_DATA_SCHEMA.toBigQuerySchema(),
-        });
+        // GCS経由でLoad Job実行（WRITE_TRUNCATEでテーブル全体を置換）
+        await loadViaGcs(table, rows, 'WRITE_TRUNCATE');
         
-        // ジョブ完了を待機
-        const [metadata] = await job.getMetadata();
-        if (metadata.status.errors && metadata.status.errors.length > 0) {
-            throw new Error(`Load Job エラー: ${metadata.status.errors.map(e => e.message).join(', ')}`);
-        }
-        
-        console.log(`[${tableId}] ${rows.length}件を挿入しました（テーブル置換）`);
+        console.log(`[${tableId}] ${rows.length}件を挿入しました（Load Job TRUNCATE）`);
     }
     
     return rows.length;

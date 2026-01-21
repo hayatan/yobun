@@ -34,9 +34,10 @@
 
 - **SQLite**: プライマリストレージ（Litestreamでバックアップ）
 - **BigQuery**: 分析用DB（SQLiteと同期）
-- **BigQuery同期方式**: Load Job使用（ストリーミングINSERT廃止）
-  - 単一店舗データ: DELETE後にINSERT（店舗+日付単位で置換）
-  - 複数店舗データ: WRITE_TRUNCATE（日付テーブル全体を置換）
+- **BigQuery同期方式**: GCS経由のLoad Job使用（ストリーミングINSERT廃止）
+  - データをGCS（`youbun-sqlite/temp/`）に一時アップロード
+  - 単一店舗データ: DELETE後にLoad Job (WRITE_APPEND)
+  - 複数店舗データ: Load Job (WRITE_TRUNCATE)
   - ストリーミングバッファの問題を完全回避、重複が発生しない
 
 ### ジョブ管理

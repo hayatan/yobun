@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>重複データ削除 - Yobun</title>
     <script src="/js/status-header.js"></script>
+    <script src="/js/config.js"></script>
     <style>
         :root {
             --bg-primary: #0d1117;
@@ -359,32 +360,20 @@
         let statusCheckInterval = null;
 
         // デフォルトの日付を設定
-        async function setDefaultDates() {
-            const today = new Date();
-            let days = 7; // フォールバック値
-            
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                days = config.defaultDateRanges?.dedupe ?? 7;
-            } catch (e) {
-                console.warn('設定取得に失敗、デフォルト値を使用:', e);
-            }
+        function setDefaultDates() {
+            const days = CONFIG.defaultDateRanges.dedupe;
+            const today = getJSTDate(0);
+            const startDate = getJSTDate(-days);
 
-            const startDate = new Date(today);
-            startDate.setDate(startDate.getDate() - days);
-
-            const formatDate = (d) => d.toISOString().split('T')[0];
-
-            document.getElementById('checkStartDate').value = formatDate(startDate);
-            document.getElementById('checkEndDate').value = formatDate(today);
-            document.getElementById('bqStartDate').value = formatDate(startDate);
-            document.getElementById('bqEndDate').value = formatDate(today);
+            document.getElementById('checkStartDate').value = startDate;
+            document.getElementById('checkEndDate').value = today;
+            document.getElementById('bqStartDate').value = startDate;
+            document.getElementById('bqEndDate').value = today;
         }
 
         // ページ読み込み時の初期化
-        window.onload = async function() {
-            await setDefaultDates();
+        window.onload = function() {
+            setDefaultDates();
             checkSqliteDuplicates();
         };
 

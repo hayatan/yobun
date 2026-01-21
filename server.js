@@ -20,7 +20,6 @@ import createScheduleRouter from './src/api/routes/schedule.js';
 import createFailuresRouter from './src/api/routes/failures.js';
 import createCorrectionsRouter from './src/api/routes/corrections.js';
 import createDedupeRouter from './src/api/routes/dedupe.js';
-import configRouter from './src/api/routes/config.js';
 
 // スケジューラー
 import { initScheduler } from './src/scheduler/index.js';
@@ -74,9 +73,6 @@ app.delete('/api/lock', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
-// 設定API（フロントエンド用）
-app.use('/api/config', configRouter);
 
 // スクレイピング関連
 const scrapeRouter = createScrapeRouter(bigquery, db);

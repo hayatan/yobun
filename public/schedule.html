@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>スケジュール管理 - Yobun</title>
     <script src="/js/status-header.js"></script>
+    <script src="/js/config.js"></script>
     <style>
         :root {
             --bg-primary: #0a0f14;
@@ -769,20 +770,8 @@
     
     <script>
         let currentData = null;
-        let pageConfig = { defaultDateRanges: { schedule: 1 } }; // フォールバック値
-        
-        // 設定を取得
-        async function loadConfig() {
-            try {
-                const response = await fetch('/api/config');
-                pageConfig = await response.json();
-            } catch (e) {
-                console.warn('設定取得に失敗、デフォルト値を使用:', e);
-            }
-        }
         
         // 初期読み込み
-        loadConfig();
         loadData();
         
         // 定期更新
@@ -945,7 +934,7 @@
             const job = currentData.jobs.find(j => j.id === jobId);
             if (!job) return;
             
-            const defaultDays = pageConfig.defaultDateRanges?.schedule ?? 1;
+            const defaultDays = CONFIG.defaultDateRanges.schedule;
             
             document.getElementById('editJobId').value = jobId;
             document.getElementById('jobName').value = job.name || '';
@@ -969,7 +958,7 @@
             const jobId = document.getElementById('editJobId').value;
             const fromVal = parseInt(document.getElementById('dateFrom').value);
             const toVal = parseInt(document.getElementById('dateTo').value);
-            const defaultDays = pageConfig.defaultDateRanges?.schedule ?? 1;
+            const defaultDays = CONFIG.defaultDateRanges.schedule;
             const data = {
                 name: document.getElementById('jobName').value,
                 enabled: document.getElementById('jobEnabled').checked,

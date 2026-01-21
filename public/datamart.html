@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>データマート管理 - Yobun</title>
     <script src="/js/status-header.js"></script>
+    <script src="/js/config.js"></script>
     <style>
         :root {
             --bg-primary: #0d1117;
@@ -496,34 +497,22 @@
         let holes = [];
         let currentModalAction = null;
         
-        // JST日付を取得
-        function getJSTDate(offset = 0) {
-            const now = new Date();
-            const jst = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-            jst.setDate(jst.getDate() + offset);
-            return jst.toISOString().split('T')[0];
-        }
-        
         // デフォルト日付を設定
-        async function setDefaultDates() {
-            let days = 7; // フォールバック値
-            
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                days = config.defaultDateRanges?.datamart ?? 7;
-            } catch (e) {
-                console.warn('設定取得に失敗、デフォルト値を使用:', e);
-            }
-            
+        function setDefaultDates() {
             const today = getJSTDate(0);
-            const startDate = getJSTDate(-days);
             
-            document.getElementById('startDate').value = startDate;
+            // 検索用
+            const searchDays = CONFIG.defaultDateRanges.datamart;
+            document.getElementById('startDate').value = getJSTDate(-searchDays);
             document.getElementById('endDate').value = today;
-            // 削除・再実行は誤操作防止のため今日固定
-            document.getElementById('deleteDate').value = today;
-            document.getElementById('runStartDate').value = today;
+            
+            // 削除用（誤操作防止のため短め）
+            const deleteDays = CONFIG.defaultDateRanges.delete;
+            document.getElementById('deleteDate').value = getJSTDate(-deleteDays);
+            
+            // 再実行用
+            const runDays = CONFIG.defaultDateRanges.datamartRun;
+            document.getElementById('runStartDate').value = getJSTDate(-runDays);
             document.getElementById('runEndDate').value = today;
         }
         
