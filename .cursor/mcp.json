@@ -1,12 +1,27 @@
 {
     "mcpServers": {
-    "bigquery": {
-        "command": "./toolbox",
-        "args": ["--prebuilt","bigquery","--stdio"],
-        "env": {
-        "BIGQUERY_PROJECT": "yobun-450512",
-        "GOOGLE_APPLICATION_CREDENTIALS": "/home/hayatan/yobun/credentials/service-account.json"
+        "bigquery": {
+            "command": "./toolbox",
+            "args": [
+                "--prebuilt",
+                "bigquery",
+                "--stdio"
+            ],
+            "env": {
+                "BIGQUERY_PROJECT": "yobun-450512",
+                "GOOGLE_APPLICATION_CREDENTIALS": "/home/hayatan/yobun/credentials/service-account.json"
+            }
+        },
+        "dbhub": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@bytebase/dbhub",
+                "--transport",
+                "stdio",
+                "--dsn",
+                "sqlite:///home/hayatan/yobun/data/db.sqlite"
+            ]
         }
-    }
     }
 }
