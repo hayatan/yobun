@@ -8,6 +8,50 @@ import { cleanNumber } from '../../util/slorepo.js';
 puppeteer.use(StealthPlugin());
 
 /**
+ * スクレイピングエラーの種別を判定
+ * @param {Error} error - エラーオブジェクト
+ * @param {string} [pageTitle] - ページタイトル（Cloudflare判定用）
+ * @returns {string} エラー種別
+ */
+export function classifyError(error, pageTitle = '') {
+    const message = error.message || '';
+    const title = pageTitle.toLowerCase();
+    
+    // Cloudflare関連
+    if (title.includes('cloudflare') || 
+        title.includes('just a moment') || 
+        title.includes('checking') ||
+        message.includes('cloudflare')) {
+        return 'cloudflare';
+    }
+    
+    // タイムアウト
+    if (message.includes('timeout') || 
+        message.includes('Timeout') ||
+        message.includes('Navigation timeout')) {
+        return 'timeout';
+    }
+    
+    // ネットワークエラー
+    if (message.includes('net::') || 
+        message.includes('ECONNREFUSED') ||
+        message.includes('ENOTFOUND') ||
+        message.includes('network')) {
+        return 'network';
+    }
+    
+    // パースエラー
+    if (message.includes('parse') || 
+        message.includes('undefined') ||
+        message.includes('null') ||
+        message.includes('Cannot read')) {
+        return 'parse';
+    }
+    
+    return 'unknown';
+}
+
+/**
  * ブラウザの初期化（ボット検出回避設定込み）
  */
 async function initBrowser() {
@@ -116,6 +160,13 @@ export async function scrapeMachineList(date, holeCode, interval = 1000) {
     }
 }
 
+/**
+ * 機種別スロットデータのスクレイピング
+ * @param {string} date - 日付
+ * @param {string} holeCode - 店舗コード
+ * @param {number} interval - 待機時間（ミリ秒）
+ * @returns {Promise<{data: Array, failures: Array}>} データと機種レベルの失敗情報
+ */
 export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
@@ -125,6 +176,7 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
     
     const { browser, page } = await initBrowser();
     const allData = [];
+    const machineFailures = []; // 機種レベルの失敗を収集
 
     try {
         await new Promise(resolve => setTimeout(resolve, interval));
@@ -152,8 +204,23 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
             console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} を処理中...`);
 
             const url = SLOREPO_SOURCE.buildUrl.machine(holeCode, date, machine.encodedName);
-            const machineData = await scrapeMachineHtmlData(page, url, date, hole.name, decodeURIComponent(machine.encodedName), SLOREPO_SOURCE);
-            allData.push(...machineData);
+            const result = await scrapeMachineHtmlData(page, url, date, hole.name, decodeURIComponent(machine.encodedName), SLOREPO_SOURCE);
+            
+            // データを追加
+            if (result.data && result.data.length > 0) {
+                allData.push(...result.data);
+            }
+            
+            // 失敗情報を収集（HTTPエラーの場合のみ）
+            if (result.error) {
+                machineFailures.push({
+                    machine: decodeURIComponent(machine.encodedName),
+                    url,
+                    errorType: classifyHttpError(result.error.status),
+                    message: result.error.message,
+                    status: result.error.status,
+                });
+            }
 
             console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} の処理が完了しました。`);
         }
@@ -161,10 +228,32 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
         // データの整形とMYおよびMDiaの計算をここで実施
         const processedData = processSlotData(allData);
 
-        return processedData;
+        // 失敗があった場合はログ出力
+        if (machineFailures.length > 0) {
+            console.log(`[${date}][${hole.name}] 機種レベルの失敗: ${machineFailures.length}件`);
+        }
+
+        return {
+            data: processedData,
+            failures: machineFailures,
+        };
     } finally {
         await browser.close();
     }
+}
+
+/**
+ * HTTPステータスコードからエラー種別を判定
+ * @param {number} status - HTTPステータスコード
+ * @returns {string} エラー種別
+ */
+function classifyHttpError(status) {
+    if (status === 403) return 'cloudflare';
+    if (status === 404) return 'not_found';
+    if (status === 429) return 'rate_limit';
+    if (status >= 500) return 'server_error';
+    if (status >= 400) return 'client_error';
+    return 'unknown';
 }
 
 // データ処理関数
@@ -194,12 +283,27 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName, sou
     // 既存のリスナーを削除してから新しいリスナーを追加
     page.removeAllListeners("response");
     
+    // HTTPエラー情報を収集
+    let httpError = null;
+    
     page.on("response", async response => {
         const status = response.status();
-        if (status >= 400) {
+        const responseUrl = response.url();
+        
+        // メインリクエストのエラーのみを記録（favicon等は除外）
+        if (status >= 400 && responseUrl === url) {
             const method = response.request().method();
-            const url = response.url();
-            console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${url}`);
+            console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${responseUrl}`);
+            httpError = {
+                status,
+                method,
+                url: responseUrl,
+                message: `HTTP ${status} エラー`,
+            };
+        } else if (status >= 400) {
+            // その他のリクエスト（favicon等）はログのみ
+            const method = response.request().method();
+            console.log(`[${date}][${holeName}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${responseUrl}`);
         }
     });
 
@@ -208,7 +312,7 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName, sou
     const selectors = sourceConfig.selectors;
     const requiredHeaders = sourceConfig.requiredHeaders;
     
-    return await page.evaluate((date, holeName, machineName, selectors, requiredHeaders) => {
+    const rows = await page.evaluate((date, holeName, machineName, selectors, requiredHeaders) => {
         const rows = [];
         const slotDivs = document.querySelectorAll(selectors.slotDivs);
 
@@ -300,4 +404,7 @@ async function scrapeMachineHtmlData(page, url, date, holeName, machineName, sou
 
         return rows;
     }, date, holeName, machineName, selectors, requiredHeaders);
+    
+    // データとエラー情報を返す
+    return { data: rows, error: httpError };
 } 

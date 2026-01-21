@@ -23,7 +23,10 @@
 
 - 定数 → `src/config/constants.js`
 - 店舗設定 → `src/config/slorepo-config.js`
-- スキーマ → `sql/raw_data/schema.js`（Single Source of Truth）
+- スキーマ:
+  - `sql/raw_data/schema.js` - 生データ（Single Source of Truth）
+  - `sql/scrape_failures/schema.js` - 失敗記録
+  - `sql/manual_corrections/schema.js` - 手動補正データ
 
 ## 実装方針
 
@@ -43,6 +46,15 @@
 - Puppeteer + Stealth プラグイン使用
 - エラー継続オプション（`continueOnError`）
 - 優先度フィルタ（`priorityFilter`）
+- エラー発生時は `scrape_failures` テーブルに記録
+
+### 失敗管理・手動補正
+
+- **失敗記録**: スクレイピング失敗時に `scrape_failures` に自動記録
+- **手動補正**: 管理画面からクリップボード貼り付けでデータを補正
+- **フォールバック**: 強制再取得で失敗時、`manual_corrections` から自動復元
+- DB操作: `src/db/sqlite/failures.js`, `src/db/sqlite/corrections.js`
+- API: `/api/failures`, `/api/corrections`
 
 ## 変更時の注意
 

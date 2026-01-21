@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>失敗管理・手動補正 - Yobun</title>
+    <script src="/js/status-header.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        /* タブナビゲーション */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        
+        .tab:hover {
+            color: var(--text-primary);
+        }
+        
+        .tab.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* 共通コンポーネント */
+        .section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        label {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        input[type="date"], input[type="text"], select, textarea {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            font-family: monospace;
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        button {
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.btn-danger {
+            background-color: var(--accent-red);
+        }
+        
+        button.btn-warning {
+            background-color: var(--accent-yellow);
+            color: #000;
+        }
+        
+        button.btn-secondary {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        button.btn-success {
+            background-color: var(--accent-green);
+        }
+        
+        /* サマリーカード */
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .summary-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .summary-card h3 {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .summary-card.warning .value { color: var(--accent-yellow); }
+        .summary-card.success .value { color: var(--accent-green); }
+        .summary-card.error .value { color: var(--accent-red); }
+        
+        /* テーブル */
+        .table-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 500px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+        
+        /* ステータスバッジ */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-pending {
+            background-color: rgba(210, 153, 34, 0.2);
+            color: var(--accent-yellow);
+        }
+        
+        .badge-resolved {
+            background-color: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .badge-ignored {
+            background-color: rgba(139, 148, 158, 0.2);
+            color: var(--text-secondary);
+        }
+        
+        .badge-cloudflare {
+            background-color: rgba(248, 81, 73, 0.2);
+            color: var(--accent-red);
+        }
+        
+        .badge-timeout {
+            background-color: rgba(163, 113, 247, 0.2);
+            color: var(--accent-purple);
+        }
+        
+        /* 補正入力エリア */
+        .correction-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        @media (max-width: 1200px) {
+            .correction-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .iframe-container {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .iframe-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .iframe-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .iframe-content iframe {
+            width: 100%;
+            height: 100%;
+            min-height: 450px;
+            border: none;
+        }
+        
+        .iframe-fallback {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 450px;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .iframe-fallback p {
+            margin-bottom: 16px;
+        }
+        
+        /* プレビューテーブル */
+        .preview-table {
+            max-height: 300px;
+            overflow: auto;
+        }
+        
+        .preview-table table {
+            font-size: 13px;
+        }
+        
+        .preview-table input {
+            width: 80px;
+            padding: 4px 8px;
+            font-size: 13px;
+        }
+        
+        /* メッセージ */
+        .message {
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        
+        .message.error {
+            background-color: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+        
+        .message.success {
+            background-color: rgba(63, 185, 80, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+        
+        /* 選択状態 */
+        .selected-failure {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .selected-failure h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .selected-failure .info {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+        
+        .selected-failure .info span {
+            color: var(--text-secondary);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>失敗管理・手動補正</h1>
+            <nav style="display: flex; gap: 16px;">
+                <a href="/dashboard" style="color: var(--accent-blue); text-decoration: none;">ダッシュボード</a>
+                <a href="/schedule" style="color: var(--accent-blue); text-decoration: none;">スケジュール</a>
+                <a href="/datamart" style="color: var(--accent-blue); text-decoration: none;">データマート</a>
+            </nav>
+        </header>
+        
+        <!-- タブナビゲーション -->
+        <div class="tabs">
+            <button class="tab active" data-tab="failures-list">失敗一覧</button>
+            <button class="tab" data-tab="correction-input">補正入力</button>
+            <button class="tab" data-tab="correction-history">補正履歴</button>
+        </div>
+        
+        <!-- メッセージエリア -->
+        <div id="messageContainer"></div>
+        
+        <!-- ============================================ -->
+        <!-- 失敗一覧タブ -->
+        <!-- ============================================ -->
+        <div id="failures-list" class="tab-content active">
+            <!-- サマリー -->
+            <div class="summary">
+                <div class="summary-card warning">
+                    <h3>未解決</h3>
+                    <div class="value" id="statsPending">-</div>
+                </div>
+                <div class="summary-card success">
+                    <h3>解決済み</h3>
+                    <div class="value" id="statsResolved">-</div>
+                </div>
+                <div class="summary-card">
+                    <h3>無視</h3>
+                    <div class="value" id="statsIgnored">-</div>
+                </div>
+                <div class="summary-card">
+                    <h3>合計</h3>
+                    <div class="value" id="statsTotal">-</div>
+                </div>
+            </div>
+            
+            <!-- フィルタ -->
+            <div class="section">
+                <div class="controls">
+                    <div class="control-group">
+                        <label>開始日</label>
+                        <input type="date" id="filterStartDate">
+                    </div>
+                    <div class="control-group">
+                        <label>終了日</label>
+                        <input type="date" id="filterEndDate">
+                    </div>
+                    <div class="control-group">
+                        <label>店舗</label>
+                        <select id="filterHole">
+                            <option value="">全て</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>ステータス</label>
+                        <select id="filterStatus">
+                            <option value="">全て</option>
+                            <option value="pending" selected>未解決</option>
+                            <option value="resolved">解決済み</option>
+                            <option value="ignored">無視</option>
+                        </select>
+                    </div>
+                    <button id="searchFailuresBtn">検索</button>
+                    <button id="refreshFailuresBtn" class="btn-secondary">更新</button>
+                </div>
+            </div>
+            
+            <!-- 失敗一覧テーブル -->
+            <div class="table-container">
+                <table id="failuresTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>店舗</th>
+                            <th>機種</th>
+                            <th>エラー種別</th>
+                            <th>ステータス</th>
+                            <th>失敗日時</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="failuresTableBody">
+                        <tr><td colspan="7" style="text-align: center;">読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- 補正入力タブ -->
+        <!-- ============================================ -->
+        <div id="correction-input" class="tab-content">
+            <!-- 選択された失敗レコード -->
+            <div id="selectedFailure" class="selected-failure hidden">
+                <h3>選択中の失敗レコード</h3>
+                <div class="info">
+                    <div><span>日付:</span> <strong id="selectedDate">-</strong></div>
+                    <div><span>店舗:</span> <strong id="selectedHole">-</strong></div>
+                    <div><span>機種:</span> <strong id="selectedMachine">-</strong></div>
+                </div>
+            </div>
+            
+            <!-- 補正入力レイアウト（2カラム） -->
+            <div class="correction-layout">
+                <!-- 左: スロレポ参照（iframe） -->
+                <div class="iframe-container">
+                    <div class="iframe-header">
+                        <span>スロレポ参照（オプション）</span>
+                        <button id="openNewTabBtn" class="btn-secondary">新しいタブで開く</button>
+                    </div>
+                    <div class="iframe-content" id="iframeContent">
+                        <div class="iframe-fallback" id="iframeFallback">
+                            <p>失敗レコードを選択してください</p>
+                            <p style="font-size: 12px;">または上のボタンで新しいタブで開いてください</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 右: データ入力 -->
+                <div>
+                    <div class="section">
+                        <h2>データ入力</h2>
+                        
+                        <!-- 機種名入力 -->
+                        <div class="controls">
+                            <div class="control-group" style="flex: 1;">
+                                <label>機種名 *</label>
+                                <input type="text" id="machineName" placeholder="例: バジリスク絆2" style="width: 100%;">
+                            </div>
+                        </div>
+                        
+                        <!-- クリップボード貼り付けエリア -->
+                        <div class="control-group" style="margin-bottom: 16px;">
+                            <label>スロレポの一覧テーブルをコピーして貼り付け</label>
+                            <textarea id="pasteArea" placeholder="台番&#09;差枚&#09;G数&#09;BB&#09;RB&#09;合成
+1223&#09;-4,986&#09;6,566&#09;23&#09;0&#09;1/285
+1225&#09;-3,877&#09;6,450&#09;37&#09;0&#09;1/174
+..."></textarea>
+                        </div>
+                        
+                        <div class="controls">
+                            <button id="parseBtn">パース</button>
+                            <button id="clearBtn" class="btn-secondary">クリア</button>
+                        </div>
+                    </div>
+                    
+                    <!-- プレビュー -->
+                    <div class="section">
+                        <h2>プレビュー (<span id="previewCount">0</span>件)</h2>
+                        <div class="preview-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>台番</th>
+                                        <th>差枚</th>
+                                        <th>G数</th>
+                                        <th>BB</th>
+                                        <th>RB</th>
+                                        <th>合成</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTableBody">
+                                    <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">データを貼り付けてパースしてください</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="control-group" style="margin-top: 16px;">
+                            <label>メモ（任意）</label>
+                            <input type="text" id="correctionNotes" placeholder="補正理由など" style="width: 100%;">
+                        </div>
+                        
+                        <div style="margin-top: 16px; text-align: right;">
+                            <button id="registerBtn" class="btn-success" disabled>登録</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- 補正履歴タブ -->
+        <!-- ============================================ -->
+        <div id="correction-history" class="tab-content">
+            <!-- フィルタ -->
+            <div class="section">
+                <div class="controls">
+                    <div class="control-group">
+                        <label>開始日</label>
+                        <input type="date" id="historyStartDate">
+                    </div>
+                    <div class="control-group">
+                        <label>終了日</label>
+                        <input type="date" id="historyEndDate">
+                    </div>
+                    <div class="control-group">
+                        <label>店舗</label>
+                        <select id="historyHole">
+                            <option value="">全て</option>
+                        </select>
+                    </div>
+                    <button id="searchHistoryBtn">検索</button>
+                </div>
+            </div>
+            
+            <!-- 補正履歴テーブル -->
+            <div class="table-container">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>店舗</th>
+                            <th>機種</th>
+                            <th>件数</th>
+                            <th>補正日時</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="6" style="text-align: center;">読み込み中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================
+        // 状態管理
+        // ============================================
+        let failures = [];
+        let previewData = [];
+        let selectedFailure = null;
+        let slorepoUrl = null;
+        
+        // ============================================
+        // 初期化
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initDates();
+            initTabs();
+            initEventListeners();
+            loadStats();
+            loadFailures();
+            loadHoles();
+        });
+        
+        function initDates() {
+            const today = new Date();
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            
+            const todayStr = formatDate(today);
+            const weekAgoStr = formatDate(weekAgo);
+            
+            document.getElementById('filterStartDate').value = weekAgoStr;
+            document.getElementById('filterEndDate').value = todayStr;
+            document.getElementById('historyStartDate').value = weekAgoStr;
+            document.getElementById('historyEndDate').value = todayStr;
+        }
+        
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    const targetId = tab.dataset.tab;
+                    document.getElementById(targetId).classList.add('active');
+                    
+                    if (targetId === 'correction-history') {
+                        loadHistory();
+                    }
+                });
+            });
+        }
+        
+        function initEventListeners() {
+            // 失敗一覧
+            document.getElementById('searchFailuresBtn').addEventListener('click', loadFailures);
+            document.getElementById('refreshFailuresBtn').addEventListener('click', () => {
+                loadStats();
+                loadFailures();
+            });
+            
+            // 補正入力
+            document.getElementById('parseBtn').addEventListener('click', parseData);
+            document.getElementById('clearBtn').addEventListener('click', clearForm);
+            document.getElementById('registerBtn').addEventListener('click', registerCorrection);
+            document.getElementById('openNewTabBtn').addEventListener('click', openSlorepoInNewTab);
+            
+            // 補正履歴
+            document.getElementById('searchHistoryBtn').addEventListener('click', loadHistory);
+        }
+        
+        // ============================================
+        // API呼び出し
+        // ============================================
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/failures/stats');
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('statsPending').textContent = result.stats.pending;
+                    document.getElementById('statsResolved').textContent = result.stats.resolved;
+                    document.getElementById('statsIgnored').textContent = result.stats.ignored;
+                    document.getElementById('statsTotal').textContent = result.stats.total;
+                }
+            } catch (error) {
+                console.error('統計取得エラー:', error);
+            }
+        }
+        
+        async function loadFailures() {
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const hole = document.getElementById('filterHole').value;
+            const status = document.getElementById('filterStatus').value;
+            
+            const params = new URLSearchParams();
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (hole) params.append('hole', hole);
+            if (status) params.append('status', status);
+            
+            try {
+                const response = await fetch(`/api/failures?${params}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    failures = result.data;
+                    renderFailuresTable();
+                }
+            } catch (error) {
+                console.error('失敗一覧取得エラー:', error);
+                showMessage('失敗一覧の取得に失敗しました', 'error');
+            }
+        }
+        
+        async function loadHoles() {
+            try {
+                const response = await fetch('/api/data-status?start=2026-01-01&end=2026-01-01');
+                const result = await response.json();
+                
+                if (result.holes) {
+                    const selectors = ['filterHole', 'historyHole'];
+                    selectors.forEach(id => {
+                        const select = document.getElementById(id);
+                        result.holes.forEach(hole => {
+                            const option = document.createElement('option');
+                            option.value = hole.name;
+                            option.textContent = hole.name;
+                            select.appendChild(option);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('店舗一覧取得エラー:', error);
+            }
+        }
+        
+        async function loadHistory() {
+            const startDate = document.getElementById('historyStartDate').value;
+            const endDate = document.getElementById('historyEndDate').value;
+            const hole = document.getElementById('historyHole').value;
+            
+            const params = new URLSearchParams();
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (hole) params.append('hole', hole);
+            
+            try {
+                const response = await fetch(`/api/corrections/summary?${params}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderHistoryTable(result.data);
+                }
+            } catch (error) {
+                console.error('補正履歴取得エラー:', error);
+            }
+        }
+        
+        // ============================================
+        // テーブル描画
+        // ============================================
+        function renderFailuresTable() {
+            const tbody = document.getElementById('failuresTableBody');
+            
+            if (failures.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">該当するデータがありません</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = failures.map(f => `
+                <tr>
+                    <td>${f.date}</td>
+                    <td>${f.hole}</td>
+                    <td>${f.machine || '-'}</td>
+                    <td><span class="badge badge-${f.error_type}">${f.error_type}</span></td>
+                    <td><span class="badge badge-${f.status}">${getStatusLabel(f.status)}</span></td>
+                    <td>${formatDateTime(f.failed_at)}</td>
+                    <td>
+                        <button class="btn-secondary" onclick="selectFailure('${f.id}')" style="padding: 4px 8px; font-size: 12px;">補正</button>
+                        ${f.status === 'pending' ? `
+                            <button class="btn-secondary" onclick="ignoreFailure('${f.id}')" style="padding: 4px 8px; font-size: 12px;">無視</button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function renderHistoryTable(data) {
+            const tbody = document.getElementById('historyTableBody');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">該当するデータがありません</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(h => `
+                <tr>
+                    <td>${h.date}</td>
+                    <td>${h.hole}</td>
+                    <td>${h.machine}</td>
+                    <td>${h.count}件</td>
+                    <td>${formatDateTime(h.last_corrected)}</td>
+                    <td>
+                        <button class="btn-danger" onclick="deleteCorrections('${h.date}', '${h.hole}', '${h.machine}')" style="padding: 4px 8px; font-size: 12px;">削除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function renderPreviewTable() {
+            const tbody = document.getElementById('previewTableBody');
+            document.getElementById('previewCount').textContent = previewData.length;
+            
+            if (previewData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">データを貼り付けてパースしてください</td></tr>';
+                document.getElementById('registerBtn').disabled = true;
+                return;
+            }
+            
+            tbody.innerHTML = previewData.map((row, i) => `
+                <tr>
+                    <td>${row.machineNumber}</td>
+                    <td style="color: ${row.diff >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${row.diff.toLocaleString()}</td>
+                    <td>${row.game.toLocaleString()}</td>
+                    <td>${row.big}</td>
+                    <td>${row.reg}</td>
+                    <td>${row.combinedRate}</td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('registerBtn').disabled = false;
+        }
+        
+        // ============================================
+        // アクション
+        // ============================================
+        function selectFailure(id) {
+            selectedFailure = failures.find(f => f.id === id);
+            
+            if (!selectedFailure) return;
+            
+            // 補正入力タブに切り替え
+            document.querySelector('[data-tab="correction-input"]').click();
+            
+            // 選択情報を表示
+            document.getElementById('selectedFailure').classList.remove('hidden');
+            document.getElementById('selectedDate').textContent = selectedFailure.date;
+            document.getElementById('selectedHole').textContent = selectedFailure.hole;
+            document.getElementById('selectedMachine').textContent = selectedFailure.machine || '不明';
+            
+            // 機種名を自動入力
+            if (selectedFailure.machine) {
+                document.getElementById('machineName').value = selectedFailure.machine;
+            }
+            
+            // スロレポURLを設定
+            slorepoUrl = selectedFailure.machine_url;
+            
+            // iframeを読み込み
+            loadIframe();
+        }
+        
+        function loadIframe() {
+            if (!slorepoUrl) {
+                document.getElementById('iframeFallback').innerHTML = `
+                    <p>URLが設定されていません</p>
+                    <p style="font-size: 12px;">スロレポを手動で開いてください</p>
+                `;
+                return;
+            }
+            
+            const container = document.getElementById('iframeContent');
+            const fallback = document.getElementById('iframeFallback');
+            
+            // 既存のiframeを削除
+            const existingIframe = container.querySelector('iframe');
+            if (existingIframe) {
+                existingIframe.remove();
+            }
+            
+            // iframeを作成
+            const iframe = document.createElement('iframe');
+            iframe.src = slorepoUrl;
+            iframe.style.display = 'none';
+            
+            // 読み込み成功時
+            iframe.onload = () => {
+                try {
+                    // クロスオリジンチェック（アクセスできなくても表示はできている）
+                    iframe.contentWindow.location.href;
+                } catch (e) {
+                    // クロスオリジンエラー = 正常に読み込めている
+                    iframe.style.display = 'block';
+                    fallback.classList.add('hidden');
+                    return;
+                }
+                // 同一オリジン（ありえないが念のため）
+                iframe.style.display = 'block';
+                fallback.classList.add('hidden');
+            };
+            
+            // 読み込み失敗時
+            iframe.onerror = () => {
+                showIframeFallback();
+            };
+            
+            container.appendChild(iframe);
+            
+            // タイムアウトでフォールバック表示
+            setTimeout(() => {
+                if (iframe.style.display === 'none') {
+                    showIframeFallback();
+                }
+            }, 10000);
+        }
+        
+        function showIframeFallback() {
+            document.getElementById('iframeFallback').classList.remove('hidden');
+            document.getElementById('iframeFallback').innerHTML = `
+                <p>iframeでの表示に失敗しました</p>
+                <p style="font-size: 12px;">下のボタンで新しいタブで開いてください</p>
+                <button onclick="openSlorepoInNewTab()" style="margin-top: 16px;">新しいタブで開く</button>
+            `;
+        }
+        
+        function openSlorepoInNewTab() {
+            if (slorepoUrl) {
+                window.open(slorepoUrl, '_blank');
+            } else {
+                showMessage('URLが設定されていません', 'error');
+            }
+        }
+        
+        function parseData() {
+            const text = document.getElementById('pasteArea').value;
+            
+            if (!text.trim()) {
+                showMessage('データを貼り付けてください', 'error');
+                return;
+            }
+            
+            const lines = text.trim().split('\n');
+            previewData = lines
+                .map(line => line.split('\t'))
+                .filter(cells => {
+                    const firstCell = cells[0]?.trim();
+                    return firstCell && firstCell !== '台番' && firstCell !== '平均';
+                })
+                .map(cells => ({
+                    machineNumber: parseInt(cells[0]?.trim() || '0', 10),
+                    diff: parseInt((cells[1] || '0').replace(/[,+]/g, ''), 10),
+                    game: parseInt((cells[2] || '0').replace(/,/g, ''), 10),
+                    big: parseInt(cells[3]?.trim() || '0', 10),
+                    reg: parseInt(cells[4]?.trim() || '0', 10),
+                    combinedRate: cells[5]?.trim() || '',
+                }))
+                .filter(row => !isNaN(row.machineNumber) && row.machineNumber > 0);
+            
+            if (previewData.length === 0) {
+                showMessage('有効なデータが見つかりませんでした', 'error');
+                return;
+            }
+            
+            renderPreviewTable();
+            showMessage(`${previewData.length}件のデータをパースしました`, 'success');
+        }
+        
+        function clearForm() {
+            document.getElementById('pasteArea').value = '';
+            document.getElementById('machineName').value = '';
+            document.getElementById('correctionNotes').value = '';
+            previewData = [];
+            renderPreviewTable();
+        }
+        
+        async function registerCorrection() {
+            if (!selectedFailure) {
+                showMessage('失敗レコードを選択してください', 'error');
+                return;
+            }
+            
+            const machineName = document.getElementById('machineName').value.trim();
+            if (!machineName) {
+                showMessage('機種名を入力してください', 'error');
+                return;
+            }
+            
+            if (previewData.length === 0) {
+                showMessage('データをパースしてください', 'error');
+                return;
+            }
+            
+            const notes = document.getElementById('correctionNotes').value.trim();
+            
+            try {
+                const response = await fetch('/api/corrections', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: selectedFailure.date,
+                        hole: selectedFailure.hole,
+                        machine: machineName,
+                        failureId: selectedFailure.id,
+                        notes: notes || null,
+                        data: previewData,
+                    }),
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`${result.count}件の補正データを登録しました`, 'success');
+                    clearForm();
+                    selectedFailure = null;
+                    document.getElementById('selectedFailure').classList.add('hidden');
+                    loadStats();
+                    loadFailures();
+                } else {
+                    showMessage(result.error || '登録に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('登録エラー:', error);
+                showMessage('登録中にエラーが発生しました', 'error');
+            }
+        }
+        
+        async function ignoreFailure(id) {
+            if (!confirm('この失敗レコードを無視しますか？')) return;
+            
+            try {
+                const response = await fetch(`/api/failures/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'ignored' }),
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('ステータスを更新しました', 'success');
+                    loadStats();
+                    loadFailures();
+                } else {
+                    showMessage(result.error || '更新に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('更新エラー:', error);
+                showMessage('更新中にエラーが発生しました', 'error');
+            }
+        }
+        
+        async function deleteCorrections(date, hole, machine) {
+            if (!confirm(`${date} / ${hole} / ${machine} の補正データを削除しますか？`)) return;
+            
+            try {
+                const response = await fetch('/api/corrections/bulk', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, hole, machine }),
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`${result.count}件の補正データを削除しました`, 'success');
+                    loadHistory();
+                } else {
+                    showMessage(result.error || '削除に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+                showMessage('削除中にエラーが発生しました', 'error');
+            }
+        }
+        
+        // ============================================
+        // ユーティリティ
+        // ============================================
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+        
+        function formatDateTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        function getStatusLabel(status) {
+            const labels = {
+                pending: '未解決',
+                resolved: '解決済み',
+                ignored: '無視',
+            };
+            return labels[status] || status;
+        }
+        
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => { container.innerHTML = ''; }, 5000);
+        }
+    </script>
+</body>
+</html>

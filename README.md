@@ -91,6 +91,20 @@ make run-job-normal
 - データマート自動更新オプション
 - 手動実行/停止
 
+### 失敗管理・手動補正
+
+スクレイピング失敗時にデータを手動補正できる機能。
+
+- **失敗一覧**: スクレイピング失敗の記録・管理
+  - フィルタ（日付範囲、店舗、ステータス）
+  - エラー種別表示（cloudflare/timeout/network/parse等）
+- **補正入力**: 手動でデータを補正
+  - クリップボード貼り付け（スロレポのテーブルをコピー→パース）
+  - iframe参照（オプション/スロレポを横に表示）
+  - プレビュー＆登録
+- **補正履歴**: 過去の補正データの確認・削除
+- **フォールバック機能**: 強制再取得で失敗時、手動補正データから自動復元
+
 ### データマート管理
 
 - 統計データの確認
@@ -127,12 +141,15 @@ yobun/
 │       └── lock.js       # GCSロック機構
 ├── sql/                  # SQLスキーマ・クエリ
 │   ├── raw_data/         # 生データスキーマ
+│   ├── scrape_failures/  # 失敗記録スキーマ
+│   ├── manual_corrections/ # 手動補正スキーマ
 │   ├── datamart/         # データマート定義
 │   └── analysis/         # 分析クエリ
 ├── public/               # フロントエンド
 │   ├── dashboard.html    # ダッシュボード（トップ）
 │   ├── schedule.html     # スケジュール管理
 │   ├── datamart.html     # データマート管理
+│   ├── failures.html     # 失敗管理・手動補正
 │   └── js/
 │       └── status-header.js  # 共通ヘッダー
 ├── deploy/               # デプロイスクリプト
@@ -151,6 +168,7 @@ yobun/
 | `/dashboard` | ダッシュボード（エイリアス） |
 | `/schedule` | スケジュール管理 |
 | `/datamart` | データマート管理 |
+| `/failures` | 失敗管理・手動補正 |
 | `/util/sync` | SQLite→BigQuery同期 |
 
 ### API
@@ -174,6 +192,17 @@ yobun/
 | `/util/force-rescrape` | POST | データ再取得（日付範囲・force対応） |
 | `/util/force-rescrape/status` | GET | 再取得状態 |
 | `/api/datamart/run` | POST | データマート再実行 |
+| `/api/failures` | GET | 失敗一覧取得（フィルタ対応） |
+| `/api/failures/stats` | GET | 失敗統計取得 |
+| `/api/failures/:id` | GET | 失敗詳細取得 |
+| `/api/failures/:id` | PATCH | 失敗ステータス更新 |
+| `/api/failures/:id` | DELETE | 失敗レコード削除 |
+| `/api/corrections` | POST | 手動補正データ登録 |
+| `/api/corrections` | GET | 手動補正一覧取得 |
+| `/api/corrections/summary` | GET | 補正サマリー取得 |
+| `/api/corrections/parse` | POST | クリップボードデータパース |
+| `/api/corrections/:id` | DELETE | 手動補正削除 |
+| `/api/corrections/bulk` | DELETE | 手動補正一括削除 |
 | `/health` | GET | ヘルスチェック |
 
 ## スケジューラー設定

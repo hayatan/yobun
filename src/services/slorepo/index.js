@@ -1,7 +1,9 @@
-import scrapeSlotDataByMachine, { scrapeMachineList } from './scraper.js';
+import scrapeSlotDataByMachine, { scrapeMachineList, classifyError } from './scraper.js';
 import config, { getHoles, getHolesSortedByPriority } from '../../config/slorepo-config.js';
+import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import util from '../../util/common.js';
 import sqlite from '../../db/sqlite/operations.js';
+import failures from '../../db/sqlite/failures.js';
 import { saveToBigQuery, getBigQueryRowCount, getTable } from '../../db/bigquery/operations.js';
 
 // データソース識別子
@@ -94,6 +96,9 @@ const scrape = async (
                     );
                 }
 
+                // スクレイピング結果を保持
+                let scrapeResult = null;
+                
                 // 強制再取得の場合は既存データを削除してスクレイピング
                 if (force) {
                     const exists = await sqlite.isDiffDataExists(db, date, hole.name);
@@ -101,8 +106,8 @@ const scrape = async (
                         console.log(`[${date}][${hole.name}] 強制再取得モード: 既存データを削除`);
                         await sqlite.deleteDiffData(db, date, hole.name);
                     }
-                    const data = await scrapeSlotDataByMachine(date, hole.code);
-                    await sqlite.saveDiffData(db, data, SOURCE);
+                    scrapeResult = await scrapeSlotDataByMachine(date, hole.code);
+                    await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
                 } else {
                     // 機種一覧を取得して機種数を比較
                     const savedMachineCount = await sqlite.getMachineCount(db, date, hole.name);
@@ -110,8 +115,8 @@ const scrape = async (
                     if (savedMachineCount === 0) {
                         // 保存済みデータがない場合は新規スクレイピング
                         console.log(`[${date}][${hole.name}] 保存済みデータなし、スクレイピングを実行`);
-                        const data = await scrapeSlotDataByMachine(date, hole.code);
-                        await sqlite.saveDiffData(db, data, SOURCE);
+                        scrapeResult = await scrapeSlotDataByMachine(date, hole.code);
+                        await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
                     } else {
                         // 機種一覧を取得して機種数を比較
                         const machineList = await scrapeMachineList(date, hole.code);
@@ -121,12 +126,32 @@ const scrape = async (
                             // 機種数が異なる場合はスクレイピング実行
                             console.log(`[${date}][${hole.name}] 機種数が変更: 保存済み=${savedMachineCount}, スクレイピング=${scrapedMachineCount} → 再取得`);
                             await sqlite.deleteDiffData(db, date, hole.name);
-                            const data = await scrapeSlotDataByMachine(date, hole.code);
-                            await sqlite.saveDiffData(db, data, SOURCE);
+                            scrapeResult = await scrapeSlotDataByMachine(date, hole.code);
+                            await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
                         } else {
                             // 機種数が同じ場合はスキップ
                             console.log(`[${date}][${hole.name}] 機種数一致: ${savedMachineCount}種 → スキップ`);
                             result.skipped.push({ date, hole: hole.name, reason: '機種数一致' });
+                        }
+                    }
+                }
+                
+                // 機種レベルの失敗を記録
+                if (scrapeResult && scrapeResult.failures && scrapeResult.failures.length > 0) {
+                    console.log(`[${date}][${hole.name}] 機種レベルの失敗を記録: ${scrapeResult.failures.length}件`);
+                    for (const machineFailure of scrapeResult.failures) {
+                        try {
+                            await failures.addFailure(db, {
+                                date,
+                                hole: hole.name,
+                                holeCode: hole.code,
+                                machine: machineFailure.machine,
+                                machineUrl: machineFailure.url,
+                                errorType: machineFailure.errorType,
+                                errorMessage: machineFailure.message,
+                            });
+                        } catch (failureErr) {
+                            console.error(`機種レベル失敗記録の追加中にエラー: ${failureErr.message}`);
                         }
                     }
                 }
@@ -155,8 +180,26 @@ const scrape = async (
             } catch (err) {
                 console.error(`処理エラー (${date} - ${hole.name}): ${err.message}`);
                 
+                // 失敗記録をDBに追加
+                const errorType = classifyError(err);
+                const machineUrl = SLOREPO_SOURCE.buildUrl.hole(hole.code, date);
+                
+                try {
+                    await failures.addFailure(db, {
+                        date,
+                        hole: hole.name,
+                        holeCode: hole.code,
+                        machine: null, // 店舗レベルのエラーの場合は機種不明
+                        machineUrl,
+                        errorType,
+                        errorMessage: err.message,
+                    });
+                } catch (failureErr) {
+                    console.error(`失敗記録の追加中にエラー: ${failureErr.message}`);
+                }
+                
                 completedTasks++;
-                result.failed.push({ date, hole: hole.name, error: err.message });
+                result.failed.push({ date, hole: hole.name, error: err.message, errorType });
                 
                 if (typeof updateProgress === 'function') {
                     updateProgress(

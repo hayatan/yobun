@@ -17,6 +17,8 @@ import createForceRescrapeRouter from './src/api/routes/force-rescrape.js';
 import createDataStatusRouter from './src/api/routes/data-status.js';
 import createDatamartRouter from './src/api/routes/datamart.js';
 import createScheduleRouter from './src/api/routes/schedule.js';
+import createFailuresRouter from './src/api/routes/failures.js';
+import createCorrectionsRouter from './src/api/routes/corrections.js';
 
 // スケジューラー
 import { initScheduler } from './src/scheduler/index.js';
@@ -113,6 +115,15 @@ app.get('/schedule', (req, res) => {
 });
 const scheduleRouter = createScheduleRouter(bigquery, db);
 app.use('/api/schedules', scheduleRouter);
+
+// 失敗管理・手動補正（HTMLページと API）
+app.get('/failures', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'failures.html'));
+});
+const failuresRouter = createFailuresRouter(db);
+app.use('/api/failures', failuresRouter);
+const correctionsRouter = createCorrectionsRouter(bigquery, db);
+app.use('/api/corrections', correctionsRouter);
 
 // ============================================================================
 // サーバー起動

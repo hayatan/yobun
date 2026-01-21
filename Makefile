@@ -41,11 +41,11 @@ build:
 
 run-docker: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
-	docker run --env-file .env -v $(PWD)/data:/tmp -p $(PORT):8080 $(IMAGE_NAME)
+	docker run --env-file .env -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials -p $(PORT):8080 $(IMAGE_NAME)
 
 # Dockerでシェル起動（デバッグ用）
 shell:
-	docker run -it --env-file .env -v $(PWD)/data:/tmp -w /app $(IMAGE_NAME) /bin/sh
+	docker run -it --env-file .env -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials -w /app $(IMAGE_NAME) /bin/sh
 
 # ============================================================================
 # Job実行（Cloud Run Jobs互換）
@@ -54,17 +54,17 @@ shell:
 # 優先店舗のみ（7:00-8:00の集中リトライ用）
 run-job-priority: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
-	docker run --env-file .env -e JOB_MODE=priority -v $(PWD)/data:/tmp $(IMAGE_NAME) node job.js
+	docker run --env-file .env -e JOB_MODE=priority -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials $(IMAGE_NAME) node job.js
 
 # 全店舗の未取得分（8:30, 10:00, 12:30の通常実行用）
 run-job-normal: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
-	docker run --env-file .env -e JOB_MODE=normal -v $(PWD)/data:/tmp $(IMAGE_NAME) node job.js
+	docker run --env-file .env -e JOB_MODE=normal -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials $(IMAGE_NAME) node job.js
 
 # 全店舗強制実行（テスト用）
 run-job-all: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
-	docker run --env-file .env -e JOB_MODE=all -v $(PWD)/data:/tmp $(IMAGE_NAME) node job.js
+	docker run --env-file .env -e JOB_MODE=all -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials $(IMAGE_NAME) node job.js
 
 # ============================================================================
 # クリーンアップ

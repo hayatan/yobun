@@ -7,13 +7,11 @@ ENV SQLITE_DB_PATH=/tmp/db.sqlite \
 ARG HOST_UID=1000
 ENV YOBUNUSER_UID=${HOST_UID}
 
-# 必要なツールのインストール
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    curl
-
-# PuppeteerとChromiumに必要な依存関係のインストール
+# 必要なツールとPuppeteer/Chromium依存関係を一括インストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    sqlite3 \
+    curl \
+    ca-certificates \
     fonts-ipafont-gothic \
     fonts-wqy-zenhei \
     fonts-thai-tlwg \
@@ -62,26 +60,19 @@ ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 # 作業ディレクトリの設定
 WORKDIR /app
 
-# アプリケーションコードをコピー
-COPY package*.json ./
+# 依存関係を先にインストール（キャッシュ効率化）
+COPY --chown=yobunuser:yobunuser package*.json ./
 RUN npm install --production
-COPY . .
+
+# アプリケーションコードをコピー（--chownで所有者設定）
+COPY --chown=yobunuser:yobunuser . .
 
 # Litestreamの設定ファイルを配置
-COPY litestream.yml /etc/litestream.yml
+COPY --chown=yobunuser:yobunuser litestream.yml /etc/litestream.yml
 
-# 条件付きで初期DBコピー
-RUN if [ -f /app/data/db.sqlite ]; then \
-        cp /app/data/db.sqlite /tmp/db.sqlite && \
-        chown -R yobunuser:yobunuser /tmp/db.sqlite; \
-    else \
-        echo "No local DB found, skipping copy"; \
-    fi
-
-# 実行スクリプトをコピーして、エントリポイントに
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh \
-    && chown -R yobunuser:yobunuser /app
+# 実行スクリプトをコピー
+COPY --chown=yobunuser:yobunuser entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # ユーザーを切り替え
 USER yobunuser

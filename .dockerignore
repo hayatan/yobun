@@ -1,0 +1,31 @@
+# データディレクトリ（3GB）
+data/
+
+# 依存関係（npm installでインストール）
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# 開発ツール設定
+.cursor/
+.serena/
+.vscode/
+.tool-versions
+
+# 一時ファイル
+.temporaly/
+outputs/
+
+# 認証情報（.envはenv-fileで渡す）
+credentials/
+.env
+.env.*
+
+# ドキュメント
+*.md
+
+# 分析スクリプト・結果
+*.py
+results.json
