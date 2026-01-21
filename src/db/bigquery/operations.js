@@ -58,18 +58,15 @@ const loadViaGcs = async (table, rows, writeDisposition = 'WRITE_APPEND') => {
     try {
         // Load Jobでロード（GCSファイルを指定）
         // テーブルは既に作成済みなので、schema.fieldsで明示的に指定
-        const [job] = await table.load(file, {
+        // v7.x: table.load() はジョブ完了まで待機し、[metadata, apiResponse] を返す
+        const [metadata] = await table.load(file, {
             sourceFormat: 'NEWLINE_DELIMITED_JSON',
             writeDisposition: writeDisposition,
             schema: { fields: RAW_DATA_SCHEMA.toBigQuerySchema() },
         });
         
-        // ジョブ完了を待機
-        await job.promise();
-        
         // エラーチェック
-        const [metadata] = await job.getMetadata();
-        if (metadata.status.errors && metadata.status.errors.length > 0) {
+        if (metadata.status && metadata.status.errors && metadata.status.errors.length > 0) {
             throw new Error(`Load Job エラー: ${JSON.stringify(metadata.status.errors)}`);
         }
     } finally {

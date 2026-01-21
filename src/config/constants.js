@@ -14,16 +14,12 @@ export const BIGQUERY = {
 
 // スクレイピング関連
 export const SCRAPING = {
-    intervalMs: 2000,           // リクエスト間隔（ミリ秒）
-    maxRetries: 3,              // 最大リトライ回数
-    batchSize: 1000,            // BigQuery挿入時のバッチサイズ
+    intervalMs: 1000,           // リクエスト間隔（ミリ秒）
     tableWaitRetries: 15,       // テーブル作成待機のリトライ回数
     tableWaitDelayMs: 3000,     // テーブル作成待機の間隔（ミリ秒）
-    insertMaxRetries: 10,       // BigQuery挿入時の最大リトライ回数
-    insertBaseDelayMs: 1000,    // BigQuery挿入時のベース遅延（ミリ秒）
     
     // 機種データ取得リトライ設定（指数バックオフ）
-    machineRetryMaxAttempts: 3,      // 最大リトライ回数
+    machineRetryMaxAttempts: 5,      // 最大リトライ回数
     machineRetryBaseDelayMs: 5000,   // ベース遅延（ミリ秒）
     machineRetryMaxDelayMs: 30000,   // 最大遅延（ミリ秒）
 };

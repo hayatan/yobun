@@ -467,6 +467,25 @@
             font-size: 13px;
         }
         
+        /* アクションボタン群 */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        .action-buttons button {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        
+        .action-buttons button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
         .hidden {
             display: none !important;
         }
@@ -666,8 +685,11 @@
                             <input type="text" id="correctionNotes" placeholder="補正理由など" style="width: 100%;">
                         </div>
                         
-                        <div style="margin-top: 16px; text-align: right;">
-                            <button id="registerBtn" class="btn-success" disabled>登録</button>
+                        <div class="action-buttons">
+                            <button id="registerBtn" class="btn-success" disabled>登録のみ</button>
+                            <button id="registerNextBtn" class="btn-success" disabled>登録して次へ</button>
+                            <button id="resolveNextBtn" class="btn-primary" disabled>解決して次へ</button>
+                            <button id="skipNextBtn" class="btn-secondary" disabled>スキップ</button>
                         </div>
                     </div>
                 </div>
@@ -798,7 +820,10 @@
             // 補正入力
             document.getElementById('parseBtn').addEventListener('click', parseData);
             document.getElementById('clearBtn').addEventListener('click', clearForm);
-            document.getElementById('registerBtn').addEventListener('click', registerCorrection);
+            document.getElementById('registerBtn').addEventListener('click', () => registerCorrection(false));
+            document.getElementById('registerNextBtn').addEventListener('click', () => registerCorrection(true));
+            document.getElementById('resolveNextBtn').addEventListener('click', resolveAndNext);
+            document.getElementById('skipNextBtn').addEventListener('click', skipToNext);
             document.getElementById('openNewTabBtn').addEventListener('click', openSlorepoInNewTab);
             
             // 補正履歴
@@ -1122,7 +1147,7 @@
             
             if (previewData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">データを貼り付けてパースしてください</td></tr>';
-                document.getElementById('registerBtn').disabled = true;
+                updateActionButtonsState();
                 return;
             }
             
@@ -1137,7 +1162,7 @@
                 </tr>
             `).join('');
             
-            document.getElementById('registerBtn').disabled = false;
+            updateActionButtonsState();
         }
         
         // ============================================
@@ -1173,6 +1198,9 @@
             
             // iframeを読み込み
             loadIframe();
+            
+            // アクションボタンの状態更新
+            updateActionButtonsState();
         }
         
         // 選択中レコードのステータス変更
@@ -1321,7 +1349,49 @@
             renderPreviewTable();
         }
         
-        async function registerCorrection() {
+        // 選択をクリア
+        function clearSelection() {
+            selectedFailure = null;
+            document.getElementById('selectedFailure').classList.add('hidden');
+            updateActionButtonsState();
+        }
+        
+        // 次の未解決レコードへ移動
+        function goToNextPendingFailure() {
+            // 現在のレコードの次にある未解決レコードを探す
+            const currentIndex = failures.findIndex(f => f.id === selectedFailure?.id);
+            const pendingAfter = failures.slice(currentIndex + 1).find(f => f.status === 'pending');
+            const pendingBefore = failures.find(f => f.status === 'pending');
+            
+            const next = pendingAfter || pendingBefore;
+            
+            if (next && next.id !== selectedFailure?.id) {
+                clearForm();
+                selectFailure(next.id);
+            } else {
+                showMessage('未解決のレコードはありません', 'info');
+                clearForm();
+                clearSelection();
+            }
+        }
+        
+        // アクションボタンの状態更新
+        function updateActionButtonsState() {
+            const hasSelection = selectedFailure !== null;
+            const hasData = previewData.length > 0;
+            const isPending = selectedFailure?.status === 'pending';
+            
+            // 登録系ボタンはデータがある場合のみ有効
+            document.getElementById('registerBtn').disabled = !hasSelection || !hasData;
+            document.getElementById('registerNextBtn').disabled = !hasSelection || !hasData;
+            
+            // 解決して次へ、スキップは選択があれば有効（未解決の場合のみ）
+            document.getElementById('resolveNextBtn').disabled = !hasSelection || !isPending;
+            document.getElementById('skipNextBtn').disabled = !hasSelection;
+        }
+        
+        // 補正データ登録（goNext: true で登録後に次へ移動）
+        async function registerCorrection(goNext = false) {
             if (!selectedFailure) {
                 showMessage('失敗レコードを選択してください', 'error');
                 return;
@@ -1358,11 +1428,23 @@
                 
                 if (result.success) {
                     showMessage(`${result.count}件の補正データを登録しました`, 'success');
-                    clearForm();
-                    selectedFailure = null;
-                    document.getElementById('selectedFailure').classList.add('hidden');
+                    
+                    // 選択中レコードのステータスを更新
+                    selectedFailure.status = 'resolved';
+                    document.getElementById('selectedStatus').textContent = getStatusLabel('resolved');
+                    
+                    // 一覧を更新
                     loadStats();
-                    loadFailures();
+                    await loadFailures();
+                    
+                    if (goNext) {
+                        // 次の未解決へ移動
+                        goToNextPendingFailure();
+                    } else {
+                        // 登録のみ：フォームクリアして選択維持
+                        clearForm();
+                        updateActionButtonsState();
+                    }
                 } else {
                     showMessage(result.error || '登録に失敗しました', 'error');
                 }
@@ -1370,6 +1452,47 @@
                 console.error('登録エラー:', error);
                 showMessage('登録中にエラーが発生しました', 'error');
             }
+        }
+        
+        // データなしで解決して次へ
+        async function resolveAndNext() {
+            if (!selectedFailure) return;
+            
+            // データ未入力の場合のみ確認
+            if (previewData.length === 0) {
+                if (!confirm('補正データなしで解決済みにしますか？')) return;
+            }
+            
+            try {
+                const response = await fetch(`/api/failures/${selectedFailure.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        status: 'resolved', 
+                        resolvedMethod: 'manual' 
+                    }),
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('解決済みにしました', 'success');
+                    selectedFailure.status = 'resolved';
+                    loadStats();
+                    await loadFailures();
+                    goToNextPendingFailure();
+                } else {
+                    showMessage(result.error || '更新に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('更新エラー:', error);
+                showMessage('更新中にエラーが発生しました', 'error');
+            }
+        }
+        
+        // スキップして次へ（何もせず次の未解決へ）
+        function skipToNext() {
+            goToNextPendingFailure();
         }
         
         async function ignoreFailure(id) {

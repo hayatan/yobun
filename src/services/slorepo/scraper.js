@@ -131,7 +131,7 @@ async function handleCloudflareChallenge(page, date, holeName) {
  * @param {number} interval - 待機時間（ミリ秒）
  * @returns {Promise<{count: number, machines: Array}>} 機種数と機種一覧
  */
-export async function scrapeMachineList(date, holeCode, interval = 1000) {
+export async function scrapeMachineList(date, holeCode, interval = SCRAPING.intervalMs) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 
@@ -168,7 +168,7 @@ export async function scrapeMachineList(date, holeCode, interval = 1000) {
  * @param {number} interval - 待機時間（ミリ秒）
  * @returns {Promise<{data: Array, failures: Array}>} データと機種レベルの失敗情報
  */
-export default async function scrapeSlotDataByMachine(date, holeCode, interval = 1000) {
+export default async function scrapeSlotDataByMachine(date, holeCode, interval = SCRAPING.intervalMs) {
     const hole = config.holes.find(h => h.code === holeCode);
     if (!hole) throw new Error('指定された店舗コードが見つかりません。');
 
