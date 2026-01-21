@@ -14,7 +14,7 @@ export const BIGQUERY = {
 
 // スクレイピング関連
 export const SCRAPING = {
-    intervalMs: 1000,           // リクエスト間隔（ミリ秒）
+    intervalMs: 2000,           // リクエスト間隔（ミリ秒）
     maxRetries: 3,              // 最大リトライ回数
     batchSize: 1000,            // BigQuery挿入時のバッチサイズ
     tableWaitRetries: 15,       // テーブル作成待機のリトライ回数
