@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重複データ削除 - Yobun</title>
+    <script src="/js/status-header.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-blue: #58a6ff;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .nav-links a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .form-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            min-width: 60px;
+        }
+        
+        input[type="date"] {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.btn-danger {
+            background-color: var(--accent-red);
+        }
+        
+        button.btn-warning {
+            background-color: var(--accent-yellow);
+            color: #000;
+        }
+        
+        button.btn-secondary {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .progress-container {
+            margin-top: 16px;
+            display: none;
+        }
+        
+        .progress-bar-bg {
+            background-color: var(--bg-tertiary);
+            border-radius: 4px;
+            height: 20px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .progress-bar {
+            background-color: var(--accent-blue);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-bar.success {
+            background-color: var(--accent-green);
+        }
+        
+        .progress-bar.error {
+            background-color: var(--accent-red);
+        }
+        
+        .status-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .results-container {
+            margin-top: 16px;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .results-table th,
+        .results-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .results-table th {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .results-table tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+        
+        .has-duplicates {
+            color: var(--accent-red);
+        }
+        
+        .no-duplicates {
+            color: var(--accent-green);
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-item {
+            background-color: var(--bg-tertiary);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        
+        .message.success {
+            background-color: rgba(63, 185, 80, 0.2);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+        
+        .message.error {
+            background-color: rgba(248, 81, 73, 0.2);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+        
+        .message.info {
+            background-color: rgba(88, 166, 255, 0.2);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        
+        .sqlite-stats {
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>重複データ削除</h1>
+        </header>
+
+        <!-- BigQuery重複チェック -->
+        <div class="card">
+            <div class="card-title">BigQuery 重複チェック</div>
+            <div class="form-group">
+                <label for="checkStartDate">開始日</label>
+                <input type="date" id="checkStartDate">
+                <label for="checkEndDate">終了日</label>
+                <input type="date" id="checkEndDate">
+                <button id="checkBtn" onclick="checkDuplicates()">チェック実行</button>
+            </div>
+            <div id="checkResults" class="results-container" style="display: none;">
+                <div class="summary-stats" id="checkSummary"></div>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>テーブル</th>
+                            <th>総行数</th>
+                            <th>ユニーク数</th>
+                            <th>重複数</th>
+                            <th>状態</th>
+                        </tr>
+                    </thead>
+                    <tbody id="checkResultsBody"></tbody>
+                </table>
+            </div>
+            <div id="checkMessage"></div>
+        </div>
+
+        <!-- BigQuery重複削除 -->
+        <div class="card">
+            <div class="card-title">BigQuery 重複削除</div>
+            <div class="form-group">
+                <label for="bqStartDate">開始日</label>
+                <input type="date" id="bqStartDate">
+                <label for="bqEndDate">終了日</label>
+                <input type="date" id="bqEndDate">
+                <button id="bqDedupeBtn" class="btn-danger" onclick="dedupeBigQuery()">重複削除実行</button>
+            </div>
+            <div id="bqProgress" class="progress-container">
+                <div class="progress-bar-bg">
+                    <div id="bqProgressBar" class="progress-bar"></div>
+                </div>
+                <div id="bqStatusMessage" class="status-message"></div>
+            </div>
+            <div id="bqMessage"></div>
+        </div>
+
+        <!-- SQLite重複削除 -->
+        <div class="card">
+            <div class="card-title">SQLite 重複削除</div>
+            <div id="sqliteStats" class="sqlite-stats">
+                <div class="summary-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="sqliteTotal">-</div>
+                        <div class="stat-label">総行数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="sqliteUnique">-</div>
+                        <div class="stat-label">ユニーク数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="sqliteDuplicates">-</div>
+                        <div class="stat-label">重複数</div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <button id="sqliteCheckBtn" onclick="checkSqliteDuplicates()">重複チェック</button>
+                <button id="sqliteDedupeBtn" class="btn-danger" onclick="dedupeSqlite()">重複削除実行</button>
+            </div>
+            <div id="sqliteProgress" class="progress-container">
+                <div class="progress-bar-bg">
+                    <div id="sqliteProgressBar" class="progress-bar"></div>
+                </div>
+                <div id="sqliteStatusMessage" class="status-message"></div>
+            </div>
+            <div id="sqliteMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        let statusCheckInterval = null;
+
+        // デフォルトの日付を設定
+        function setDefaultDates() {
+            const today = new Date();
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+
+            const formatDate = (d) => d.toISOString().split('T')[0];
+
+            document.getElementById('checkStartDate').value = formatDate(weekAgo);
+            document.getElementById('checkEndDate').value = formatDate(today);
+            document.getElementById('bqStartDate').value = formatDate(weekAgo);
+            document.getElementById('bqEndDate').value = formatDate(today);
+        }
+
+        // ページ読み込み時の初期化
+        window.onload = function() {
+            setDefaultDates();
+            checkSqliteDuplicates();
+        };
+
+        // ============================================================================
+        // BigQuery重複チェック
+        // ============================================================================
+        async function checkDuplicates() {
+            const startDate = document.getElementById('checkStartDate').value;
+            const endDate = document.getElementById('checkEndDate').value;
+            const btn = document.getElementById('checkBtn');
+            const resultsDiv = document.getElementById('checkResults');
+            const messageDiv = document.getElementById('checkMessage');
+
+            if (!startDate || !endDate) {
+                showMessage(messageDiv, '開始日と終了日を指定してください', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'チェック中...';
+            messageDiv.innerHTML = '';
+
+            try {
+                const response = await fetch(`/util/dedupe/check?startDate=${startDate}&endDate=${endDate}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'チェックに失敗しました');
+                }
+
+                displayCheckResults(data);
+                resultsDiv.style.display = 'block';
+            } catch (error) {
+                showMessage(messageDiv, `エラー: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'チェック実行';
+            }
+        }
+
+        function displayCheckResults(data) {
+            const summaryDiv = document.getElementById('checkSummary');
+            const tbody = document.getElementById('checkResultsBody');
+
+            // サマリー計算
+            let totalRows = 0;
+            let totalUnique = 0;
+            let totalDuplicates = 0;
+            let tablesWithDuplicates = 0;
+
+            data.results.forEach(r => {
+                totalRows += r.total;
+                totalUnique += r.uniqueCount;
+                totalDuplicates += r.duplicateCount;
+                if (r.hasDuplicates) tablesWithDuplicates++;
+            });
+
+            summaryDiv.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${data.tablesChecked}</div>
+                    <div class="stat-label">テーブル数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${totalRows.toLocaleString()}</div>
+                    <div class="stat-label">総行数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${totalUnique.toLocaleString()}</div>
+                    <div class="stat-label">ユニーク数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value ${totalDuplicates > 0 ? 'has-duplicates' : ''}">${totalDuplicates.toLocaleString()}</div>
+                    <div class="stat-label">重複数</div>
+                </div>
+            `;
+
+            tbody.innerHTML = data.results.map(r => `
+                <tr>
+                    <td>${r.tableName}</td>
+                    <td>${r.total.toLocaleString()}</td>
+                    <td>${r.uniqueCount.toLocaleString()}</td>
+                    <td class="${r.hasDuplicates ? 'has-duplicates' : ''}">${r.duplicateCount.toLocaleString()}</td>
+                    <td class="${r.hasDuplicates ? 'has-duplicates' : 'no-duplicates'}">
+                        ${r.hasDuplicates ? '重複あり' : 'OK'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ============================================================================
+        // BigQuery重複削除
+        // ============================================================================
+        async function dedupeBigQuery() {
+            const startDate = document.getElementById('bqStartDate').value;
+            const endDate = document.getElementById('bqEndDate').value;
+            const btn = document.getElementById('bqDedupeBtn');
+            const progressDiv = document.getElementById('bqProgress');
+            const messageDiv = document.getElementById('bqMessage');
+
+            if (!startDate || !endDate) {
+                showMessage(messageDiv, '開始日と終了日を指定してください', 'error');
+                return;
+            }
+
+            if (!confirm(`${startDate} から ${endDate} までの重複データを削除しますか？`)) {
+                return;
+            }
+
+            btn.disabled = true;
+            progressDiv.style.display = 'block';
+            messageDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/util/dedupe/bigquery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startDate, endDate })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok && response.status !== 202) {
+                    throw new Error(data.error || '重複削除の開始に失敗しました');
+                }
+
+                startStatusCheck('bq');
+            } catch (error) {
+                showMessage(messageDiv, `エラー: ${error.message}`, 'error');
+                btn.disabled = false;
+                progressDiv.style.display = 'none';
+            }
+        }
+
+        // ============================================================================
+        // SQLite重複チェック
+        // ============================================================================
+        async function checkSqliteDuplicates() {
+            const btn = document.getElementById('sqliteCheckBtn');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/util/dedupe/sqlite/check');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'チェックに失敗しました');
+                }
+
+                document.getElementById('sqliteTotal').textContent = data.total.toLocaleString();
+                document.getElementById('sqliteUnique').textContent = data.uniqueCount.toLocaleString();
+                document.getElementById('sqliteDuplicates').textContent = data.duplicateCount.toLocaleString();
+                document.getElementById('sqliteDuplicates').className = 
+                    'stat-value ' + (data.hasDuplicates ? 'has-duplicates' : 'no-duplicates');
+            } catch (error) {
+                console.error('SQLiteチェックエラー:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ============================================================================
+        // SQLite重複削除
+        // ============================================================================
+        async function dedupeSqlite() {
+            const btn = document.getElementById('sqliteDedupeBtn');
+            const progressDiv = document.getElementById('sqliteProgress');
+            const messageDiv = document.getElementById('sqliteMessage');
+
+            if (!confirm('SQLiteの重複データを削除しますか？')) {
+                return;
+            }
+
+            btn.disabled = true;
+            progressDiv.style.display = 'block';
+            messageDiv.innerHTML = '';
+
+            try {
+                const response = await fetch('/util/dedupe/sqlite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '重複削除に失敗しました');
+                }
+
+                const progressBar = document.getElementById('sqliteProgressBar');
+                progressBar.style.width = '100%';
+                progressBar.classList.add('success');
+                document.getElementById('sqliteStatusMessage').textContent = data.message;
+
+                showMessage(messageDiv, data.message, 'success');
+                checkSqliteDuplicates();
+            } catch (error) {
+                showMessage(messageDiv, `エラー: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ============================================================================
+        // ステータスチェック
+        // ============================================================================
+        function startStatusCheck(type) {
+            const progressBar = document.getElementById(`${type}ProgressBar`);
+            const statusMessage = document.getElementById(`${type}StatusMessage`);
+            const btn = document.getElementById(`${type}DedupeBtn`);
+            const messageDiv = document.getElementById(`${type}Message`);
+
+            statusCheckInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/util/dedupe/status');
+                    const status = await response.json();
+
+                    if (status.progress.total > 0) {
+                        const progress = (status.progress.current / status.progress.total) * 100;
+                        progressBar.style.width = `${progress}%`;
+                    }
+
+                    statusMessage.textContent = status.progress.message;
+
+                    if (!status.isRunning) {
+                        clearInterval(statusCheckInterval);
+                        btn.disabled = false;
+
+                        if (status.lastError) {
+                            progressBar.classList.add('error');
+                            showMessage(messageDiv, `エラー: ${status.lastError}`, 'error');
+                        } else {
+                            progressBar.classList.add('success');
+                            showMessage(messageDiv, status.progress.message, 'success');
+                            // BigQuery削除後はチェック結果も更新
+                            if (type === 'bq') {
+                                checkDuplicates();
+                            }
+                        }
+                    }
+                } catch (error) {
+                    clearInterval(statusCheckInterval);
+                    statusMessage.textContent = `エラー: ${error.message}`;
+                    btn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        // ============================================================================
+        // ユーティリティ
+        // ============================================================================
+        function showMessage(container, message, type) {
+            container.innerHTML = `<div class="message ${type}">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

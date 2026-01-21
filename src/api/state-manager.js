@@ -42,6 +42,7 @@ class JobStateManager {
             sync: createInitialState(),
             forceRescrape: createInitialState(),
             datamart: createInitialState(),
+            dedupe: createInitialState(),
         };
     }
 

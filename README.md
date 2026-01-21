@@ -114,6 +114,7 @@ make run-job-normal
 
 - SQLite → BigQuery 同期
 - 強制再取得
+- 重複データ削除（BigQuery/SQLite）
 
 ## ディレクトリ構成
 
@@ -150,6 +151,9 @@ yobun/
 │   ├── schedule.html     # スケジュール管理
 │   ├── datamart.html     # データマート管理
 │   ├── failures.html     # 失敗管理・手動補正
+│   ├── util/
+│   │   ├── sync.html     # SQLite→BigQuery同期
+│   │   └── dedupe.html   # 重複データ削除
 │   └── js/
 │       └── status-header.js  # 共通ヘッダー
 ├── deploy/               # デプロイスクリプト
@@ -170,6 +174,7 @@ yobun/
 | `/datamart` | データマート管理 |
 | `/failures` | 失敗管理・手動補正 |
 | `/util/sync` | SQLite→BigQuery同期 |
+| `/util/dedupe` | 重複データ削除 |
 
 ### API
 
@@ -203,6 +208,11 @@ yobun/
 | `/api/corrections/parse` | POST | クリップボードデータパース |
 | `/api/corrections/:id` | DELETE | 手動補正削除 |
 | `/api/corrections/bulk` | DELETE | 手動補正一括削除 |
+| `/util/dedupe/check` | GET | BigQuery重複チェック（期間指定） |
+| `/util/dedupe/bigquery` | POST | BigQuery重複削除（期間指定） |
+| `/util/dedupe/sqlite` | POST | SQLite重複削除 |
+| `/util/dedupe/sqlite/check` | GET | SQLite重複チェック |
+| `/util/dedupe/status` | GET | 重複削除処理状態 |
 | `/health` | GET | ヘルスチェック |
 
 ## スケジューラー設定

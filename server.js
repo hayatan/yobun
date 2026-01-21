@@ -19,6 +19,7 @@ import createDatamartRouter from './src/api/routes/datamart.js';
 import createScheduleRouter from './src/api/routes/schedule.js';
 import createFailuresRouter from './src/api/routes/failures.js';
 import createCorrectionsRouter from './src/api/routes/corrections.js';
+import createDedupeRouter from './src/api/routes/dedupe.js';
 
 // スケジューラー
 import { initScheduler } from './src/scheduler/index.js';
@@ -83,6 +84,13 @@ app.get('/util/sync', (req, res) => {
 });
 const syncRouter = createSyncRouter(bigquery, db);
 app.use('/util/sync', syncRouter);
+
+// 重複削除関連（HTMLページと API）
+app.get('/util/dedupe', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'util', 'dedupe.html'));
+});
+const dedupeRouter = createDedupeRouter(bigquery, db);
+app.use('/util/dedupe', dedupeRouter);
 
 // 再取得API（ダッシュボードから使用）
 const forceRescrapeRouter = createForceRescrapeRouter(bigquery, db);

@@ -56,6 +56,14 @@
 - DB操作: `src/db/sqlite/failures.js`, `src/db/sqlite/corrections.js`
 - API: `/api/failures`, `/api/corrections`
 
+### 重複データ削除
+
+- **BigQuery重複削除**: 期間指定で重複データを削除（`CREATE OR REPLACE TABLE` + `GROUP BY id`）
+- **SQLite重複削除**: PRIMARY KEY制約で基本的に重複なし（念のため機能あり）
+- **重複チェック**: 期間指定で重複状況を確認
+- API: `/util/dedupe`
+- UI: `/util/dedupe`（共通ヘッダーからアクセス可能）
+
 ## 変更時の注意
 
 - スキーマ変更 → マイグレーションファイル作成
