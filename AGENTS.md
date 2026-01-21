@@ -34,6 +34,10 @@
 
 - **SQLite**: プライマリストレージ（Litestreamでバックアップ）
 - **BigQuery**: 分析用DB（SQLiteと同期）
+- **BigQuery同期方式**: Load Job使用（ストリーミングINSERT廃止）
+  - 単一店舗データ: DELETE後にINSERT（店舗+日付単位で置換）
+  - 複数店舗データ: WRITE_TRUNCATE（日付テーブル全体を置換）
+  - ストリーミングバッファの問題を完全回避、重複が発生しない
 
 ### ジョブ管理
 

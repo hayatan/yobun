@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import stateManager from '../state-manager.js';
 import sqlite from '../../db/sqlite/operations.js';
-import { getTable, saveToBigQuery } from '../../db/bigquery/operations.js';
+import { saveToBigQuery } from '../../db/bigquery/operations.js';
 import { BIGQUERY } from '../../config/constants.js';
 
 const JOB_TYPE = 'sync';
@@ -57,14 +57,14 @@ const createSyncRouter = (bigquery, db) => {
                 });
             }
 
-            // BigQueryのテーブルを取得（存在しない場合は作成）
+            // BigQueryにデータを保存（Load Job使用、重複防止）
             const { datasetId } = BIGQUERY;
-            const dateTable = `data_${date.replace(/-/g, '')}`;
-            const table = await getTable(bigquery, datasetId, dateTable);
+            const tableId = `data_${date.replace(/-/g, '')}`;
 
             if (data.length > 0) {
-                // BigQueryにデータを保存
-                await saveToBigQuery(table, data);
+                // 新形式: saveToBigQuery(bigquery, datasetId, tableId, data, source)
+                // 日付全体のデータなので、WRITE_TRUNCATEでテーブル置換される
+                await saveToBigQuery(bigquery, datasetId, tableId, data, 'slorepo');
             }
 
             stateManager.updateProgress(JOB_TYPE, data.length, data.length, '同期処理が完了しました');

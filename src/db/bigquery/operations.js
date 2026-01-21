@@ -2,6 +2,139 @@ import util from '../../util/common.js';
 import { BIGQUERY, SCRAPING } from '../../config/constants.js';
 import { RAW_DATA_SCHEMA } from '../../../sql/raw_data/schema.js';
 
+/**
+ * テーブルが存在することを確認し、存在しない場合は作成
+ * @param {Object} bigquery - BigQueryクライアント
+ * @param {string} datasetId - データセットID
+ * @param {string} tableId - テーブルID
+ * @returns {Promise<Object>} テーブルオブジェクト
+ */
+const ensureTableExists = async (bigquery, datasetId, tableId) => {
+    try {
+        const [table] = await bigquery.dataset(datasetId).table(tableId).get();
+        return table;
+    } catch (error) {
+        if (error.code === 404) {
+            // テーブルが存在しない場合は作成
+            console.log(`テーブル ${tableId} を作成します...`);
+            const options = {
+                schema: RAW_DATA_SCHEMA.toBigQuerySchema(),
+                location: BIGQUERY.location,
+            };
+            const [table] = await bigquery.dataset(datasetId).createTable(tableId, options);
+            console.log(`テーブル ${tableId} を作成しました`);
+            return table;
+        }
+        throw error;
+    }
+};
+
+/**
+ * Load Jobでデータをロード（重複防止）
+ * 
+ * データの内容に応じて自動的にモードを選択:
+ * - 単一店舗のデータ: その店舗のデータをDELETE後にINSERT
+ * - 複数店舗のデータ: テーブル全体をWRITE_TRUNCATE
+ * 
+ * @param {Object} bigquery - BigQueryクライアント
+ * @param {string} datasetId - データセットID
+ * @param {string} tableId - テーブルID
+ * @param {Array} data - 挿入するデータ
+ * @param {string} source - データソース
+ * @returns {Promise<number>} 挿入した行数
+ */
+const loadData = async (bigquery, datasetId, tableId, data, source = 'slorepo') => {
+    if (!data || data.length === 0) {
+        console.log(`データが空のため、BigQueryへの保存をスキップします: ${tableId}`);
+        return 0;
+    }
+
+    const projectId = bigquery.projectId;
+    const timestamp = new Date().toISOString();
+    
+    // データを整形
+    const formattedData = util.formatDiffData(data);
+    if (!util.validateDiffData(formattedData)) {
+        throw new Error(`データが不完全なため、BigQueryへの保存をスキップします: ${tableId}`);
+    }
+    
+    const rows = formattedData.map(row => ({
+        id: RAW_DATA_SCHEMA.generateId(row.date, row.hole, row.machine_number, source),
+        ...row,
+        source,
+        timestamp,
+    }));
+
+    // テーブルの存在を確認（なければ作成）
+    await ensureTableExists(bigquery, datasetId, tableId);
+    const table = bigquery.dataset(datasetId).table(tableId);
+
+    // データの店舗を確認して、単一店舗か複数店舗かを判定
+    const uniqueHoles = [...new Set(rows.map(r => r.hole))];
+    
+    if (uniqueHoles.length === 1) {
+        // 単一店舗: DELETE後にINSERT
+        const hole = uniqueHoles[0];
+        const date = rows[0].date;
+        console.log(`[${tableId}][${hole}] 店舗データを置換モードで同期 (${rows.length}件)`);
+        
+        // 既存データを削除
+        const deleteQuery = `
+            DELETE FROM \`${projectId}.${datasetId}.${tableId}\`
+            WHERE date = '${date}' AND hole = '${hole}'
+        `;
+        try {
+            await bigquery.query({ query: deleteQuery });
+            console.log(`[${tableId}][${hole}] 既存データを削除しました`);
+        } catch (error) {
+            // テーブルが空の場合などはエラーを無視
+            if (!error.message.includes('Not found')) {
+                console.warn(`[${tableId}][${hole}] DELETE中の警告: ${error.message}`);
+            }
+        }
+        
+        // Load Jobでデータ挿入（WRITE_APPEND）
+        const ndjson = rows.map(r => JSON.stringify(r)).join('\n');
+        const [job] = await table.load(Buffer.from(ndjson), {
+            sourceFormat: 'NEWLINE_DELIMITED_JSON',
+            writeDisposition: 'WRITE_APPEND',
+            schema: RAW_DATA_SCHEMA.toBigQuerySchema(),
+        });
+        
+        // ジョブ完了を待機
+        const [metadata] = await job.getMetadata();
+        if (metadata.status.errors && metadata.status.errors.length > 0) {
+            throw new Error(`Load Job エラー: ${metadata.status.errors.map(e => e.message).join(', ')}`);
+        }
+        
+        console.log(`[${tableId}][${hole}] ${rows.length}件を挿入しました`);
+    } else {
+        // 複数店舗（日付全体）: WRITE_TRUNCATEでテーブル置換
+        console.log(`[${tableId}] テーブル全体を置換モードで同期 (${rows.length}件, ${uniqueHoles.length}店舗)`);
+        
+        const ndjson = rows.map(r => JSON.stringify(r)).join('\n');
+        const [job] = await table.load(Buffer.from(ndjson), {
+            sourceFormat: 'NEWLINE_DELIMITED_JSON',
+            writeDisposition: 'WRITE_TRUNCATE',
+            schema: RAW_DATA_SCHEMA.toBigQuerySchema(),
+        });
+        
+        // ジョブ完了を待機
+        const [metadata] = await job.getMetadata();
+        if (metadata.status.errors && metadata.status.errors.length > 0) {
+            throw new Error(`Load Job エラー: ${metadata.status.errors.map(e => e.message).join(', ')}`);
+        }
+        
+        console.log(`[${tableId}] ${rows.length}件を挿入しました（テーブル置換）`);
+    }
+    
+    return rows.length;
+};
+
+// ============================================================================
+// 以下は既存の関数（後方互換性のため一部残す）
+// ============================================================================
+
 const getTable = async (bigquery, datasetId, tableId) => {
     console.error(`テーブル ${datasetId}.${tableId} が存在しない場合は作成します`);
     try {
@@ -58,68 +191,42 @@ const getTable = async (bigquery, datasetId, tableId) => {
     }
 }
 
-const insertWithRetry = async (table, formattedData, source = 'slorepo') => {
-    const MAX_RETRIES = SCRAPING.insertMaxRetries;
-    const BASE_DELAY = SCRAPING.insertBaseDelayMs;
-    const BATCH_SIZE = SCRAPING.batchSize;
+/**
+ * BigQueryにデータを保存（Load Job使用、重複防止）
+ * 
+ * 新しい実装: Load Jobを使用し、重複を防止
+ * - 単一店舗のデータ: DELETE後にINSERT
+ * - 複数店舗のデータ: WRITE_TRUNCATEでテーブル置換
+ * 
+ * @param {Object} bigqueryOrTable - BigQueryクライアント または テーブルオブジェクト（後方互換性）
+ * @param {string|Array} datasetIdOrData - データセットID または データ配列（後方互換性）
+ * @param {string} tableIdOrSource - テーブルID または ソース（後方互換性）
+ * @param {Array} data - データ配列（新形式のみ）
+ * @param {string} source - データソース（新形式のみ）
+ * @returns {Promise<number>} 挿入した行数
+ */
+const saveToBigQuery = async (bigqueryOrTable, datasetIdOrData, tableIdOrSource, data, source = 'slorepo') => {
+    // 後方互換性: 旧形式 saveToBigQuery(table, data, source) の判定
+    if (bigqueryOrTable && bigqueryOrTable.id && bigqueryOrTable.dataset && Array.isArray(datasetIdOrData)) {
+        // 旧形式: saveToBigQuery(table, data, source)
+        const table = bigqueryOrTable;
+        const oldData = datasetIdOrData;
+        const oldSource = tableIdOrSource || 'slorepo';
+        
+        // テーブルからbigqueryクライアントを取得（大文字Q: bigQuery）
+        const bigquery = table.dataset.bigQuery;
+        const datasetId = table.dataset.id;
+        const tableId = table.id;
+        
+        return await loadData(bigquery, datasetId, tableId, oldData, oldSource);
+    }
     
-    const timestamp = new Date().toISOString();
-    const formattedRows = formattedData.map(row => ({
-        id: RAW_DATA_SCHEMA.generateId(row.date, row.hole, row.machine_number, source),
-        ...row,
-        source,
-        timestamp,
-    }));
+    // 新形式: saveToBigQuery(bigquery, datasetId, tableId, data, source)
+    const bigquery = bigqueryOrTable;
+    const datasetId = datasetIdOrData;
+    const tableId = tableIdOrSource;
     
-    // データをバッチに分割
-    const batches = [];
-    for (let i = 0; i < formattedRows.length; i += BATCH_SIZE) {
-        batches.push(formattedRows.slice(i, i + BATCH_SIZE));
-    }
-
-    console.log(`データを ${batches.length} バッチに分割しました。`);
-
-    // 各バッチを順番に処理
-    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-        const batch = batches[batchIndex];
-        console.log(`バッチ ${batchIndex + 1}/${batches.length} を処理中... (${batch.length}件)`);
-
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                // table.insertを使用してデータを挿入
-                await table.insert(batch);
-                console.log(`バッチ ${batchIndex + 1}/${batches.length} の挿入が完了しました。`);
-                break; // 成功したら次のバッチへ
-            } catch (error) {
-                if (attempt === MAX_RETRIES) {
-                    console.error(`バッチ ${batchIndex + 1}/${batches.length} の挿入に失敗しました:`, error.message);
-                    throw error;
-                }
-                const delay = BASE_DELAY * Math.pow(2, attempt - 1);
-                console.warn(`バッチ ${batchIndex + 1}/${batches.length} の挿入に失敗しました。${delay}ms 後にリトライします... (試行回数: ${attempt})`, error.message);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-    }
-}
-
-const saveToBigQuery = async (table, data, source = 'slorepo') => {
-    const tableId = table.id;
-    const formattedData = util.formatDiffData(data);
-
-    if (!util.validateDiffData(formattedData)) {
-        throw new Error(`データが不完全なため、BigQueryへの保存をスキップします: ${tableId}\n${JSON.stringify(formattedData)}`);
-    }
-
-    if (formattedData.length === 0) {
-        throw new Error(`データが空のため、BigQueryへの保存をスキップします: ${tableId}`);
-    }
-
-    try {
-        await insertWithRetry(table, formattedData, source);
-    } catch (error) {
-        throw error;
-    }
+    return await loadData(bigquery, datasetId, tableId, data, source);
 };
 
 const getSavedHoles = async (table) => {
@@ -177,6 +284,8 @@ const deleteBigQueryTable = async (table) => {
 
 export {
     saveToBigQuery,
+    loadData,
+    ensureTableExists,
     getSavedHoles,
     getBigQueryRowCount,
     getTable,

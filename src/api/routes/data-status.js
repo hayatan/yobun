@@ -10,7 +10,7 @@ import { Router } from 'express';
 import config, { getHoles } from '../../config/slorepo-config.js';
 import sqlite from '../../db/sqlite/operations.js';
 import util from '../../util/common.js';
-import { getTable, deleteBigQueryTable } from '../../db/bigquery/operations.js';
+import { deleteBigQueryTable } from '../../db/bigquery/operations.js';
 import { BIGQUERY } from '../../config/constants.js';
 
 const createDataStatusRouter = (bigquery, db) => {

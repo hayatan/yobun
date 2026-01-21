@@ -11,7 +11,7 @@ import stateManager from '../state-manager.js';
 import sqlite from '../../db/sqlite/operations.js';
 import corrections from '../../db/sqlite/corrections.js';
 import failures from '../../db/sqlite/failures.js';
-import { getTable, saveToBigQuery, deleteBigQueryTable } from '../../db/bigquery/operations.js';
+import { saveToBigQuery, deleteBigQueryTable, ensureTableExists } from '../../db/bigquery/operations.js';
 import scrapeSlotDataByMachine, { scrapeMachineList, classifyError } from '../../services/slorepo/scraper.js';
 import config, { findHoleByName, getHoles, getHolesSortedByPriority } from '../../config/slorepo-config.js';
 import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
@@ -175,11 +175,11 @@ const createForceRescrapeRouter = (bigquery, db) => {
                                     }
                                 }
 
-                                // BigQueryに同期
+                                // BigQueryに同期（Load Job使用、重複防止）
                                 const data = await sqlite.getDiffData(db, targetDate, holeName);
                                 if (data.length > 0) {
-                                    const table = await getTable(bigquery, datasetId, tableId);
-                                    await saveToBigQuery(table, data, SOURCE);
+                                    // 新形式: saveToBigQuery(bigquery, datasetId, tableId, data, source)
+                                    await saveToBigQuery(bigquery, datasetId, tableId, data, SOURCE);
                                 }
 
                                 stateManager.updateProgress(JOB_TYPE, completedTasks, totalTasks, `[${targetDate}][${holeName}] 完了`);
@@ -193,11 +193,10 @@ const createForceRescrapeRouter = (bigquery, db) => {
                                     console.log(`[${targetDate}][${holeName}] フォールバック成功: 手動補正データから ${fallbackResult.count}件 を復元`);
                                     stateManager.updateProgress(JOB_TYPE, completedTasks, totalTasks, `[${targetDate}][${holeName}] フォールバック: ${fallbackResult.count}件復元`);
                                     
-                                    // BigQueryにも同期
+                                    // BigQueryにも同期（Load Job使用、重複防止）
                                     const data = await sqlite.getDiffData(db, targetDate, holeName);
                                     if (data.length > 0) {
-                                        const table = await getTable(bigquery, datasetId, tableId);
-                                        await saveToBigQuery(table, data, SOURCE);
+                                        await saveToBigQuery(bigquery, datasetId, tableId, data, SOURCE);
                                     }
                                     
                                     results.success.push({ date: targetDate, hole: holeName, fallback: true, count: fallbackResult.count });

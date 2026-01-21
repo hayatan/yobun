@@ -72,8 +72,16 @@ make run-job-normal
 1. **スケジューラー**: 設定された時刻にジョブを実行
 2. **スクレイピング**: スロレポからデータ取得（Puppeteer + Stealth）
 3. **SQLite保存**: プライマリストレージに保存
-4. **BigQuery同期**: 分析用DBに自動同期
+4. **BigQuery同期**: Load Jobで分析用DBに同期（重複防止）
 5. **データマート更新**: 統計情報を自動生成
+
+### BigQuery同期の仕組み
+
+SQLiteからBigQueryへの同期はLoad Jobを使用し、重複が発生しない設計になっています。
+
+- **単一店舗データ**: DELETE後にINSERT（店舗+日付単位で既存データを置換）
+- **複数店舗データ**: WRITE_TRUNCATE（日付テーブル全体を置換）
+- **ストリーミングバッファ問題なし**: Load Jobはストリーミングバッファを使用しないため、DML操作が常に可能
 
 ## 機能一覧
 
@@ -112,9 +120,9 @@ make run-job-normal
 
 ### ユーティリティ
 
-- SQLite → BigQuery 同期
-- 強制再取得
-- 重複データ削除（BigQuery/SQLite）
+- **SQLite → BigQuery 同期**: Load Jobを使用した重複防止同期
+- **強制再取得**: 日付範囲・店舗指定での再スクレイピング
+- **重複データ削除**: 既存の重複データをクリーンアップ（BigQuery/SQLite）
 
 ## ディレクトリ構成
 

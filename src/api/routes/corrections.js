@@ -13,7 +13,7 @@ import { Router } from 'express';
 import corrections from '../../db/sqlite/corrections.js';
 import failures from '../../db/sqlite/failures.js';
 import sqlite from '../../db/sqlite/operations.js';
-import { getTable, saveToBigQuery } from '../../db/bigquery/operations.js';
+import { saveToBigQuery } from '../../db/bigquery/operations.js';
 import { BIGQUERY } from '../../config/constants.js';
 import { findHoleByName } from '../../config/slorepo-config.js';
 
@@ -86,15 +86,15 @@ const createCorrectionsRouter = (bigquery, db) => {
             // scraped_data にもコピー
             const copyCount = await corrections.copyToScrapedData(db, date, hole, machine);
             
-            // BigQuery に同期
+            // BigQuery に同期（Load Job使用、重複防止）
             try {
                 const { datasetId } = BIGQUERY;
                 const tableId = `data_${date.replace(/-/g, '')}`;
                 const scrapedData = await sqlite.getDiffData(db, date, hole);
                 
                 if (scrapedData.length > 0) {
-                    const table = await getTable(bigquery, datasetId, tableId);
-                    await saveToBigQuery(table, scrapedData, SOURCE);
+                    // 新形式: saveToBigQuery(bigquery, datasetId, tableId, data, source)
+                    await saveToBigQuery(bigquery, datasetId, tableId, scrapedData, SOURCE);
                 }
             } catch (bqError) {
                 console.error('BigQuery同期エラー:', bqError.message);

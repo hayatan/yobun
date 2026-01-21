@@ -4,7 +4,7 @@ import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import util from '../../util/common.js';
 import sqlite from '../../db/sqlite/operations.js';
 import failures from '../../db/sqlite/failures.js';
-import { saveToBigQuery, getBigQueryRowCount, getTable } from '../../db/bigquery/operations.js';
+import { saveToBigQuery, getBigQueryRowCount, ensureTableExists } from '../../db/bigquery/operations.js';
 
 // データソース識別子
 const SOURCE = 'slorepo';
@@ -84,7 +84,8 @@ const scrape = async (
 
     for (const date of dateRange) {
         const tableId = `${tableIdPrefix}${util.formatUrlDate(date)}`;
-        let dateTable = await getTable(bigquery, datasetId, tableId);
+        // テーブルの存在を確認（なければ作成）
+        const dateTable = await ensureTableExists(bigquery, datasetId, tableId);
         
         for (const hole of holes) {
             try {
@@ -156,14 +157,16 @@ const scrape = async (
                     }
                 }
 
-                // BigQueryに同期
+                // BigQueryに同期（Load Job使用、重複防止）
                 const data = await sqlite.getDiffData(db, date, hole.name);
                 if (data.length > 0) {
                     const bigQueryRowCount = await getBigQueryRowCount(dateTable, hole.name);
                     const sqliteRowCount = data.length;
                     console.log(`[${date}][${hole.name}] BigQuery: ${bigQueryRowCount}件 SQLite: ${sqliteRowCount}件`);
                     if (bigQueryRowCount !== sqliteRowCount || force) {
-                        await saveToBigQuery(dateTable, data, SOURCE);
+                        // 新形式: saveToBigQuery(bigquery, datasetId, tableId, data, source)
+                        // 単一店舗データなので、DELETE後にINSERTされる
+                        await saveToBigQuery(bigquery, datasetId, tableId, data, SOURCE);
                     }
                 }
 
