@@ -200,6 +200,7 @@ yobun/
 | `/status` | GET | スクレイピング状態 |
 | `/pubsub` | POST | スクレイピング開始 |
 | `/api/data-status` | GET | データ取得状況 |
+| `/api/data-status/:date/:hole` | GET | 特定日付・店舗のデータ詳細 |
 | `/api/data-status/raw` | DELETE | 生データ削除 |
 | `/api/lock` | GET | ロック状態確認 |
 | `/api/lock` | DELETE | ロック強制解除 |
@@ -210,6 +211,7 @@ yobun/
 | `/api/schedules/:jobId/schedules` | POST | スケジュール追加 |
 | `/api/schedules/:jobId/schedules/:id` | PUT/DELETE | スケジュール更新/削除 |
 | `/api/datamart/status` | GET | データマート状態 |
+| `/api/datamart/status/job` | GET | データマートジョブ状態 |
 | `/api/datamart/delete` | DELETE | データマート削除 |
 | `/util/force-rescrape` | POST | データ再取得（日付範囲対応） |
 | `/util/force-rescrape/status` | GET | 再取得状態 |
@@ -219,6 +221,7 @@ yobun/
 | `/api/failures/:id` | GET | 失敗詳細取得 |
 | `/api/failures/:id` | PATCH | 失敗ステータス更新 |
 | `/api/failures/:id` | DELETE | 失敗レコード削除 |
+| `/api/failures/bulk` | DELETE | 失敗一括削除 |
 | `/api/corrections` | POST | 手動補正データ登録 |
 | `/api/corrections` | GET | 手動補正一覧取得 |
 | `/api/corrections/summary` | GET | 補正サマリー取得 |

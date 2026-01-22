@@ -10,31 +10,33 @@ alwaysApply: true
 ### 1.1 ディレクトリ構造
 - `src/`: ソースコードのルートディレクトリ
   - `api/`: APIルーティングと状態管理
-    - `routes/`: エンドポイント別ルーター（scrape.js, sync.js, force-rescrape.js）
+    - `routes/`: エンドポイント別ルーター
     - `state-manager.js`: ジョブ状態管理
   - `config/`: 設定ファイル
-    - `constants.js`: 定数定義（BigQuery設定、スクレイピング設定など）
-    - `sources/`: データソース別設定（slorepo.js など）
+    - `constants.js`: 定数定義
+    - `sources/`: データソース別設定
     - `slorepo-config.js`: 店舗設定
   - `db/`: データベース関連の処理
-    - `sqlite/`: SQLite関連の処理（プライマリストレージ）
-    - `bigquery/`: BigQuery関連の処理（分析用DB）
-  - `services/`: 外部サービスとの連携
-    - `slorepo/`: スロレポスクレイピング処理
+    - `sqlite/`: SQLite関連（プライマリストレージ）
+    - `bigquery/`: BigQuery関連（分析用DB）
+  - `services/`: ビジネスロジック
+    - `slorepo/`: スクレイピング処理
+    - `datamart/`: データマート更新
+  - `scheduler/`: スケジューラー
   - `util/`: 共通ユーティリティ関数
 - `sql/`: SQLスキーマとマイグレーション
   - `raw_data/`: 生データスキーマ管理
-    - `schema.js`: スキーマ定義（Single Source of Truth）
-    - `migrations/`: マイグレーションファイル
+  - `scrape_failures/`: 失敗記録スキーマ
+  - `manual_corrections/`: 手動補正スキーマ
   - `datamart/`: データマートSQL
-- `public/`: 静的ファイル（HTMLなど）
+- `public/`: 静的ファイル（HTML）
 
 ### 1.2 ファイル命名規則
 - スネークケース (`snake_case`) またはケバブケース (`kebab-case`) を使用
-  - 例: `slorepo-config.js`, `state-manager.js`
-- 機能を表す明確な名前を使用すること
+- 例: `slorepo-config.js`, `state-manager.js`
 
 ## 2. コーディング規約
+
 ### 2.1 モジュール
 - ES6モジュールを使用
   ```javascript
@@ -63,12 +65,6 @@ alwaysApply: true
     return parseInt(value.replace(/,/g, '').replace(/^\+/, ''));
   };
   ```
-- データのバリデーションを実装
-  ```javascript
-  const validateData = (data) => {
-    return data.every(row => /* バリデーション条件 */);
-  };
-  ```
 
 ### 2.4 ログ出力
 - 日付とホール名を明示的に表示
@@ -77,28 +73,12 @@ alwaysApply: true
   ```
 - エラーメッセージは具体的に記述
   ```javascript
-  console.error(`[${date}][${hole.name}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${url}`);
+  console.error(`[${date}][${hole.name}] 機種: ${machineName} の取得に失敗しました。 status=${status}`);
   ```
 
 ### 2.5 設定管理
 - 環境変数は`dotenv`で管理
-  ```javascript
-  import 'dotenv/config';
-  const dbPath = process.env.SQLITE_DB_PATH;
-  ```
 - 定数は`src/config/constants.js`に集約
-  ```javascript
-  export const BIGQUERY = {
-      datasetId: 'slot_data',
-      tableIdPrefix: 'data_',
-      location: 'US',
-  };
-  
-  export const SCRAPING = {
-      intervalMs: 1000,
-      batchSize: 1000,
-  };
-  ```
 - ホール設定は`slorepo-config.js`に集約
   ```javascript
   export default {
@@ -109,77 +89,70 @@ alwaysApply: true
         priority: "high",      // high, normal, low
         region: "秋葉原",
         active: true,
-        lateUpdate: false,     // 情報更新が遅い店舗
+        lateUpdate: false
       }
     ],
     getHoles: function(filter = {}) { ... }
-  };
-  ```
-- データソース設定は`src/config/sources/`に配置
-  ```javascript
-  // src/config/sources/slorepo.js
-  export const SLOREPO_CONFIG = {
-      baseUrl: (holeCode, urlDate) => `https://...`,
-      selectors: { ... },
-      processSlotData: (allData) => { ... }
   };
   ```
 
 ### 2.6 データベース操作
 - SQLiteをプライマリストレージとして使用（Litestreamでバックアップ）
 - BigQueryは分析用DBとして同期
+- **BigQuery同期方式**: GCS経由のLoad Job使用
+  ```javascript
+  // src/db/bigquery/operations.js
+  // 1. データをNDJSON形式でGCSに一時アップロード
+  // 2. Load JobでBigQueryにロード
+  // 3. 一時ファイルを削除
+  
+  // 単一店舗: DELETE後にLoad Job (WRITE_APPEND)
+  // 複数店舗: Load Job (WRITE_TRUNCATE)
+  ```
 - スキーマは`sql/raw_data/schema.js`で一元管理
   ```javascript
   import { RAW_DATA_SCHEMA } from '../../../sql/raw_data/schema.js';
   
-  // BigQuery用スキーマ
   const schema = RAW_DATA_SCHEMA.toBigQuerySchema();
-  
-  // SQLite用CREATE文
   const createTable = RAW_DATA_SCHEMA.toSQLiteCreateTable();
-  
-  // ID生成
   const id = RAW_DATA_SCHEMA.generateId(date, hole, machineNumber, source);
   ```
-- トランザクション処理はPromiseベースで実装
 
 ### 2.7 スクレイピング処理
-- Puppeteerの設定は`src/config/sources/`で管理
+- Puppeteer + Stealth プラグイン使用
   ```javascript
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: SLOREPO_CONFIG.puppeteerArgs
-  });
+  import puppeteer from 'puppeteer-extra';
+  import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+  puppeteer.use(StealthPlugin());
   ```
-- セレクタは設定ファイルに外部化
-  ```javascript
-  const machines = await page.evaluate((selectors) => {
-    return document.querySelectorAll(selectors.machineLinks);
-  }, SLOREPO_CONFIG.selectors);
-  ```
-- エラーハンドリングの強化（continueOnError オプション）
+- **リトライ機能**: 429/5xxエラー時、指数バックオフで最大3回
+- **エラー分類**: `cloudflare`, `timeout`, `network`, `parse`, `http_error`, `unknown`
+- **失敗記録**: エラー発生時は `scrape_failures` テーブルに自動記録
+- エラーハンドリング（continueOnError オプション）
   ```javascript
   const results = await scrape(bigquery, datasetId, tableIdPrefix, db, start, end, updateProgress, {
     continueOnError: true,
     force: false,
-    prioritizeHigh: true
+    priorityFilter: 'high'  // high, normal, low, all
   });
   ```
 
-### 2.8 ユーティリティ関数
+### 2.8 失敗管理・手動補正
+- **失敗記録**: スクレイピング失敗を `scrape_failures` に自動記録
+- **手動補正**: 管理画面でクリップボード貼り付け → `manual_corrections` に保存
+- **フォールバック**: 再取得失敗時、`manual_corrections` から自動復元
+- DB操作:
+  - `src/db/sqlite/failures.js` - 失敗記録CRUD
+  - `src/db/sqlite/corrections.js` - 手動補正CRUD
+
+### 2.9 ユーティリティ関数
 - 共通処理は`util`ディレクトリに集約
 - 関数の責務を明確に分離
-  ```javascript
-  // 日付処理
-  const formatDate = (date) => { ... };
-  
-  // データ整形
-  const formatData = (data) => { ... };
-  ```
 
 ## 3. データ処理
+
 ### 3.1 データ整形
-- CSVなどに出力する可能性のある数値データは適切に整形してから使用
+- 数値データは適切に整形してから使用
   ```javascript
   function cleanNumber(value) {
     return parseInt(value.replace(/,/g, '').replace(/^\+/, ''));
@@ -189,37 +162,25 @@ alwaysApply: true
 ### 3.2 データ構造
 - オブジェクトは明確なプロパティ名を使用
 - 配列操作は map, filter, reduce などの関数型メソッドを優先
-- データには必ず`source`フィールドを含める（複数データソース対応）
+- データには必ず`source`フィールドを含める
 
 ## 4. 外部ライブラリ
+
 ### 4.1 Puppeteer
 - ページ遷移時は適切なインターバルを設定（`SCRAPING.intervalMs`）
 - セレクタは設定ファイルで管理
 - エラーハンドリングを必ず実装
 
 ## 5. 設定ファイル
+
 ### 5.1 構成
 - 環境依存の値は設定ファイルに分離
 - 定数は`src/config/constants.js`
 - データソース設定は`src/config/sources/`
 - 店舗設定は`src/config/slorepo-config.js`
-- 設定は明確な構造化を行う
-  ```javascript
-  export default {
-    holes: [
-      {
-        name: "店舗名",
-        code: "店舗コード",
-        priority: "high",
-        region: "秋葉原",
-        active: true,
-        lateUpdate: false
-      }
-    ]
-  };
-  ```
 
 ## 6. ログ出力
+
 ### 6.1 ログレベル
 - エラー: `console.error()`
 - 情報: `console.log()`
@@ -230,23 +191,16 @@ alwaysApply: true
   ```javascript
   console.log(`[${date}][${hole.name}] 機種 ${index + 1}/${machines.length}: ${machine.name} を処理中...`);
   ```
-- エラーログは具体的な情報を含める
-  ```javascript
-  console.error(`[${date}][${hole.name}] 機種: ${machineName} の取得に失敗しました。 status=${status} method=${method} url=${url}`);
-  ```
 
 ## 7. インフラストラクチャ
+
 ### 7.1 実行環境
 - **Dockerのみ**を使用（ローカル直接実行は非推奨）
-- サーバーの起動:
   ```bash
   make build
   make run-docker
   ```
-- クラウド実行: Google Cloud Runでホスト
-  - Express.jsベースのWebサーバー
-  - ヘルスチェックエンドポイント実装
-  - スクレイピング実行エンドポイント提供
+- クラウド実行: Google Cloud Run
 
 ### 7.2 APIエンドポイント
 - ルーティングは`src/api/routes/`で管理
@@ -258,101 +212,59 @@ alwaysApply: true
   jobStateManager.updateProgress('scrape', current, total, message);
   jobStateManager.completeJob('scrape');
   ```
-- 主要エンドポイント:
-  - `POST /pubsub` - スクレイピング開始
-  - `GET /status` - スクレイピング状態取得
-  - `POST /util/sync` - SQLite→BigQuery同期
-  - `POST /util/force-rescrape` - データ再取得（日付範囲対応）
-  - `GET /util/force-rescrape/status` - 再取得状態取得
-  - `GET /health` - ヘルスチェック
+- 主要エンドポイント（詳細は`README.md`参照）:
+  - **スクレイピング**: `POST /pubsub`, `GET /status`
+  - **同期**: `POST /util/sync`, `GET /util/sync/status`
+  - **再取得**: `POST /util/force-rescrape`, `GET /util/force-rescrape/status`
+  - **データ状態**: `GET /api/data-status`, `DELETE /api/data-status/raw`
+  - **失敗管理**: `GET/PATCH/DELETE /api/failures`, `GET /api/failures/stats`
+  - **手動補正**: `POST/GET/DELETE /api/corrections`, `POST /api/corrections/parse`
+  - **重複削除**: `GET/POST /util/dedupe/*`
+  - **スケジュール**: `GET/PUT/POST/DELETE /api/schedules/*`
+  - **データマート**: `GET/DELETE/POST /api/datamart/*`
+  - **ヘルスチェック**: `GET /health`
 
 ### 7.3 データベース管理
-- SQLiteデータベースの永続化
-  - Litestreamを使用したGCSへのレプリケーション
-  - コンテナ起動時の自動復元機能
-  ```yaml
-  # litestream.yml
-  dbs:
-    - path: /tmp/db.sqlite
-      replicas:
-        - type: gcs
-          bucket: youbun-sqlite
-          path: db.replica
-  ```
+- SQLiteデータベースの永続化（Litestream → GCS）
 - スキーマは`sql/raw_data/schema.js`で一元管理
-- マイグレーションは`sql/raw_data/migrations/`に配置
+- マイグレーションは`sql/*/migrations/`に配置
 
 ### 7.4 コンテナ化
 - 軽量なNode.jsイメージを使用
-- 必要なツールの最小限のインストール
   ```dockerfile
   FROM node:23-slim
-  RUN apt-get update && apt-get install -y \
-      sqlite3 \
-      curl
+  RUN apt-get update && apt-get install -y sqlite3 curl
   ```
 
 ### 7.5 環境変数
-- 開発環境と本番環境の切り替え
-  ```javascript
-  if (process.env.NODE_ENV === 'development') {
-      console.log('開発環境で起動中...');
-  }
-  ```
 - 主要な環境変数:
   - `NODE_ENV`: 実行環境
   - `SQLITE_DB_PATH`: SQLiteデータベースパス
   - `GOOGLE_CLOUD_PROJECT`: GCPプロジェクトID
   - `GOOGLE_APPLICATION_CREDENTIALS`: 認証情報パス
+  - `ENABLE_SCHEDULER`: スケジューラーの有効化
 
 ### 7.6 エラーハンドリング
-- アプリケーション全体での一貫したエラー処理
 - `continueOnError`オプションで処理継続可能
-  ```javascript
-  const results = await scrape(bigquery, datasetId, tableIdPrefix, db, start, end, updateProgress, {
-    continueOnError: true
-  });
-  // results.success, results.failed, results.skipped で結果確認
-  ```
-
-### 7.7 監視とログ
-- ヘルスチェックエンドポイントの実装
-  ```javascript
-  app.get('/health', (req, res) => {
-      res.status(200).send('OK');
-  });
-  ```
-- 詳細なログ出力
-  ```javascript
-  console.log(`[${date}][${hole.name}] 処理を開始します...`);
-  ```
-
-### 7.8 自動化
-- Cloud Runでの定期実行
-- データの自動バックアップ（Litestream）
-- エラー発生時の自動通知
+- `results.success`, `results.failed`, `results.skipped` で結果確認
 
 ## 8. スキーマ管理
+
 ### 8.1 Single Source of Truth
 - スキーマは`sql/raw_data/schema.js`で一元管理
 - SQLiteとBigQuery両方のスキーマを生成
   ```javascript
   export const RAW_DATA_SCHEMA = {
-      version: '2.0.0',
-      columns: [
-          { name: 'id', bqType: 'STRING', sqliteType: 'TEXT PRIMARY KEY', description: '一意なID' },
-          { name: 'source', bqType: 'STRING', sqliteType: 'TEXT NOT NULL DEFAULT \'slorepo\'', description: 'データソース' },
-          // ...
-      ],
-      toBigQuerySchema() { ... },
-      toSQLiteCreateTable(tableName) { ... },
-      generateId(date, hole, machineNumber, source) { ... }
+    version: '2.0.0',
+    columns: [...],
+    toBigQuerySchema() { ... },
+    toSQLiteCreateTable(tableName) { ... },
+    generateId(date, hole, machineNumber, source) { ... }
   };
   ```
 
 ### 8.2 マイグレーション
-- マイグレーションファイルは`sql/raw_data/migrations/`に配置
+- マイグレーションファイルは`sql/*/migrations/`に配置
 - SQLiteとBigQuery用に分けて管理
   - `001_add_source_column.sqlite.sql`
   - `001_add_source_column.bq.sql`
-- マイグレーション手順は`README.md`に記載
