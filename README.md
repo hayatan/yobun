@@ -120,7 +120,7 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
   - iframe参照（オプション/スロレポを横に表示）
   - プレビュー＆登録
 - **補正履歴**: 過去の補正データの確認・削除
-- **フォールバック機能**: 強制再取得で失敗時、手動補正データから自動復元
+- **フォールバック機能**: 再取得で失敗時、手動補正データから自動復元
 
 ### データマート管理
 
@@ -130,7 +130,7 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
 ### ユーティリティ
 
 - **SQLite → BigQuery 同期**: Load Jobを使用した重複防止同期
-- **強制再取得**: 日付範囲・店舗指定での再スクレイピング
+- **再取得**: 日付範囲・店舗指定での再スクレイピング
 - **重複データ削除**: 既存の重複データをクリーンアップ（BigQuery/SQLite）
 
 ## ディレクトリ構成
@@ -211,7 +211,7 @@ yobun/
 | `/api/schedules/:jobId/schedules/:id` | PUT/DELETE | スケジュール更新/削除 |
 | `/api/datamart/status` | GET | データマート状態 |
 | `/api/datamart/delete` | DELETE | データマート削除 |
-| `/util/force-rescrape` | POST | データ再取得（日付範囲・force対応） |
+| `/util/force-rescrape` | POST | データ再取得（日付範囲対応） |
 | `/util/force-rescrape/status` | GET | 再取得状態 |
 | `/api/datamart/run` | POST | データマート再実行 |
 | `/api/failures` | GET | 失敗一覧取得（フィルタ対応） |

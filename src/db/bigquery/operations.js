@@ -294,7 +294,7 @@ const getBigQueryRowCount = async (table, hole) => {
     }
 };
 
-// BigQueryテーブル全体を削除（強制再取得用）
+// BigQueryテーブル全体を削除（再取得用）
 const deleteBigQueryTable = async (table) => {
     try {
         const tableId = table.id;

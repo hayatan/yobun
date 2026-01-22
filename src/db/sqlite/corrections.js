@@ -3,7 +3,7 @@
 // ============================================================================
 // 
 // manual_corrections テーブルのCRUD操作を提供
-// 強制再取得時のフォールバック機能も含む
+// 再取得時のフォールバック機能も含む
 // ============================================================================
 
 import { MANUAL_CORRECTIONS_SCHEMA } from '../../../sql/manual_corrections/schema.js';
@@ -238,7 +238,7 @@ const hasCorrections = async (db, date, hole) => {
 
 /**
  * フォールバック: 手動補正データから scraped_data を復元
- * 強制再取得でスクレイピングが失敗した場合に使用
+ * 再取得でスクレイピングが失敗した場合に使用
  * @param {object} db - SQLiteデータベース接続
  * @param {string} date - 日付
  * @param {string} hole - 店舗名
@@ -311,6 +311,35 @@ const deleteCorrections = async (db, date, hole, machine = null) => {
 };
 
 /**
+ * 機種単位で補正データを取得（source フィルタリング対応）
+ * スクレイピング失敗時のフォールバック用
+ * @param {object} db - SQLiteデータベース接続
+ * @param {string} date - 日付
+ * @param {string} hole - 店舗名
+ * @param {string} machine - 機種名
+ * @param {string} source - データソース（必須）
+ * @returns {Promise<Array>} 補正データ配列
+ */
+const getMachineCorrections = async (db, date, hole, machine, source) => {
+    await createTableIfNotExists(db);
+    
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT * FROM manual_corrections 
+            WHERE date = ? AND hole = ? AND machine = ? AND source = ?
+        `;
+        db.all(query, [date, hole, machine, source], (err, rows) => {
+            if (err) {
+                console.error(`機種補正データ取得中にエラー: ${err.message}`);
+                reject(err);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+};
+
+/**
  * 補正データのサマリーを取得（機種単位でグループ化）
  * @param {object} db - SQLiteデータベース接続
  * @param {object} [filters] - フィルタ条件
@@ -365,6 +394,7 @@ const corrections = {
     addCorrections,
     copyToScrapedData,
     getCorrections,
+    getMachineCorrections,
     hasCorrections,
     restoreFromCorrections,
     deleteCorrection,

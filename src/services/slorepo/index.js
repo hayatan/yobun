@@ -4,6 +4,7 @@ import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import util from '../../util/common.js';
 import sqlite from '../../db/sqlite/operations.js';
 import failures from '../../db/sqlite/failures.js';
+import corrections from '../../db/sqlite/corrections.js';
 import { saveToBigQuery, getBigQueryRowCount, ensureTableExists } from '../../db/bigquery/operations.js';
 
 // データソース識別子
@@ -99,12 +100,16 @@ const scrape = async (
 
                 // スクレイピング結果を保持
                 let scrapeResult = null;
+                // 失敗時のフォールバック用バックアップ
+                let backupData = [];
                 
-                // 強制再取得の場合は既存データを削除してスクレイピング
+                // 再取得の場合は既存データを削除してスクレイピング
                 if (force) {
                     const exists = await sqlite.isDiffDataExists(db, date, hole.name);
                     if (exists) {
-                        console.log(`[${date}][${hole.name}] 強制再取得モード: 既存データを削除`);
+                        // バックアップを取得してからデータ削除
+                        backupData = await sqlite.getDiffData(db, date, hole.name);
+                        console.log(`[${date}][${hole.name}] 再取得モード: 既存データをバックアップ (${backupData.length}件) → 削除`);
                         await sqlite.deleteDiffData(db, date, hole.name);
                     }
                     scrapeResult = await scrapeSlotDataByMachine(date, hole.code);
@@ -125,7 +130,9 @@ const scrape = async (
                         
                         if (savedMachineCount !== scrapedMachineCount) {
                             // 機種数が異なる場合はスクレイピング実行
-                            console.log(`[${date}][${hole.name}] 機種数が変更: 保存済み=${savedMachineCount}, スクレイピング=${scrapedMachineCount} → 再取得`);
+                            // バックアップを取得してからデータ削除
+                            backupData = await sqlite.getDiffData(db, date, hole.name);
+                            console.log(`[${date}][${hole.name}] 機種数が変更: 保存済み=${savedMachineCount}, スクレイピング=${scrapedMachineCount} → バックアップ (${backupData.length}件) → 再取得`);
                             await sqlite.deleteDiffData(db, date, hole.name);
                             scrapeResult = await scrapeSlotDataByMachine(date, hole.code);
                             await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
@@ -137,22 +144,44 @@ const scrape = async (
                     }
                 }
                 
-                // 機種レベルの失敗を記録
+                // 機種レベルの失敗処理（バックアップ → 補正データ → 失敗記録の順でフォールバック）
                 if (scrapeResult && scrapeResult.failures && scrapeResult.failures.length > 0) {
-                    console.log(`[${date}][${hole.name}] 機種レベルの失敗を記録: ${scrapeResult.failures.length}件`);
+                    console.log(`[${date}][${hole.name}] 機種レベルの失敗: ${scrapeResult.failures.length}件`);
                     for (const machineFailure of scrapeResult.failures) {
                         try {
-                            await failures.addFailure(db, {
-                                date,
-                                hole: hole.name,
-                                holeCode: hole.code,
-                                machine: machineFailure.machine,
-                                machineUrl: machineFailure.url,
-                                errorType: machineFailure.errorType,
-                                errorMessage: machineFailure.message,
-                            });
+                            // 1. バックアップから該当機種のデータを探す
+                            const backupMachineData = backupData.filter(d => d.machine === machineFailure.machine);
+                            
+                            if (backupMachineData.length > 0) {
+                                // バックアップから復元
+                                await sqlite.saveDiffData(db, backupMachineData, SOURCE);
+                                console.log(`[${date}][${hole.name}] 機種: ${machineFailure.machine} - バックアップから復元: ${backupMachineData.length}件`);
+                            } else {
+                                // 2. 補正データを確認（同じデータソースのみ）
+                                const correctionData = await corrections.getMachineCorrections(
+                                    db, date, hole.name, machineFailure.machine, SOURCE
+                                );
+                                
+                                if (correctionData.length > 0) {
+                                    // 補正データがあれば利用（失敗として記録しない）
+                                    await corrections.copyToScrapedData(db, date, hole.name, machineFailure.machine);
+                                    console.log(`[${date}][${hole.name}] 機種: ${machineFailure.machine} - 補正データを利用: ${correctionData.length}件`);
+                                } else {
+                                    // 3. 失敗として記録
+                                    await failures.addFailure(db, {
+                                        date,
+                                        hole: hole.name,
+                                        holeCode: hole.code,
+                                        machine: machineFailure.machine,
+                                        machineUrl: machineFailure.url,
+                                        errorType: machineFailure.errorType,
+                                        errorMessage: machineFailure.message,
+                                    });
+                                    console.log(`[${date}][${hole.name}] 機種: ${machineFailure.machine} - 失敗として記録`);
+                                }
+                            }
                         } catch (failureErr) {
-                            console.error(`機種レベル失敗記録の追加中にエラー: ${failureErr.message}`);
+                            console.error(`機種レベル失敗処理中にエラー: ${failureErr.message}`);
                         }
                     }
                 }

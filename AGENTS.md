@@ -58,7 +58,7 @@
 
 - **失敗記録**: スクレイピング失敗時に `scrape_failures` に自動記録
 - **手動補正**: 管理画面からクリップボード貼り付けでデータを補正
-- **フォールバック**: 強制再取得で失敗時、`manual_corrections` から自動復元
+- **フォールバック**: 再取得で失敗時、`manual_corrections` から自動復元
 - DB操作: `src/db/sqlite/failures.js`, `src/db/sqlite/corrections.js`
 - API: `/api/failures`, `/api/corrections`
 

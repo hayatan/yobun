@@ -477,10 +477,6 @@
                         <option value="">全店舗</option>
                     </select>
                 </div>
-                <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="rescrapeForce" style="width: auto;">
-                    <label for="rescrapeForce" style="margin: 0;">強制再取得（既存データも再取得）</label>
-                </div>
                 <button id="rescrapeBtn" class="btn-warning">再取得</button>
             </div>
             <!-- 再取得進捗表示 -->
@@ -817,7 +813,6 @@
             const startDate = document.getElementById('rescrapeStartDate').value;
             const endDate = document.getElementById('rescrapeEndDate').value;
             const hole = document.getElementById('rescrapeHole').value;
-            const force = document.getElementById('rescrapeForce').checked;
             
             if (!startDate || !endDate) {
                 showError('開始日と終了日を指定してください');
@@ -825,10 +820,9 @@
             }
             
             const holeText = hole || '全店舗';
-            const forceText = force ? '（強制再取得）' : '（機種数比較あり）';
             showModal(
                 '🔄 データ再取得',
-                `以下の条件でデータを再取得します。${forceText}\n\n期間: ${startDate} 〜 ${endDate}\n店舗: ${holeText}`,
+                `以下の条件でデータを再取得します。（機種数が異なる場合のみ再取得）\n\n期間: ${startDate} 〜 ${endDate}\n店舗: ${holeText}`,
                 startRescrape
             );
         }
@@ -837,7 +831,6 @@
             const startDate = document.getElementById('rescrapeStartDate').value;
             const endDate = document.getElementById('rescrapeEndDate').value;
             const hole = document.getElementById('rescrapeHole').value;
-            const force = document.getElementById('rescrapeForce').checked;
             
             try {
                 const response = await fetch('/util/force-rescrape', {
@@ -846,8 +839,7 @@
                     body: JSON.stringify({ 
                         startDate, 
                         endDate, 
-                        hole: hole || null, 
-                        force 
+                        hole: hole || null
                     }),
                 });
                 

@@ -2,7 +2,7 @@
 // 再取得 ルーター
 // ============================================================================
 // 
-// POST /util/force-rescrape - 再取得実行（日付範囲、force オプション対応）
+// POST /util/force-rescrape - 再取得実行（日付範囲対応）
 // GET /util/force-rescrape/status - 再取得状態取得
 // ============================================================================
 
@@ -25,7 +25,7 @@ const SOURCE = 'slorepo';
 const createForceRescrapeRouter = (bigquery, db) => {
     const router = Router();
 
-    // 強制再取得の状態を取得するエンドポイント
+    // 再取得の状態を取得するエンドポイント
     router.get('/status', async (req, res) => {
         const lockStatus = await getLockStatus();
         res.json({
@@ -34,7 +34,7 @@ const createForceRescrapeRouter = (bigquery, db) => {
         });
     });
 
-    // 再取得のエンドポイント（日付範囲、forceオプション対応）
+    // 再取得のエンドポイント（日付範囲対応）
     router.post('/', async (req, res) => {
         if (stateManager.isRunning(JOB_TYPE)) {
             return res.status(409).json({ 
@@ -55,15 +55,14 @@ const createForceRescrapeRouter = (bigquery, db) => {
         }
 
         try {
-            // 新形式: startDate, endDate, hole, force
+            // 新形式: startDate, endDate, hole
             // 旧形式との互換性: date, holeName
-            const { startDate, endDate, hole, force = false, date, holeName } = req.body;
+            const { startDate, endDate, hole, date, holeName } = req.body;
             
             // 旧形式の場合は変換
             const actualStartDate = startDate || date;
             const actualEndDate = endDate || date;
             const actualHole = hole || holeName || null; // nullは全店舗
-            const actualForce = force;
             
             if (!actualStartDate || !actualEndDate) {
                 await releaseLock();
@@ -115,62 +114,76 @@ const createForceRescrapeRouter = (bigquery, db) => {
 
                                 // スクレイピング結果を保持
                                 let scrapeResult = null;
+                                // 失敗時のフォールバック用バックアップ
+                                let backupData = [];
                                 
-                                if (actualForce) {
-                                    // 強制再取得: 既存データを削除して再取得
-                                    console.log(`[${targetDate}][${holeName}] 強制再取得モード`);
-                                    await sqlite.deleteDiffData(db, targetDate, holeName);
-                                    
+                                // 機種数を比較してスキップ判断
+                                const savedMachineCount = await sqlite.getMachineCount(db, targetDate, holeName);
+                                
+                                if (savedMachineCount === 0) {
+                                    // 保存済みデータがない場合は新規スクレイピング
+                                    console.log(`[${targetDate}][${holeName}] 保存済みデータなし、スクレイピングを実行`);
                                     scrapeResult = await scrapeSlotDataByMachine(targetDate, targetHole.code);
                                     await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
-                                    
                                     results.success.push({ date: targetDate, hole: holeName });
                                 } else {
-                                    // 通常再取得: 機種数を比較してスキップ判断
-                                    const savedMachineCount = await sqlite.getMachineCount(db, targetDate, holeName);
+                                    // 機種一覧を取得して機種数を比較
+                                    const machineList = await scrapeMachineList(targetDate, targetHole.code);
+                                    const scrapedMachineCount = machineList.count;
                                     
-                                    if (savedMachineCount === 0) {
-                                        // 保存済みデータがない場合は新規スクレイピング
-                                        console.log(`[${targetDate}][${holeName}] 保存済みデータなし、スクレイピングを実行`);
+                                    if (savedMachineCount !== scrapedMachineCount) {
+                                        // 機種数が異なる場合: バックアップを取得してからスクレイピング実行
+                                        backupData = await sqlite.getDiffData(db, targetDate, holeName);
+                                        console.log(`[${targetDate}][${holeName}] 機種数変更: ${savedMachineCount} → ${scrapedMachineCount} (バックアップ: ${backupData.length}件)`);
+                                        await sqlite.deleteDiffData(db, targetDate, holeName);
                                         scrapeResult = await scrapeSlotDataByMachine(targetDate, targetHole.code);
                                         await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
                                         results.success.push({ date: targetDate, hole: holeName });
                                     } else {
-                                        // 機種一覧を取得して機種数を比較
-                                        const machineList = await scrapeMachineList(targetDate, targetHole.code);
-                                        const scrapedMachineCount = machineList.count;
-                                        
-                                        if (savedMachineCount !== scrapedMachineCount) {
-                                            // 機種数が異なる場合はスクレイピング実行
-                                            console.log(`[${targetDate}][${holeName}] 機種数変更: ${savedMachineCount} → ${scrapedMachineCount}`);
-                                            await sqlite.deleteDiffData(db, targetDate, holeName);
-                                            scrapeResult = await scrapeSlotDataByMachine(targetDate, targetHole.code);
-                                            await sqlite.saveDiffData(db, scrapeResult.data, SOURCE);
-                                            results.success.push({ date: targetDate, hole: holeName });
-                                        } else {
-                                            // 機種数が同じ場合はスキップ
-                                            console.log(`[${targetDate}][${holeName}] 機種数一致: ${savedMachineCount}種 → スキップ`);
-                                            results.skipped.push({ date: targetDate, hole: holeName, reason: '機種数一致' });
-                                        }
+                                        // 機種数が同じ場合はスキップ
+                                        console.log(`[${targetDate}][${holeName}] 機種数一致: ${savedMachineCount}種 → スキップ`);
+                                        results.skipped.push({ date: targetDate, hole: holeName, reason: '機種数一致' });
                                     }
                                 }
                                 
-                                // 機種レベルの失敗を記録
+                                // 機種レベルの失敗処理（バックアップ → 補正データ → 失敗記録の順でフォールバック）
                                 if (scrapeResult && scrapeResult.failures && scrapeResult.failures.length > 0) {
-                                    console.log(`[${targetDate}][${holeName}] 機種レベルの失敗を記録: ${scrapeResult.failures.length}件`);
+                                    console.log(`[${targetDate}][${holeName}] 機種レベルの失敗: ${scrapeResult.failures.length}件`);
                                     for (const machineFailure of scrapeResult.failures) {
                                         try {
-                                            await failures.addFailure(db, {
-                                                date: targetDate,
-                                                hole: holeName,
-                                                holeCode: targetHole.code,
-                                                machine: machineFailure.machine,
-                                                machineUrl: machineFailure.url,
-                                                errorType: machineFailure.errorType,
-                                                errorMessage: machineFailure.message,
-                                            });
+                                            // 1. バックアップから該当機種のデータを探す
+                                            const backupMachineData = backupData.filter(d => d.machine === machineFailure.machine);
+                                            
+                                            if (backupMachineData.length > 0) {
+                                                // バックアップから復元
+                                                await sqlite.saveDiffData(db, backupMachineData, SOURCE);
+                                                console.log(`[${targetDate}][${holeName}] 機種: ${machineFailure.machine} - バックアップから復元: ${backupMachineData.length}件`);
+                                            } else {
+                                                // 2. 補正データを確認（同じデータソースのみ）
+                                                const correctionData = await corrections.getMachineCorrections(
+                                                    db, targetDate, holeName, machineFailure.machine, SOURCE
+                                                );
+                                                
+                                                if (correctionData.length > 0) {
+                                                    // 補正データがあれば利用（失敗として記録しない）
+                                                    await corrections.copyToScrapedData(db, targetDate, holeName, machineFailure.machine);
+                                                    console.log(`[${targetDate}][${holeName}] 機種: ${machineFailure.machine} - 補正データを利用: ${correctionData.length}件`);
+                                                } else {
+                                                    // 3. 失敗として記録
+                                                    await failures.addFailure(db, {
+                                                        date: targetDate,
+                                                        hole: holeName,
+                                                        holeCode: targetHole.code,
+                                                        machine: machineFailure.machine,
+                                                        machineUrl: machineFailure.url,
+                                                        errorType: machineFailure.errorType,
+                                                        errorMessage: machineFailure.message,
+                                                    });
+                                                    console.log(`[${targetDate}][${holeName}] 機種: ${machineFailure.machine} - 失敗として記録`);
+                                                }
+                                            }
                                         } catch (failureErr) {
-                                            console.error(`機種レベル失敗記録の追加中にエラー: ${failureErr.message}`);
+                                            console.error(`機種レベル失敗処理中にエラー: ${failureErr.message}`);
                                         }
                                     }
                                 }
@@ -186,42 +199,26 @@ const createForceRescrapeRouter = (bigquery, db) => {
                             } catch (error) {
                                 console.error(`[${targetDate}][${holeName}] エラー:`, error.message);
                                 
-                                // フォールバック: 手動補正データから復元を試みる
-                                const fallbackResult = await corrections.restoreFromCorrections(db, targetDate, holeName);
+                                // 店舗レベルの失敗: 失敗として記録（データの上書きなし、補正データの利用なし）
+                                const errorType = classifyError(error);
+                                const machineUrl = SLOREPO_SOURCE.buildUrl.hole(targetHole.code, targetDate);
                                 
-                                if (fallbackResult.restored) {
-                                    console.log(`[${targetDate}][${holeName}] フォールバック成功: 手動補正データから ${fallbackResult.count}件 を復元`);
-                                    stateManager.updateProgress(JOB_TYPE, completedTasks, totalTasks, `[${targetDate}][${holeName}] フォールバック: ${fallbackResult.count}件復元`);
-                                    
-                                    // BigQueryにも同期（Load Job使用、重複防止）
-                                    const data = await sqlite.getDiffData(db, targetDate, holeName);
-                                    if (data.length > 0) {
-                                        await saveToBigQuery(bigquery, datasetId, tableId, data, SOURCE);
-                                    }
-                                    
-                                    results.success.push({ date: targetDate, hole: holeName, fallback: true, count: fallbackResult.count });
-                                } else {
-                                    // フォールバックデータがない場合は失敗として記録
-                                    const errorType = classifyError(error);
-                                    const machineUrl = SLOREPO_SOURCE.buildUrl.hole(targetHole.code, targetDate);
-                                    
-                                    try {
-                                        await failures.addFailure(db, {
-                                            date: targetDate,
-                                            hole: holeName,
-                                            holeCode: targetHole.code,
-                                            machine: null,
-                                            machineUrl,
-                                            errorType,
-                                            errorMessage: error.message,
-                                        });
-                                    } catch (failureErr) {
-                                        console.error(`失敗記録の追加中にエラー: ${failureErr.message}`);
-                                    }
-                                    
-                                    results.failed.push({ date: targetDate, hole: holeName, error: error.message, errorType });
-                                    stateManager.updateProgress(JOB_TYPE, completedTasks, totalTasks, `[${targetDate}][${holeName}] エラー: ${error.message}`);
+                                try {
+                                    await failures.addFailure(db, {
+                                        date: targetDate,
+                                        hole: holeName,
+                                        holeCode: targetHole.code,
+                                        machine: null,
+                                        machineUrl,
+                                        errorType,
+                                        errorMessage: error.message,
+                                    });
+                                } catch (failureErr) {
+                                    console.error(`失敗記録の追加中にエラー: ${failureErr.message}`);
                                 }
+                                
+                                results.failed.push({ date: targetDate, hole: holeName, error: error.message, errorType });
+                                stateManager.updateProgress(JOB_TYPE, completedTasks, totalTasks, `[${targetDate}][${holeName}] エラー: ${error.message}`);
                             }
                         }
                     }
@@ -243,7 +240,6 @@ const createForceRescrapeRouter = (bigquery, db) => {
                     startDate: actualStartDate,
                     endDate: actualEndDate,
                     hole: actualHole || '全店舗',
-                    force: actualForce,
                     totalTasks,
                 },
                 status: stateManager.getState(JOB_TYPE)

@@ -4,7 +4,7 @@
 // 
 // 手動で補正したデータを永続化するテーブルのスキーマ
 // scraped_data と同じデータカラム + メタ情報を持つ
-// 強制再取得時のフォールバック用データとして使用
+// 再取得時のフォールバック用データとして使用
 // 
 // 使用方法:
 //   import { MANUAL_CORRECTIONS_SCHEMA } from '../../sql/manual_corrections/schema.js';
