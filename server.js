@@ -3,6 +3,23 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// ============================================================================
+// グローバルエラーハンドラー（プロセス終了を防ぐ）
+// ============================================================================
+
+// 未処理のPromise rejectionをキャッチ
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[グローバル] 未処理のPromise rejection:', reason);
+    // プロセスを終了させない（ログのみ）
+});
+
+// 未処理の例外をキャッチ
+process.on('uncaughtException', (error) => {
+    console.error('[グローバル] 未処理の例外:', error);
+    // 致命的なエラーでない限りプロセスを継続
+    // 注意: 一部の致命的エラーではプロセス再起動が必要な場合あり
+});
+
 // DB初期化
 import bigquery from './src/db/bigquery/init.js';
 import db from './src/db/sqlite/init.js';

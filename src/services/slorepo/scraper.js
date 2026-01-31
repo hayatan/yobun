@@ -138,9 +138,12 @@ export async function scrapeMachineList(date, holeCode, interval = SCRAPING.inte
     const baseUrl = SLOREPO_SOURCE.buildUrl.hole(holeCode, date);
     console.log(`[${date}][${hole.name}] 機種一覧を取得中... ${baseUrl}`);
     
-    const { browser, page } = await initBrowser();
+    let browser = null;
+    let page = null;
 
     try {
+        ({ browser, page } = await initBrowser());
+        
         await new Promise(resolve => setTimeout(resolve, interval));
         await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 60000 });
 
@@ -156,8 +159,21 @@ export async function scrapeMachineList(date, holeCode, interval = SCRAPING.inte
             count: machines.length,
             machines: machines.map(m => m.name),
         };
+    } catch (err) {
+        // エラーをログ出力し、空の結果を返す（サーバーを停止させない）
+        console.error(`[${date}][${hole.name}] 機種一覧取得中に致命的エラー: ${err.message}`);
+        return {
+            count: 0,
+            machines: [],
+            error: {
+                type: classifyError(err),
+                message: err.message,
+            },
+        };
     } finally {
-        await browser.close();
+        if (browser) {
+            await browser.close().catch(() => {});
+        }
     }
 }
 
@@ -175,11 +191,14 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
     const baseUrl = SLOREPO_SOURCE.buildUrl.hole(holeCode, date);
     console.log(`[${date}][${hole.name}] スクレイピングを開始します... ${baseUrl}`);
     
-    const { browser, page } = await initBrowser();
+    let browser = null;
+    let page = null;
     const allData = [];
     const machineFailures = []; // 機種レベルの失敗を収集
 
     try {
+        ({ browser, page } = await initBrowser());
+        
         await new Promise(resolve => setTimeout(resolve, interval));
         console.log(`[${date}][${hole.name}] 機種一覧を取得中...`);
         await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 60000 });
@@ -238,8 +257,24 @@ export default async function scrapeSlotDataByMachine(date, holeCode, interval =
             data: processedData,
             failures: machineFailures,
         };
+    } catch (err) {
+        // 致命的エラー（ブラウザ初期化失敗、タイムアウト等）をキャッチ
+        // サーバーを停止させずに、失敗情報を返す
+        console.error(`[${date}][${hole.name}] 致命的エラー: ${err.message}`);
+        return {
+            data: processSlotData(allData),
+            failures: [{
+                machine: null, // 店舗レベルのエラー
+                url: baseUrl,
+                errorType: classifyError(err),
+                message: err.message,
+                status: 0,
+            }, ...machineFailures],
+        };
     } finally {
-        await browser.close();
+        if (browser) {
+            await browser.close().catch(() => {});
+        }
     }
 }
 

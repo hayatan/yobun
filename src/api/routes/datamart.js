@@ -181,12 +181,13 @@ const createDatamartRouter = (bigquery, db) => {
     });
 
     /**
-     * データマート再実行
+     * データマート再実行（バックフィル）
      * POST /api/datamart/run
      * Body: { startDate, endDate }
      * 
-     * 注意: 指定した日付の1日前がtarget_dateになる
-     * 例: 2026-01-15を指定 → target_date = 2026-01-14
+     * 指定した日付範囲の各日付を target_date としてデータマートを再構築する。
+     * 例: startDate='2026-01-07', endDate='2026-01-09' を指定
+     *     → target_date = '2026-01-07', '2026-01-08', '2026-01-09' の3日分を実行
      */
     router.post('/run', async (req, res) => {
         if (stateManager.isRunning(JOB_TYPE)) {
@@ -224,7 +225,7 @@ const createDatamartRouter = (bigquery, db) => {
 
             res.status(202).json({ 
                 message: 'データマート更新を開始しました',
-                note: '指定した日付の1日前がtarget_dateになります',
+                note: '指定した日付がそのままtarget_dateになります',
                 period: { startDate, endDate },
                 status: stateManager.getState(JOB_TYPE)
             });

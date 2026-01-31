@@ -15,7 +15,7 @@ import {
     describeSchedule,
 } from './storage.js';
 import { runScrape } from '../app.js';
-import { runDatamartUpdate } from '../services/datamart/runner.js';
+import { runDatamartUpdate, targetDateToRunTime } from '../services/datamart/runner.js';
 import { getJSTToday } from '../util/date.js';
 import { acquireLock, releaseLock, getLockStatus } from '../util/lock.js';
 import stateManager from '../api/state-manager.js';
@@ -205,7 +205,9 @@ export const executeJob = async (job, options = {}) => {
                     
                     try {
                         for (const targetDate of targetDates) {
-                            await runDatamartUpdate(targetDate);
+                            // targetDate から run_time を計算して渡す
+                            const runTime = targetDateToRunTime(targetDate);
+                            await runDatamartUpdate(runTime);
                         }
                         message += ', データマート更新完了';
                         stateManager.completeJob('datamart', 'スクレイピング後の自動更新完了');
@@ -224,7 +226,9 @@ export const executeJob = async (job, options = {}) => {
                 stateManager.startJob('datamart');
                 
                 for (const targetDate of targetDates) {
-                    const result = await runDatamartUpdate(targetDate);
+                    // targetDate から run_time を計算して渡す
+                    const runTime = targetDateToRunTime(targetDate);
+                    const result = await runDatamartUpdate(runTime);
                     details.jobId = result.jobId;
                 }
                 
