@@ -37,6 +37,8 @@ import createScheduleRouter from './src/api/routes/schedule.js';
 import createFailuresRouter from './src/api/routes/failures.js';
 import createCorrectionsRouter from './src/api/routes/corrections.js';
 import createDedupeRouter from './src/api/routes/dedupe.js';
+import createEventsRouter from './src/api/routes/events.js';
+import createEventTypesRouter from './src/api/routes/event-types.js';
 
 // スケジューラー
 import { initScheduler } from './src/scheduler/index.js';
@@ -149,6 +151,15 @@ const failuresRouter = createFailuresRouter(db);
 app.use('/api/failures', failuresRouter);
 const correctionsRouter = createCorrectionsRouter(bigquery, db);
 app.use('/api/corrections', correctionsRouter);
+
+// イベント管理（HTMLページと API）
+app.get('/events', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'events.html'));
+});
+const eventsRouter = createEventsRouter(bigquery, db);
+app.use('/api/events', eventsRouter);
+const eventTypesRouter = createEventTypesRouter(db);
+app.use('/api/event-types', eventTypesRouter);
 
 // ============================================================================
 // サーバー起動

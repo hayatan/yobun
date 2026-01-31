@@ -53,6 +53,15 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 - **フォールバック**: 再取得失敗時、`manual_corrections` から自動復元
 - DB: `src/db/sqlite/failures.js`, `src/db/sqlite/corrections.js`
 
+### イベント管理
+
+- **イベント**: 店舗のイベント情報（LINE告知、特定日など）を管理
+- **イベントタイプ**: イベント種類のマスターデータ（フロント選択肢用）
+- **BigQuery同期**: 分析用に `slot_data.events` テーブルに同期
+- DB: `src/db/sqlite/events.js`, `src/db/sqlite/event-types.js`
+- API: `src/api/routes/events.js`, `src/api/routes/event-types.js`
+- UI: `public/events.html`
+
 ### スケジューラー
 
 - GCSベースのロック機構（排他制御）
@@ -82,6 +91,8 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 | `sql/raw_data/schema.js` | 生データスキーマ（Single Source of Truth） |
 | `sql/scrape_failures/schema.js` | 失敗記録スキーマ |
 | `sql/manual_corrections/schema.js` | 手動補正スキーマ |
+| `sql/events/schema.js` | イベントスキーマ（SQLite/BigQuery両対応） |
+| `sql/event_types/schema.js` | イベントタイプスキーマ（SQLiteのみ） |
 
 ## 変更時の注意
 

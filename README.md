@@ -122,6 +122,20 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
 - **補正履歴**: 過去の補正データの確認・削除
 - **フォールバック機能**: 再取得で失敗時、手動補正データから自動復元
 
+### イベント管理
+
+店舗のイベント情報（LINE告知、特定日など）を管理する機能。
+
+- **イベント一覧**: 登録済みイベントの確認・検索
+  - フィルタ（日付範囲、店舗、イベント種類）
+  - 一括削除
+- **イベント追加**: 新規イベントの登録
+  - 単一登録
+  - 一括登録（日付リストから）
+- **イベントタイプ管理**: イベント種類のマスター管理
+- **BigQuery同期**: 分析用にBigQueryへ同期
+- **分析での利用**: `slot_data.events` テーブルとJOINして分析可能
+
 ### データマート管理
 
 - 統計データの確認
@@ -161,6 +175,8 @@ yobun/
 │   ├── raw_data/         # 生データスキーマ
 │   ├── scrape_failures/  # 失敗記録スキーマ
 │   ├── manual_corrections/ # 手動補正スキーマ
+│   ├── events/           # イベントスキーマ
+│   ├── event_types/      # イベントタイプスキーマ
 │   ├── datamart/         # データマート定義
 │   └── analysis/         # 分析クエリ
 ├── public/               # フロントエンド
@@ -168,6 +184,7 @@ yobun/
 │   ├── schedule.html     # スケジュール管理
 │   ├── datamart.html     # データマート管理
 │   ├── failures.html     # 失敗管理・手動補正
+│   ├── events.html       # イベント管理
 │   ├── util/
 │   │   ├── sync.html     # SQLite→BigQuery同期
 │   │   └── dedupe.html   # 重複データ削除
@@ -190,6 +207,7 @@ yobun/
 | `/schedule` | スケジュール管理 |
 | `/datamart` | データマート管理 |
 | `/failures` | 失敗管理・手動補正 |
+| `/events` | イベント管理 |
 | `/util/sync` | SQLite→BigQuery同期 |
 | `/util/dedupe` | 重複データ削除 |
 
@@ -233,6 +251,19 @@ yobun/
 | `/util/dedupe/sqlite` | POST | SQLite重複削除 |
 | `/util/dedupe/sqlite/check` | GET | SQLite重複チェック |
 | `/util/dedupe/status` | GET | 重複削除処理状態 |
+| `/api/events` | GET | イベント一覧取得（フィルタ対応） |
+| `/api/events` | POST | イベント登録 |
+| `/api/events/bulk` | POST | イベント一括登録 |
+| `/api/events/bulk` | DELETE | イベント一括削除 |
+| `/api/events/sync` | POST | BigQuery同期 |
+| `/api/events/meta/info` | GET | メタ情報取得（店舗・イベント種類一覧） |
+| `/api/events/:id` | GET | イベント詳細取得 |
+| `/api/events/:id` | PATCH | イベント更新 |
+| `/api/events/:id` | DELETE | イベント削除 |
+| `/api/event-types` | GET | イベントタイプ一覧 |
+| `/api/event-types` | POST | イベントタイプ登録 |
+| `/api/event-types/:id` | PATCH | イベントタイプ更新 |
+| `/api/event-types/:id` | DELETE | イベントタイプ削除 |
 | `/health` | GET | ヘルスチェック |
 
 ## スケジューラー設定

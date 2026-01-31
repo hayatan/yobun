@@ -38,6 +38,7 @@ class StatusHeader {
                     <a href="/schedule" class="nav-link">スケジュール</a>
                     <a href="/datamart" class="nav-link">データマート</a>
                     <a href="/failures" class="nav-link">失敗管理</a>
+                    <a href="/events" class="nav-link">イベント</a>
                     <a href="/util/sync" class="nav-link">同期</a>
                     <a href="/util/dedupe" class="nav-link">重複削除</a>
                 </div>
