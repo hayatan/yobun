@@ -13,6 +13,10 @@
 sql/analysis/
 ├── README.md                           # このファイル
 ├── ROADMAP.md                          # 開発ロードマップ
+├── simple_prediction/                  # シンプル狙い台予測（個別戦略の検証用）
+│   ├── README.md
+│   ├── 01_day_category_effect.sql      # 日付カテゴリ別効果検証
+│   └── 02_recent_winrate_effect.sql    # 直近勝率の効果検証
 ├── strategy_matching/                  # Phase 1: 戦略マッチング（完成・運用中）
 │   ├── README.md
 │   ├── recommendation_output.sql       # 狙い台一覧出力
@@ -34,6 +38,7 @@ sql/analysis/
 
 | 手法 | フェーズ | ステータス | 概要 |
 |------|----------|-----------|------|
+| [シンプル狙い台予測](./simple_prediction/README.md) | - | 🔬 検証中 | 個別戦略の効果検証（LINE告知/特日/直近勝率） |
 | [戦略マッチング](./strategy_matching/README.md) | Phase 1 | ✅ 運用中 | 事前定義した戦略条件に基づく予測 |
 | [時系列パターン分析](./time_series/README.md) | Phase 2 | 📅 計画中 | 周期性・トレンド・リバウンドの検出 |
 | [台番相関分析](./correlation/README.md) | Phase 3 | 📅 計画中 | 台同士の相関・ローテーション検出 |
@@ -103,6 +108,7 @@ sql/analysis/
 
 | 日付 | 変更内容 |
 |------|----------|
+| 2026-02-01 | シンプル狙い台予測を追加（個別戦略の効果検証用） |
 | 2026-01-14 | ディレクトリ構造を再編成、各手法を分離 |
 | 2026-01-13 | 戦略マッチング手法を複数店舗・機種対応に拡張 |
 
@@ -111,6 +117,7 @@ sql/analysis/
 ## 📚 関連ドキュメント
 
 - [開発ロードマップ](./ROADMAP.md)
+- [シンプル狙い台予測](./simple_prediction/README.md)
 - [戦略マッチング手法](./strategy_matching/README.md)
 - [時系列パターン分析](./time_series/README.md)
 - [台番相関分析](./correlation/README.md)
