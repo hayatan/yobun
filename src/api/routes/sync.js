@@ -2,7 +2,7 @@
 // 同期 ルーター
 // ============================================================================
 // 
-// /util/sync - SQLite→BigQuery同期実行
+// /util/sync - SQLite→BigQuery同期実行（期間指定対応）
 // /util/sync/status - 同期状態取得
 // ============================================================================
 
@@ -22,7 +22,7 @@ const createSyncRouter = (bigquery, db) => {
         res.json(stateManager.getState(JOB_TYPE));
     });
 
-    // 同期処理のエンドポイント
+    // 同期処理のエンドポイント（期間指定対応）
     router.post('/', async (req, res) => {
         if (stateManager.isRunning(JOB_TYPE)) {
             return res.status(409).json({ 
@@ -32,11 +32,29 @@ const createSyncRouter = (bigquery, db) => {
         }
 
         try {
-            const { date } = req.body;
+            const { startDate, endDate } = req.body;
             
-            if (!date) {
+            // バリデーション
+            if (!startDate || !endDate) {
                 return res.status(400).json({
-                    error: '日付を指定してください',
+                    error: 'startDate と endDate を指定してください',
+                    status: stateManager.getState(JOB_TYPE)
+                });
+            }
+
+            // 日付形式のバリデーション (YYYY-MM-DD)
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+                return res.status(400).json({
+                    error: '日付は YYYY-MM-DD 形式で指定してください',
+                    status: stateManager.getState(JOB_TYPE)
+                });
+            }
+
+            // startDate <= endDate のチェック
+            if (startDate > endDate) {
+                return res.status(400).json({
+                    error: 'startDate は endDate 以前の日付を指定してください',
                     status: stateManager.getState(JOB_TYPE)
                 });
             }
@@ -44,34 +62,55 @@ const createSyncRouter = (bigquery, db) => {
             stateManager.startJob(JOB_TYPE);
             stateManager.updateProgress(JOB_TYPE, 0, 0, '同期処理を開始します...');
 
-            // SQLiteのデータを確認
-            console.log('検索する日付:', date);
-            const data = await sqlite.getDiffDataDate(db, date);
-            console.log('検索結果:', data.length, '件');
-
-            if (data.length === 0) {
-                stateManager.completeJob(JOB_TYPE, '指定された日付のデータが存在しません');
+            // 期間内のデータを日付ごとにグループ化して取得
+            console.log(`検索する期間: ${startDate} 〜 ${endDate}`);
+            const groupedData = await sqlite.getDiffDataRange(db, startDate, endDate);
+            
+            if (groupedData.length === 0) {
+                stateManager.completeJob(JOB_TYPE, '指定された期間のデータが存在しません');
                 return res.status(404).json({ 
-                    message: '指定された日付のデータが存在しません',
+                    message: '指定された期間のデータが存在しません',
                     status: stateManager.getState(JOB_TYPE)
                 });
             }
 
-            // BigQueryにデータを保存（Load Job使用、重複防止）
             const { datasetId } = BIGQUERY;
-            const tableId = `data_${date.replace(/-/g, '')}`;
+            const totalDates = groupedData.length;
+            let totalRecords = 0;
+            const syncedDates = [];
 
-            if (data.length > 0) {
-                // 新形式: saveToBigQuery(bigquery, datasetId, tableId, data, source)
-                // 日付全体のデータなので、WRITE_TRUNCATEでテーブル置換される
-                await saveToBigQuery(bigquery, datasetId, tableId, data, 'slorepo');
+            // 日付ごとに順次同期
+            for (let i = 0; i < groupedData.length; i++) {
+                const { date, data } = groupedData[i];
+                const tableId = `data_${date.replace(/-/g, '')}`;
+                
+                stateManager.updateProgress(
+                    JOB_TYPE, 
+                    i, 
+                    totalDates, 
+                    `[${i + 1}/${totalDates}] ${date} を同期中... (${data.length}件)`
+                );
+
+                console.log(`[${i + 1}/${totalDates}] ${date} を同期中... (${data.length}件)`);
+
+                if (data.length > 0) {
+                    await saveToBigQuery(bigquery, datasetId, tableId, data, 'slorepo');
+                    totalRecords += data.length;
+                    syncedDates.push(date);
+                }
             }
 
-            stateManager.updateProgress(JOB_TYPE, data.length, data.length, '同期処理が完了しました');
-            stateManager.completeJob(JOB_TYPE, `同期処理が完了しました (${data.length}件)`);
+            const completionMessage = `同期処理が完了しました (${totalDates}日分, ${totalRecords}件)`;
+            stateManager.updateProgress(JOB_TYPE, totalDates, totalDates, completionMessage);
+            stateManager.completeJob(JOB_TYPE, completionMessage);
 
             res.status(200).json({ 
                 message: '同期処理が完了しました',
+                summary: {
+                    totalDates,
+                    totalRecords,
+                    syncedDates
+                },
                 status: stateManager.getState(JOB_TYPE)
             });
         } catch (error) {

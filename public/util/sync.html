@@ -14,6 +14,9 @@
         .status-card {
             margin-top: 20px;
         }
+        .summary-card {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -23,9 +26,15 @@
         <div class="card">
             <div class="card-body">
                 <form id="syncForm">
-                    <div class="mb-3">
-                        <label for="date" class="form-label">同期する日付</label>
-                        <input type="date" class="form-control" id="date" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startDate" class="form-label">開始日</label>
+                            <input type="date" class="form-control" id="startDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label">終了日</label>
+                            <input type="date" class="form-control" id="endDate" required>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary" id="syncButton">同期開始</button>
                     <a href="/" class="btn btn-secondary ms-2">戻る</a>
@@ -44,20 +53,44 @@
                 <p id="statusMessage" class="mb-0"></p>
             </div>
         </div>
+
+        <div class="card summary-card" id="summaryCard" style="display: none;">
+            <div class="card-body">
+                <h5 class="card-title">同期結果</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>同期日数</span>
+                        <strong id="totalDates">-</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>総レコード数</span>
+                        <strong id="totalRecords">-</strong>
+                    </li>
+                </ul>
+                <div class="mt-3" id="syncedDatesContainer" style="display: none;">
+                    <small class="text-muted">同期された日付:</small>
+                    <p id="syncedDates" class="mb-0 small"></p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         const syncForm = document.getElementById('syncForm');
         const syncButton = document.getElementById('syncButton');
         const statusCard = document.getElementById('statusCard');
+        const summaryCard = document.getElementById('summaryCard');
         const progressBar = document.querySelector('.progress-bar');
         const statusMessage = document.getElementById('statusMessage');
         let statusCheckInterval;
+        let lastSummary = null;
 
         // デフォルトの日付を設定
         function setDefaultDate() {
             const days = CONFIG.defaultDateRanges.sync;
-            document.getElementById('date').value = getJSTDate(-days);
+            const defaultDate = getJSTDate(-days);
+            document.getElementById('startDate').value = defaultDate;
+            document.getElementById('endDate').value = defaultDate;
         }
 
         // ページ読み込み時にデフォルト日付を設定
@@ -65,11 +98,19 @@
 
         syncForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const date = document.getElementById('date').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            // バリデーション
+            if (startDate > endDate) {
+                alert('開始日は終了日以前の日付を指定してください');
+                return;
+            }
             
             try {
                 syncButton.disabled = true;
                 statusCard.style.display = 'block';
+                summaryCard.style.display = 'none';
                 progressBar.style.width = '0%';
                 statusMessage.textContent = '同期処理を開始します...';
 
@@ -78,13 +119,18 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ date })
+                    body: JSON.stringify({ startDate, endDate })
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
                     throw new Error(data.error || data.message || '同期処理の開始に失敗しました');
+                }
+
+                // レスポンスにsummaryがある場合は保存
+                if (data.summary) {
+                    lastSummary = data.summary;
                 }
 
                 // 状態チェックを開始
@@ -94,6 +140,22 @@
                 syncButton.disabled = false;
             }
         });
+
+        function showSummary(summary) {
+            if (!summary) return;
+            
+            document.getElementById('totalDates').textContent = summary.totalDates + '日';
+            document.getElementById('totalRecords').textContent = summary.totalRecords.toLocaleString() + '件';
+            
+            if (summary.syncedDates && summary.syncedDates.length > 0) {
+                document.getElementById('syncedDates').textContent = summary.syncedDates.join(', ');
+                document.getElementById('syncedDatesContainer').style.display = 'block';
+            } else {
+                document.getElementById('syncedDatesContainer').style.display = 'none';
+            }
+            
+            summaryCard.style.display = 'block';
+        }
 
         function startStatusCheck() {
             statusCheckInterval = setInterval(async () => {
@@ -111,9 +173,12 @@
                     if (!status.isRunning) {
                         clearInterval(statusCheckInterval);
                         syncButton.disabled = false;
+                        progressBar.style.width = '100%';
                         
                         if (status.lastError) {
                             statusMessage.textContent = `エラー: ${status.lastError}`;
+                        } else if (lastSummary) {
+                            showSummary(lastSummary);
                         }
                     }
                 } catch (error) {

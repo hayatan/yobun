@@ -226,6 +226,80 @@ const getMachineCount = async (db, date, hole) => {
     });
 };
 
+/**
+ * 期間内のユニークな日付リストを取得
+ * @param {object} db - SQLiteデータベース接続
+ * @param {string} startDate - 開始日付 (YYYY-MM-DD)
+ * @param {string} endDate - 終了日付 (YYYY-MM-DD)
+ * @returns {Promise<string[]>} 日付リスト（昇順）
+ */
+const getUniqueDatesInRange = async (db, startDate, endDate) => {
+    await createScrapedDataTableIfNotExists(db);
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT DISTINCT date
+            FROM scraped_data
+            WHERE date >= ? AND date <= ?
+            ORDER BY date ASC
+        `;
+        db.all(query, [startDate, endDate], (err, rows) => {
+            if (err) {
+                console.error(`[${startDate}〜${endDate}] 日付リスト取得中にエラーが発生しました: ${err.message}`);
+                reject(err);
+            } else {
+                const dates = rows.map(row => row.date);
+                console.log(`[${startDate}〜${endDate}] ユニーク日付数: ${dates.length} 件`);
+                resolve(dates);
+            }
+        });
+    });
+};
+
+/**
+ * 期間内の全データを日付ごとにグループ化して取得
+ * @param {object} db - SQLiteデータベース接続
+ * @param {string} startDate - 開始日付 (YYYY-MM-DD)
+ * @param {string} endDate - 終了日付 (YYYY-MM-DD)
+ * @returns {Promise<Array<{date: string, data: Array}>>} 日付ごとのデータ配列
+ */
+const getDiffDataRange = async (db, startDate, endDate) => {
+    await createScrapedDataTableIfNotExists(db);
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT *
+            FROM scraped_data
+            WHERE date >= ? AND date <= ?
+            ORDER BY date ASC
+        `;
+        db.all(query, [startDate, endDate], (err, rows) => {
+            if (err) {
+                console.error(`[${startDate}〜${endDate}] データ取得中にエラーが発生しました: ${err.message}`);
+                reject(err);
+            } else {
+                // 日付ごとにグループ化
+                const groupedByDate = {};
+                rows.forEach(row => {
+                    if (!groupedByDate[row.date]) {
+                        groupedByDate[row.date] = [];
+                    }
+                    groupedByDate[row.date].push(row);
+                });
+                
+                // 日付順にソートして配列に変換
+                const result = Object.keys(groupedByDate)
+                    .sort()
+                    .map(date => ({
+                        date,
+                        data: util.formatDiffData(groupedByDate[date])
+                    }));
+                
+                console.log(`[${startDate}〜${endDate}] データ取得結果: ${result.length} 日分, 合計 ${rows.length} 件`);
+                resolve(result);
+            }
+        });
+    });
+};
+
 const sqlite = {
     createScrapedDataTableIfNotExists,
     saveDiffData,
@@ -236,6 +310,8 @@ const sqlite = {
     deleteDiffData,
     deleteDiffDataRange,
     getMachineCount,
+    getUniqueDatesInRange,
+    getDiffDataRange,
 };
 
 export default sqlite;
