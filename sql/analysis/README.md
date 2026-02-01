@@ -89,7 +89,7 @@ sql/analysis/
 
 分析クエリは `yobun-450512.datamart.machine_stats` テーブルを参照します。
 
-### 主要カラム
+### 基本カラム
 
 | カラム | 説明 |
 |--------|------|
@@ -97,10 +97,37 @@ sql/analysis/
 | `hole` | 店舗名 |
 | `machine_number` | 台番 |
 | `machine` | 機種名 |
-| `d1_diff`, `d1_game`, `d1_payout_rate` | 当日データ |
-| `prev_d*_*` | 当日を含まない過去N日間のデータ |
 
-詳細は [データマート生成クエリ](../datamart_machine_stats.sql) を参照。
+### 日付関連カラム
+
+特日判定などに利用できる事前計算カラムです。
+
+| カラム | 説明 |
+|--------|------|
+| `target_year`, `target_month`, `target_day` | 年/月/日 |
+| `target_day_last_digit` | 日の下1桁 (0-9) |
+| `is_month_day_repdigit` | 月と日がゾロ目か (01/01, 02/02, ..., 12/12) |
+| `is_day_repdigit` | 日がゾロ目か (11, 22) |
+| `day_of_week_jp` | 曜日（日本語: 月,火,水,木,金,土,日） |
+| `day_type` | 平日/週末/祝日 |
+
+### 集計期間
+
+**当日から（当日を含む）**: `d1_`, `d2_`, `d3_`, `d4_`, `d5_`, `d6_`, `d7_`, `d14_`, `d28_`, `mtd_`, `all_`
+
+**前日から（当日を含まない）**: `prev_d1_`, `prev_d2_`, `prev_d3_`, `prev_d4_`, `prev_d5_`, `prev_d6_`, `prev_d7_`, `prev_d14_`, `prev_d28_`, `prev_mtd_`, `prev_all_`
+
+### 集計項目（各期間共通）
+
+| サフィックス | 説明 |
+|-------------|------|
+| `_diff` | 総差枚 |
+| `_game` | 総ゲーム数 |
+| `_win_rate` | 勝率 |
+| `_payout_rate` | 機械割 |
+| `_days` | 集計日数（all, prev_all のみ） |
+
+詳細は [データマートREADME](../datamart/machine_stats/README.md) を参照。
 
 ---
 
@@ -108,6 +135,7 @@ sql/analysis/
 
 | 日付 | 変更内容 |
 |------|----------|
+| 2026-02-02 | データマート拡張: 日付カラム追加、集計期間追加 (d2, d4, d6, d14, prev_d4, prev_d6, prev_d14) |
 | 2026-02-01 | シンプル狙い台予測を追加（個別戦略の効果検証用） |
 | 2026-01-14 | ディレクトリ構造を再編成、各手法を分離 |
 | 2026-01-13 | 戦略マッチング手法を複数店舗・機種対応に拡張 |
@@ -123,4 +151,4 @@ sql/analysis/
 - [台番相関分析](./correlation/README.md)
 - [機械学習予測](./machine_learning/README.md)
 - [アンサンブル統合](./ensemble/README.md)
-- [データマート生成クエリ](../datamart_machine_stats.sql)
+- [データマート](../datamart/machine_stats/README.md)
