@@ -1,0 +1,2475 @@
+{
+  "version": "1.0",
+  "hole": "アイランド秋葉原店",
+  "updated": "2026-02-02",
+  "description": "アイランド秋葉原_台番島図251103.xlsxから自動生成",
+  "grid": {
+    "rows": 50,
+    "cols": 54
+  },
+  "walls": [],
+  "cells": [
+    {
+      "row": 8,
+      "col": 37,
+      "type": "machine",
+      "number": 1205
+    },
+    {
+      "row": 8,
+      "col": 38,
+      "type": "machine",
+      "number": 1206
+    },
+    {
+      "row": 8,
+      "col": 39,
+      "type": "machine",
+      "number": 1207
+    },
+    {
+      "row": 8,
+      "col": 40,
+      "type": "machine",
+      "number": 1208
+    },
+    {
+      "row": 8,
+      "col": 41,
+      "type": "machine",
+      "number": 1210
+    },
+    {
+      "row": 8,
+      "col": 42,
+      "type": "machine",
+      "number": 1211
+    },
+    {
+      "row": 8,
+      "col": 43,
+      "type": "machine",
+      "number": 1212
+    },
+    {
+      "row": 8,
+      "col": 44,
+      "type": "machine",
+      "number": 1213
+    },
+    {
+      "row": 8,
+      "col": 45,
+      "type": "machine",
+      "number": 1215
+    },
+    {
+      "row": 8,
+      "col": 46,
+      "type": "machine",
+      "number": 1216
+    },
+    {
+      "row": 8,
+      "col": 47,
+      "type": "machine",
+      "number": 1217
+    },
+    {
+      "row": 8,
+      "col": 48,
+      "type": "machine",
+      "number": 1218
+    },
+    {
+      "row": 8,
+      "col": 49,
+      "type": "machine",
+      "number": 1220
+    },
+    {
+      "row": 8,
+      "col": 50,
+      "type": "machine",
+      "number": 1221
+    },
+    {
+      "row": 8,
+      "col": 51,
+      "type": "machine",
+      "number": 1222
+    },
+    {
+      "row": 10,
+      "col": 53,
+      "type": "machine",
+      "number": 1223
+    },
+    {
+      "row": 11,
+      "col": 16,
+      "type": "machine",
+      "number": 1013
+    },
+    {
+      "row": 11,
+      "col": 21,
+      "type": "machine",
+      "number": 1015
+    },
+    {
+      "row": 11,
+      "col": 22,
+      "type": "machine",
+      "number": 1101
+    },
+    {
+      "row": 11,
+      "col": 27,
+      "type": "machine",
+      "number": 1102
+    },
+    {
+      "row": 11,
+      "col": 28,
+      "type": "machine",
+      "number": 1153
+    },
+    {
+      "row": 11,
+      "col": 33,
+      "type": "machine",
+      "number": 1155
+    },
+    {
+      "row": 11,
+      "col": 34,
+      "type": "machine",
+      "number": 1203
+    },
+    {
+      "row": 11,
+      "col": 40,
+      "type": "machine",
+      "number": 1286
+    },
+    {
+      "row": 11,
+      "col": 41,
+      "type": "machine",
+      "number": 1287
+    },
+    {
+      "row": 11,
+      "col": 42,
+      "type": "machine",
+      "number": 1288
+    },
+    {
+      "row": 11,
+      "col": 43,
+      "type": "machine",
+      "number": 1300
+    },
+    {
+      "row": 11,
+      "col": 44,
+      "type": "machine",
+      "number": 1301
+    },
+    {
+      "row": 11,
+      "col": 45,
+      "type": "machine",
+      "number": 1302
+    },
+    {
+      "row": 11,
+      "col": 46,
+      "type": "machine",
+      "number": 1303
+    },
+    {
+      "row": 11,
+      "col": 47,
+      "type": "machine",
+      "number": 1305
+    },
+    {
+      "row": 11,
+      "col": 48,
+      "type": "machine",
+      "number": 1306
+    },
+    {
+      "row": 11,
+      "col": 49,
+      "type": "machine",
+      "number": 1307
+    },
+    {
+      "row": 11,
+      "col": 50,
+      "type": "machine",
+      "number": 1308
+    },
+    {
+      "row": 11,
+      "col": 53,
+      "type": "machine",
+      "number": 1225
+    },
+    {
+      "row": 12,
+      "col": 16,
+      "type": "machine",
+      "number": 1012
+    },
+    {
+      "row": 12,
+      "col": 21,
+      "type": "machine",
+      "number": 1016
+    },
+    {
+      "row": 12,
+      "col": 22,
+      "type": "machine",
+      "number": 1100
+    },
+    {
+      "row": 12,
+      "col": 27,
+      "type": "machine",
+      "number": 1103
+    },
+    {
+      "row": 12,
+      "col": 28,
+      "type": "machine",
+      "number": 1152
+    },
+    {
+      "row": 12,
+      "col": 33,
+      "type": "machine",
+      "number": 1156
+    },
+    {
+      "row": 12,
+      "col": 34,
+      "type": "machine",
+      "number": 1202
+    },
+    {
+      "row": 12,
+      "col": 40,
+      "type": "machine",
+      "number": 1285
+    },
+    {
+      "row": 12,
+      "col": 41,
+      "type": "machine",
+      "number": 1283
+    },
+    {
+      "row": 12,
+      "col": 42,
+      "type": "machine",
+      "number": 1282
+    },
+    {
+      "row": 12,
+      "col": 43,
+      "type": "machine",
+      "number": 1281
+    },
+    {
+      "row": 12,
+      "col": 44,
+      "type": "machine",
+      "number": 1280
+    },
+    {
+      "row": 12,
+      "col": 45,
+      "type": "machine",
+      "number": 1278
+    },
+    {
+      "row": 12,
+      "col": 46,
+      "type": "machine",
+      "number": 1277
+    },
+    {
+      "row": 12,
+      "col": 47,
+      "type": "machine",
+      "number": 1276
+    },
+    {
+      "row": 12,
+      "col": 48,
+      "type": "machine",
+      "number": 1275
+    },
+    {
+      "row": 12,
+      "col": 49,
+      "type": "machine",
+      "number": 1273
+    },
+    {
+      "row": 12,
+      "col": 50,
+      "type": "machine",
+      "number": 1272
+    },
+    {
+      "row": 12,
+      "col": 53,
+      "type": "machine",
+      "number": 1226
+    },
+    {
+      "row": 13,
+      "col": 16,
+      "type": "machine",
+      "number": 1011
+    },
+    {
+      "row": 13,
+      "col": 21,
+      "type": "machine",
+      "number": 1017
+    },
+    {
+      "row": 13,
+      "col": 22,
+      "type": "machine",
+      "number": 1088
+    },
+    {
+      "row": 13,
+      "col": 27,
+      "type": "machine",
+      "number": 1105
+    },
+    {
+      "row": 13,
+      "col": 28,
+      "type": "machine",
+      "number": 1151
+    },
+    {
+      "row": 13,
+      "col": 33,
+      "type": "machine",
+      "number": 1157
+    },
+    {
+      "row": 13,
+      "col": 34,
+      "type": "machine",
+      "number": 1201
+    },
+    {
+      "row": 13,
+      "col": 53,
+      "type": "machine",
+      "number": 1227
+    },
+    {
+      "row": 14,
+      "col": 9,
+      "type": "machine",
+      "number": 788
+    },
+    {
+      "row": 14,
+      "col": 16,
+      "type": "machine",
+      "number": 1010
+    },
+    {
+      "row": 14,
+      "col": 21,
+      "type": "machine",
+      "number": 1018
+    },
+    {
+      "row": 14,
+      "col": 22,
+      "type": "machine",
+      "number": 1087
+    },
+    {
+      "row": 14,
+      "col": 27,
+      "type": "machine",
+      "number": 1106
+    },
+    {
+      "row": 14,
+      "col": 28,
+      "type": "machine",
+      "number": 1150
+    },
+    {
+      "row": 14,
+      "col": 33,
+      "type": "machine",
+      "number": 1158
+    },
+    {
+      "row": 14,
+      "col": 34,
+      "type": "machine",
+      "number": 1200
+    },
+    {
+      "row": 14,
+      "col": 53,
+      "type": "machine",
+      "number": 1228
+    },
+    {
+      "row": 15,
+      "col": 9,
+      "type": "machine",
+      "number": 800
+    },
+    {
+      "row": 15,
+      "col": 16,
+      "type": "machine",
+      "number": 1008
+    },
+    {
+      "row": 15,
+      "col": 21,
+      "type": "machine",
+      "number": 1020
+    },
+    {
+      "row": 15,
+      "col": 22,
+      "type": "machine",
+      "number": 1086
+    },
+    {
+      "row": 15,
+      "col": 27,
+      "type": "machine",
+      "number": 1107
+    },
+    {
+      "row": 15,
+      "col": 28,
+      "type": "machine",
+      "number": 1138
+    },
+    {
+      "row": 15,
+      "col": 33,
+      "type": "machine",
+      "number": 1160
+    },
+    {
+      "row": 15,
+      "col": 34,
+      "type": "machine",
+      "number": 1188
+    },
+    {
+      "row": 15,
+      "col": 40,
+      "type": "machine",
+      "number": 1258
+    },
+    {
+      "row": 15,
+      "col": 41,
+      "type": "machine",
+      "number": 1260
+    },
+    {
+      "row": 15,
+      "col": 42,
+      "type": "machine",
+      "number": 1261
+    },
+    {
+      "row": 15,
+      "col": 43,
+      "type": "machine",
+      "number": 1262
+    },
+    {
+      "row": 15,
+      "col": 44,
+      "type": "machine",
+      "number": 1263
+    },
+    {
+      "row": 15,
+      "col": 45,
+      "type": "machine",
+      "number": 1265
+    },
+    {
+      "row": 15,
+      "col": 46,
+      "type": "machine",
+      "number": 1266
+    },
+    {
+      "row": 15,
+      "col": 47,
+      "type": "machine",
+      "number": 1267
+    },
+    {
+      "row": 15,
+      "col": 48,
+      "type": "machine",
+      "number": 1268
+    },
+    {
+      "row": 15,
+      "col": 49,
+      "type": "machine",
+      "number": 1270
+    },
+    {
+      "row": 15,
+      "col": 50,
+      "type": "machine",
+      "number": 1271
+    },
+    {
+      "row": 15,
+      "col": 53,
+      "type": "machine",
+      "number": 1230
+    },
+    {
+      "row": 16,
+      "col": 0,
+      "type": "machine",
+      "number": 717
+    },
+    {
+      "row": 16,
+      "col": 4,
+      "type": "machine",
+      "number": 718
+    },
+    {
+      "row": 16,
+      "col": 5,
+      "type": "machine",
+      "number": 787
+    },
+    {
+      "row": 16,
+      "col": 9,
+      "type": "machine",
+      "number": 801
+    },
+    {
+      "row": 16,
+      "col": 16,
+      "type": "machine",
+      "number": 1007
+    },
+    {
+      "row": 16,
+      "col": 21,
+      "type": "machine",
+      "number": 1021
+    },
+    {
+      "row": 16,
+      "col": 22,
+      "type": "machine",
+      "number": 1085
+    },
+    {
+      "row": 16,
+      "col": 27,
+      "type": "machine",
+      "number": 1108
+    },
+    {
+      "row": 16,
+      "col": 28,
+      "type": "machine",
+      "number": 1137
+    },
+    {
+      "row": 16,
+      "col": 33,
+      "type": "machine",
+      "number": 1161
+    },
+    {
+      "row": 16,
+      "col": 34,
+      "type": "machine",
+      "number": 1187
+    },
+    {
+      "row": 16,
+      "col": 40,
+      "type": "machine",
+      "number": 1257
+    },
+    {
+      "row": 16,
+      "col": 41,
+      "type": "machine",
+      "number": 1256
+    },
+    {
+      "row": 16,
+      "col": 42,
+      "type": "machine",
+      "number": 1255
+    },
+    {
+      "row": 16,
+      "col": 43,
+      "type": "machine",
+      "number": 1253
+    },
+    {
+      "row": 16,
+      "col": 44,
+      "type": "machine",
+      "number": 1252
+    },
+    {
+      "row": 16,
+      "col": 45,
+      "type": "machine",
+      "number": 1251
+    },
+    {
+      "row": 16,
+      "col": 46,
+      "type": "machine",
+      "number": 1250
+    },
+    {
+      "row": 16,
+      "col": 47,
+      "type": "machine",
+      "number": 1238
+    },
+    {
+      "row": 16,
+      "col": 48,
+      "type": "machine",
+      "number": 1237
+    },
+    {
+      "row": 16,
+      "col": 49,
+      "type": "machine",
+      "number": 1236
+    },
+    {
+      "row": 16,
+      "col": 50,
+      "type": "machine",
+      "number": 1235
+    },
+    {
+      "row": 16,
+      "col": 53,
+      "type": "machine",
+      "number": 1231
+    },
+    {
+      "row": 17,
+      "col": 0,
+      "type": "machine",
+      "number": 716
+    },
+    {
+      "row": 17,
+      "col": 4,
+      "type": "machine",
+      "number": 720
+    },
+    {
+      "row": 17,
+      "col": 5,
+      "type": "machine",
+      "number": 786
+    },
+    {
+      "row": 17,
+      "col": 9,
+      "type": "machine",
+      "number": 802
+    },
+    {
+      "row": 17,
+      "col": 16,
+      "type": "machine",
+      "number": 1006
+    },
+    {
+      "row": 17,
+      "col": 21,
+      "type": "machine",
+      "number": 1022
+    },
+    {
+      "row": 17,
+      "col": 22,
+      "type": "machine",
+      "number": 1083
+    },
+    {
+      "row": 17,
+      "col": 27,
+      "type": "machine",
+      "number": 1110
+    },
+    {
+      "row": 17,
+      "col": 28,
+      "type": "machine",
+      "number": 1136
+    },
+    {
+      "row": 17,
+      "col": 33,
+      "type": "machine",
+      "number": 1162
+    },
+    {
+      "row": 17,
+      "col": 34,
+      "type": "machine",
+      "number": 1186
+    },
+    {
+      "row": 17,
+      "col": 53,
+      "type": "machine",
+      "number": 1232
+    },
+    {
+      "row": 18,
+      "col": 0,
+      "type": "machine",
+      "number": 715
+    },
+    {
+      "row": 18,
+      "col": 4,
+      "type": "machine",
+      "number": 721
+    },
+    {
+      "row": 18,
+      "col": 5,
+      "type": "machine",
+      "number": 785
+    },
+    {
+      "row": 18,
+      "col": 9,
+      "type": "machine",
+      "number": 803
+    },
+    {
+      "row": 18,
+      "col": 16,
+      "type": "machine",
+      "number": 1005
+    },
+    {
+      "row": 18,
+      "col": 21,
+      "type": "machine",
+      "number": 1023
+    },
+    {
+      "row": 18,
+      "col": 22,
+      "type": "machine",
+      "number": 1082
+    },
+    {
+      "row": 18,
+      "col": 27,
+      "type": "machine",
+      "number": 1111
+    },
+    {
+      "row": 18,
+      "col": 28,
+      "type": "machine",
+      "number": 1135
+    },
+    {
+      "row": 18,
+      "col": 33,
+      "type": "machine",
+      "number": 1163
+    },
+    {
+      "row": 18,
+      "col": 34,
+      "type": "machine",
+      "number": 1185
+    },
+    {
+      "row": 18,
+      "col": 53,
+      "type": "machine",
+      "number": 1233
+    },
+    {
+      "row": 19,
+      "col": 0,
+      "type": "machine",
+      "number": 713
+    },
+    {
+      "row": 19,
+      "col": 4,
+      "type": "machine",
+      "number": 722
+    },
+    {
+      "row": 19,
+      "col": 5,
+      "type": "machine",
+      "number": 783
+    },
+    {
+      "row": 19,
+      "col": 16,
+      "type": "machine",
+      "number": 1003
+    },
+    {
+      "row": 19,
+      "col": 22,
+      "type": "machine",
+      "number": 1081
+    },
+    {
+      "row": 19,
+      "col": 27,
+      "type": "machine",
+      "number": 1112
+    },
+    {
+      "row": 19,
+      "col": 28,
+      "type": "machine",
+      "number": 1133
+    },
+    {
+      "row": 19,
+      "col": 34,
+      "type": "machine",
+      "number": 1183
+    },
+    {
+      "row": 20,
+      "col": 0,
+      "type": "machine",
+      "number": 712
+    },
+    {
+      "row": 20,
+      "col": 4,
+      "type": "machine",
+      "number": 723
+    },
+    {
+      "row": 20,
+      "col": 5,
+      "type": "machine",
+      "number": 782
+    },
+    {
+      "row": 20,
+      "col": 9,
+      "type": "machine",
+      "number": 805
+    },
+    {
+      "row": 20,
+      "col": 16,
+      "type": "machine",
+      "number": 1002
+    },
+    {
+      "row": 20,
+      "col": 22,
+      "type": "machine",
+      "number": 1080
+    },
+    {
+      "row": 20,
+      "col": 27,
+      "type": "machine",
+      "number": 1113
+    },
+    {
+      "row": 20,
+      "col": 28,
+      "type": "machine",
+      "number": 1132
+    },
+    {
+      "row": 20,
+      "col": 34,
+      "type": "machine",
+      "number": 1182
+    },
+    {
+      "row": 20,
+      "col": 38,
+      "type": "machine",
+      "number": 600
+    },
+    {
+      "row": 21,
+      "col": 0,
+      "type": "machine",
+      "number": 711
+    },
+    {
+      "row": 21,
+      "col": 4,
+      "type": "machine",
+      "number": 725
+    },
+    {
+      "row": 21,
+      "col": 5,
+      "type": "machine",
+      "number": 781
+    },
+    {
+      "row": 21,
+      "col": 9,
+      "type": "machine",
+      "number": 806
+    },
+    {
+      "row": 21,
+      "col": 16,
+      "type": "machine",
+      "number": 1001
+    },
+    {
+      "row": 21,
+      "col": 21,
+      "type": "machine",
+      "number": 1025
+    },
+    {
+      "row": 21,
+      "col": 22,
+      "type": "machine",
+      "number": 1078
+    },
+    {
+      "row": 21,
+      "col": 27,
+      "type": "machine",
+      "number": 1115
+    },
+    {
+      "row": 21,
+      "col": 28,
+      "type": "machine",
+      "number": 1131
+    },
+    {
+      "row": 21,
+      "col": 33,
+      "type": "machine",
+      "number": 1165
+    },
+    {
+      "row": 21,
+      "col": 34,
+      "type": "machine",
+      "number": 1181
+    },
+    {
+      "row": 21,
+      "col": 38,
+      "type": "machine",
+      "number": 601
+    },
+    {
+      "row": 22,
+      "col": 0,
+      "type": "machine",
+      "number": 710
+    },
+    {
+      "row": 22,
+      "col": 4,
+      "type": "machine",
+      "number": 726
+    },
+    {
+      "row": 22,
+      "col": 5,
+      "type": "machine",
+      "number": 780
+    },
+    {
+      "row": 22,
+      "col": 9,
+      "type": "machine",
+      "number": 807
+    },
+    {
+      "row": 22,
+      "col": 16,
+      "type": "machine",
+      "number": 1000
+    },
+    {
+      "row": 22,
+      "col": 21,
+      "type": "machine",
+      "number": 1026
+    },
+    {
+      "row": 22,
+      "col": 22,
+      "type": "machine",
+      "number": 1077
+    },
+    {
+      "row": 22,
+      "col": 27,
+      "type": "machine",
+      "number": 1116
+    },
+    {
+      "row": 22,
+      "col": 28,
+      "type": "machine",
+      "number": 1130
+    },
+    {
+      "row": 22,
+      "col": 33,
+      "type": "machine",
+      "number": 1166
+    },
+    {
+      "row": 22,
+      "col": 34,
+      "type": "machine",
+      "number": 1180
+    },
+    {
+      "row": 22,
+      "col": 38,
+      "type": "machine",
+      "number": 602
+    },
+    {
+      "row": 23,
+      "col": 0,
+      "type": "machine",
+      "number": 708
+    },
+    {
+      "row": 23,
+      "col": 4,
+      "type": "machine",
+      "number": 727
+    },
+    {
+      "row": 23,
+      "col": 5,
+      "type": "machine",
+      "number": 778
+    },
+    {
+      "row": 23,
+      "col": 9,
+      "type": "machine",
+      "number": 808
+    },
+    {
+      "row": 23,
+      "col": 16,
+      "type": "machine",
+      "number": 888
+    },
+    {
+      "row": 23,
+      "col": 21,
+      "type": "machine",
+      "number": 1027
+    },
+    {
+      "row": 23,
+      "col": 22,
+      "type": "machine",
+      "number": 1076
+    },
+    {
+      "row": 23,
+      "col": 27,
+      "type": "machine",
+      "number": 1117
+    },
+    {
+      "row": 23,
+      "col": 28,
+      "type": "machine",
+      "number": 1128
+    },
+    {
+      "row": 23,
+      "col": 33,
+      "type": "machine",
+      "number": 1167
+    },
+    {
+      "row": 23,
+      "col": 34,
+      "type": "machine",
+      "number": 1178
+    },
+    {
+      "row": 23,
+      "col": 38,
+      "type": "machine",
+      "number": 603
+    },
+    {
+      "row": 24,
+      "col": 0,
+      "type": "machine",
+      "number": 707
+    },
+    {
+      "row": 24,
+      "col": 4,
+      "type": "machine",
+      "number": 728
+    },
+    {
+      "row": 24,
+      "col": 5,
+      "type": "machine",
+      "number": 777
+    },
+    {
+      "row": 24,
+      "col": 9,
+      "type": "machine",
+      "number": 810
+    },
+    {
+      "row": 24,
+      "col": 16,
+      "type": "machine",
+      "number": 887
+    },
+    {
+      "row": 24,
+      "col": 21,
+      "type": "machine",
+      "number": 1028
+    },
+    {
+      "row": 24,
+      "col": 22,
+      "type": "machine",
+      "number": 1075
+    },
+    {
+      "row": 24,
+      "col": 27,
+      "type": "machine",
+      "number": 1118
+    },
+    {
+      "row": 24,
+      "col": 28,
+      "type": "machine",
+      "number": 1127
+    },
+    {
+      "row": 24,
+      "col": 33,
+      "type": "machine",
+      "number": 1168
+    },
+    {
+      "row": 24,
+      "col": 34,
+      "type": "machine",
+      "number": 1177
+    },
+    {
+      "row": 24,
+      "col": 38,
+      "type": "machine",
+      "number": 605
+    },
+    {
+      "row": 25,
+      "col": 0,
+      "type": "machine",
+      "number": 706
+    },
+    {
+      "row": 25,
+      "col": 4,
+      "type": "machine",
+      "number": 730
+    },
+    {
+      "row": 25,
+      "col": 5,
+      "type": "machine",
+      "number": 776
+    },
+    {
+      "row": 25,
+      "col": 16,
+      "type": "machine",
+      "number": 886
+    },
+    {
+      "row": 25,
+      "col": 21,
+      "type": "machine",
+      "number": 1030
+    },
+    {
+      "row": 25,
+      "col": 22,
+      "type": "machine",
+      "number": 1073
+    },
+    {
+      "row": 25,
+      "col": 27,
+      "type": "machine",
+      "number": 1120
+    },
+    {
+      "row": 25,
+      "col": 28,
+      "type": "machine",
+      "number": 1126
+    },
+    {
+      "row": 25,
+      "col": 33,
+      "type": "machine",
+      "number": 1170
+    },
+    {
+      "row": 25,
+      "col": 34,
+      "type": "machine",
+      "number": 1176
+    },
+    {
+      "row": 25,
+      "col": 38,
+      "type": "machine",
+      "number": 606
+    },
+    {
+      "row": 26,
+      "col": 0,
+      "type": "machine",
+      "number": 705
+    },
+    {
+      "row": 26,
+      "col": 21,
+      "type": "machine",
+      "number": 1031
+    },
+    {
+      "row": 26,
+      "col": 22,
+      "type": "machine",
+      "number": 1072
+    },
+    {
+      "row": 26,
+      "col": 27,
+      "type": "machine",
+      "number": 1121
+    },
+    {
+      "row": 26,
+      "col": 28,
+      "type": "machine",
+      "number": 1125
+    },
+    {
+      "row": 26,
+      "col": 33,
+      "type": "machine",
+      "number": 1171
+    },
+    {
+      "row": 26,
+      "col": 34,
+      "type": "machine",
+      "number": 1175
+    },
+    {
+      "row": 26,
+      "col": 38,
+      "type": "machine",
+      "number": 607
+    },
+    {
+      "row": 27,
+      "col": 0,
+      "type": "machine",
+      "number": 703
+    },
+    {
+      "row": 27,
+      "col": 27,
+      "type": "machine",
+      "number": 1122
+    },
+    {
+      "row": 27,
+      "col": 28,
+      "type": "machine",
+      "number": 1123
+    },
+    {
+      "row": 27,
+      "col": 33,
+      "type": "machine",
+      "number": 1172
+    },
+    {
+      "row": 27,
+      "col": 34,
+      "type": "machine",
+      "number": 1173
+    },
+    {
+      "row": 27,
+      "col": 38,
+      "type": "machine",
+      "number": 608
+    },
+    {
+      "row": 28,
+      "col": 0,
+      "type": "machine",
+      "number": 702
+    },
+    {
+      "row": 28,
+      "col": 38,
+      "type": "machine",
+      "number": 610
+    },
+    {
+      "row": 29,
+      "col": 0,
+      "type": "machine",
+      "number": 701
+    },
+    {
+      "row": 29,
+      "col": 38,
+      "type": "machine",
+      "number": 611
+    },
+    {
+      "row": 30,
+      "col": 0,
+      "type": "machine",
+      "number": 700
+    },
+    {
+      "row": 30,
+      "col": 4,
+      "type": "machine",
+      "number": 731
+    },
+    {
+      "row": 30,
+      "col": 5,
+      "type": "machine",
+      "number": 775
+    },
+    {
+      "row": 30,
+      "col": 9,
+      "type": "machine",
+      "number": 811
+    },
+    {
+      "row": 30,
+      "col": 10,
+      "type": "machine",
+      "number": 850
+    },
+    {
+      "row": 30,
+      "col": 14,
+      "type": "machine",
+      "number": 851
+    },
+    {
+      "row": 30,
+      "col": 15,
+      "type": "machine",
+      "number": 885
+    },
+    {
+      "row": 31,
+      "col": 0,
+      "type": "machine",
+      "number": 688
+    },
+    {
+      "row": 31,
+      "col": 4,
+      "type": "machine",
+      "number": 732
+    },
+    {
+      "row": 31,
+      "col": 5,
+      "type": "machine",
+      "number": 773
+    },
+    {
+      "row": 31,
+      "col": 9,
+      "type": "machine",
+      "number": 812
+    },
+    {
+      "row": 31,
+      "col": 10,
+      "type": "machine",
+      "number": 838
+    },
+    {
+      "row": 31,
+      "col": 14,
+      "type": "machine",
+      "number": 852
+    },
+    {
+      "row": 31,
+      "col": 15,
+      "type": "machine",
+      "number": 883
+    },
+    {
+      "row": 31,
+      "col": 19,
+      "type": "machine",
+      "number": 1032
+    },
+    {
+      "row": 31,
+      "col": 20,
+      "type": "machine",
+      "number": 1071
+    },
+    {
+      "row": 31,
+      "col": 31,
+      "type": "machine",
+      "number": 618
+    },
+    {
+      "row": 31,
+      "col": 32,
+      "type": "machine",
+      "number": 617
+    },
+    {
+      "row": 31,
+      "col": 33,
+      "type": "machine",
+      "number": 616
+    },
+    {
+      "row": 31,
+      "col": 34,
+      "type": "machine",
+      "number": 615
+    },
+    {
+      "row": 31,
+      "col": 35,
+      "type": "machine",
+      "number": 613
+    },
+    {
+      "row": 31,
+      "col": 36,
+      "type": "machine",
+      "number": 612
+    },
+    {
+      "row": 32,
+      "col": 0,
+      "type": "machine",
+      "number": 687
+    },
+    {
+      "row": 32,
+      "col": 4,
+      "type": "machine",
+      "number": 733
+    },
+    {
+      "row": 32,
+      "col": 5,
+      "type": "machine",
+      "number": 772
+    },
+    {
+      "row": 32,
+      "col": 9,
+      "type": "machine",
+      "number": 813
+    },
+    {
+      "row": 32,
+      "col": 10,
+      "type": "machine",
+      "number": 837
+    },
+    {
+      "row": 32,
+      "col": 14,
+      "type": "machine",
+      "number": 853
+    },
+    {
+      "row": 32,
+      "col": 15,
+      "type": "machine",
+      "number": 882
+    },
+    {
+      "row": 32,
+      "col": 19,
+      "type": "machine",
+      "number": 1033
+    },
+    {
+      "row": 32,
+      "col": 20,
+      "type": "machine",
+      "number": 1070
+    },
+    {
+      "row": 32,
+      "col": 24,
+      "type": "machine",
+      "number": 623
+    },
+    {
+      "row": 33,
+      "col": 0,
+      "type": "machine",
+      "number": 686
+    },
+    {
+      "row": 33,
+      "col": 4,
+      "type": "machine",
+      "number": 735
+    },
+    {
+      "row": 33,
+      "col": 5,
+      "type": "machine",
+      "number": 771
+    },
+    {
+      "row": 33,
+      "col": 14,
+      "type": "machine",
+      "number": 855
+    },
+    {
+      "row": 33,
+      "col": 15,
+      "type": "machine",
+      "number": 881
+    },
+    {
+      "row": 33,
+      "col": 19,
+      "type": "machine",
+      "number": 1035
+    },
+    {
+      "row": 33,
+      "col": 24,
+      "type": "machine",
+      "number": 625
+    },
+    {
+      "row": 34,
+      "col": 0,
+      "type": "machine",
+      "number": 685
+    },
+    {
+      "row": 34,
+      "col": 4,
+      "type": "machine",
+      "number": 736
+    },
+    {
+      "row": 34,
+      "col": 5,
+      "type": "machine",
+      "number": 770
+    },
+    {
+      "row": 34,
+      "col": 14,
+      "type": "machine",
+      "number": 856
+    },
+    {
+      "row": 34,
+      "col": 15,
+      "type": "machine",
+      "number": 880
+    },
+    {
+      "row": 34,
+      "col": 19,
+      "type": "machine",
+      "number": 1036
+    },
+    {
+      "row": 34,
+      "col": 24,
+      "type": "machine",
+      "number": 626
+    },
+    {
+      "row": 35,
+      "col": 0,
+      "type": "machine",
+      "number": 683
+    },
+    {
+      "row": 35,
+      "col": 4,
+      "type": "machine",
+      "number": 737
+    },
+    {
+      "row": 35,
+      "col": 5,
+      "type": "machine",
+      "number": 768
+    },
+    {
+      "row": 35,
+      "col": 9,
+      "type": "machine",
+      "number": 815
+    },
+    {
+      "row": 35,
+      "col": 10,
+      "type": "machine",
+      "number": 836
+    },
+    {
+      "row": 35,
+      "col": 14,
+      "type": "machine",
+      "number": 857
+    },
+    {
+      "row": 35,
+      "col": 15,
+      "type": "machine",
+      "number": 878
+    },
+    {
+      "row": 35,
+      "col": 19,
+      "type": "machine",
+      "number": 1037
+    },
+    {
+      "row": 35,
+      "col": 20,
+      "type": "machine",
+      "number": 1068
+    },
+    {
+      "row": 35,
+      "col": 24,
+      "type": "machine",
+      "number": 627
+    },
+    {
+      "row": 36,
+      "col": 0,
+      "type": "machine",
+      "number": 682
+    },
+    {
+      "row": 36,
+      "col": 4,
+      "type": "machine",
+      "number": 738
+    },
+    {
+      "row": 36,
+      "col": 5,
+      "type": "machine",
+      "number": 767
+    },
+    {
+      "row": 36,
+      "col": 9,
+      "type": "machine",
+      "number": 816
+    },
+    {
+      "row": 36,
+      "col": 10,
+      "type": "machine",
+      "number": 835
+    },
+    {
+      "row": 36,
+      "col": 14,
+      "type": "machine",
+      "number": 858
+    },
+    {
+      "row": 36,
+      "col": 15,
+      "type": "machine",
+      "number": 877
+    },
+    {
+      "row": 36,
+      "col": 19,
+      "type": "machine",
+      "number": 1038
+    },
+    {
+      "row": 36,
+      "col": 20,
+      "type": "machine",
+      "number": 1067
+    },
+    {
+      "row": 36,
+      "col": 24,
+      "type": "machine",
+      "number": 628
+    },
+    {
+      "row": 37,
+      "col": 0,
+      "type": "machine",
+      "number": 681
+    },
+    {
+      "row": 37,
+      "col": 4,
+      "type": "machine",
+      "number": 750
+    },
+    {
+      "row": 37,
+      "col": 5,
+      "type": "machine",
+      "number": 766
+    },
+    {
+      "row": 37,
+      "col": 9,
+      "type": "machine",
+      "number": 817
+    },
+    {
+      "row": 37,
+      "col": 10,
+      "type": "machine",
+      "number": 833
+    },
+    {
+      "row": 37,
+      "col": 14,
+      "type": "machine",
+      "number": 860
+    },
+    {
+      "row": 37,
+      "col": 15,
+      "type": "machine",
+      "number": 876
+    },
+    {
+      "row": 37,
+      "col": 19,
+      "type": "machine",
+      "number": 1050
+    },
+    {
+      "row": 37,
+      "col": 20,
+      "type": "machine",
+      "number": 1066
+    },
+    {
+      "row": 37,
+      "col": 24,
+      "type": "machine",
+      "number": 630
+    },
+    {
+      "row": 38,
+      "col": 0,
+      "type": "machine",
+      "number": 680
+    },
+    {
+      "row": 38,
+      "col": 4,
+      "type": "machine",
+      "number": 751
+    },
+    {
+      "row": 38,
+      "col": 5,
+      "type": "machine",
+      "number": 765
+    },
+    {
+      "row": 38,
+      "col": 9,
+      "type": "machine",
+      "number": 818
+    },
+    {
+      "row": 38,
+      "col": 10,
+      "type": "machine",
+      "number": 832
+    },
+    {
+      "row": 38,
+      "col": 14,
+      "type": "machine",
+      "number": 861
+    },
+    {
+      "row": 38,
+      "col": 15,
+      "type": "machine",
+      "number": 875
+    },
+    {
+      "row": 38,
+      "col": 19,
+      "type": "machine",
+      "number": 1051
+    },
+    {
+      "row": 38,
+      "col": 20,
+      "type": "machine",
+      "number": 1065
+    },
+    {
+      "row": 38,
+      "col": 24,
+      "type": "machine",
+      "number": 631
+    },
+    {
+      "row": 39,
+      "col": 0,
+      "type": "machine",
+      "number": 678
+    },
+    {
+      "row": 39,
+      "col": 4,
+      "type": "machine",
+      "number": 752
+    },
+    {
+      "row": 39,
+      "col": 5,
+      "type": "machine",
+      "number": 763
+    },
+    {
+      "row": 39,
+      "col": 9,
+      "type": "machine",
+      "number": 820
+    },
+    {
+      "row": 39,
+      "col": 10,
+      "type": "machine",
+      "number": 831
+    },
+    {
+      "row": 39,
+      "col": 14,
+      "type": "machine",
+      "number": 862
+    },
+    {
+      "row": 39,
+      "col": 15,
+      "type": "machine",
+      "number": 873
+    },
+    {
+      "row": 39,
+      "col": 19,
+      "type": "machine",
+      "number": 1052
+    },
+    {
+      "row": 39,
+      "col": 20,
+      "type": "machine",
+      "number": 1063
+    },
+    {
+      "row": 39,
+      "col": 24,
+      "type": "machine",
+      "number": 632
+    },
+    {
+      "row": 40,
+      "col": 0,
+      "type": "machine",
+      "number": 677
+    },
+    {
+      "row": 40,
+      "col": 4,
+      "type": "machine",
+      "number": 753
+    },
+    {
+      "row": 40,
+      "col": 5,
+      "type": "machine",
+      "number": 762
+    },
+    {
+      "row": 40,
+      "col": 9,
+      "type": "machine",
+      "number": 821
+    },
+    {
+      "row": 40,
+      "col": 10,
+      "type": "machine",
+      "number": 830
+    },
+    {
+      "row": 40,
+      "col": 14,
+      "type": "machine",
+      "number": 863
+    },
+    {
+      "row": 40,
+      "col": 15,
+      "type": "machine",
+      "number": 872
+    },
+    {
+      "row": 40,
+      "col": 19,
+      "type": "machine",
+      "number": 1053
+    },
+    {
+      "row": 40,
+      "col": 20,
+      "type": "machine",
+      "number": 1062
+    },
+    {
+      "row": 40,
+      "col": 24,
+      "type": "machine",
+      "number": 633
+    },
+    {
+      "row": 41,
+      "col": 0,
+      "type": "machine",
+      "number": 676
+    },
+    {
+      "row": 41,
+      "col": 4,
+      "type": "machine",
+      "number": 755
+    },
+    {
+      "row": 41,
+      "col": 5,
+      "type": "machine",
+      "number": 761
+    },
+    {
+      "row": 41,
+      "col": 9,
+      "type": "machine",
+      "number": 822
+    },
+    {
+      "row": 41,
+      "col": 10,
+      "type": "machine",
+      "number": 828
+    },
+    {
+      "row": 41,
+      "col": 14,
+      "type": "machine",
+      "number": 865
+    },
+    {
+      "row": 41,
+      "col": 15,
+      "type": "machine",
+      "number": 871
+    },
+    {
+      "row": 41,
+      "col": 19,
+      "type": "machine",
+      "number": 1055
+    },
+    {
+      "row": 41,
+      "col": 20,
+      "type": "machine",
+      "number": 1061
+    },
+    {
+      "row": 41,
+      "col": 24,
+      "type": "machine",
+      "number": 635
+    },
+    {
+      "row": 42,
+      "col": 0,
+      "type": "machine",
+      "number": 675
+    },
+    {
+      "row": 42,
+      "col": 4,
+      "type": "machine",
+      "number": 756
+    },
+    {
+      "row": 42,
+      "col": 5,
+      "type": "machine",
+      "number": 760
+    },
+    {
+      "row": 42,
+      "col": 9,
+      "type": "machine",
+      "number": 823
+    },
+    {
+      "row": 42,
+      "col": 10,
+      "type": "machine",
+      "number": 827
+    },
+    {
+      "row": 42,
+      "col": 14,
+      "type": "machine",
+      "number": 866
+    },
+    {
+      "row": 42,
+      "col": 15,
+      "type": "machine",
+      "number": 870
+    },
+    {
+      "row": 42,
+      "col": 19,
+      "type": "machine",
+      "number": 1056
+    },
+    {
+      "row": 42,
+      "col": 20,
+      "type": "machine",
+      "number": 1060
+    },
+    {
+      "row": 42,
+      "col": 24,
+      "type": "machine",
+      "number": 636
+    },
+    {
+      "row": 43,
+      "col": 0,
+      "type": "machine",
+      "number": 673
+    },
+    {
+      "row": 43,
+      "col": 4,
+      "type": "machine",
+      "number": 757
+    },
+    {
+      "row": 43,
+      "col": 5,
+      "type": "machine",
+      "number": 758
+    },
+    {
+      "row": 43,
+      "col": 9,
+      "type": "machine",
+      "number": 825
+    },
+    {
+      "row": 43,
+      "col": 10,
+      "type": "machine",
+      "number": 826
+    },
+    {
+      "row": 43,
+      "col": 14,
+      "type": "machine",
+      "number": 867
+    },
+    {
+      "row": 43,
+      "col": 15,
+      "type": "machine",
+      "number": 868
+    },
+    {
+      "row": 43,
+      "col": 19,
+      "type": "machine",
+      "number": 1057
+    },
+    {
+      "row": 43,
+      "col": 20,
+      "type": "machine",
+      "number": 1058
+    },
+    {
+      "row": 43,
+      "col": 24,
+      "type": "machine",
+      "number": 637
+    },
+    {
+      "row": 44,
+      "col": 0,
+      "type": "machine",
+      "number": 672
+    },
+    {
+      "row": 44,
+      "col": 24,
+      "type": "machine",
+      "number": 638
+    },
+    {
+      "row": 47,
+      "col": 3,
+      "type": "machine",
+      "number": 671
+    },
+    {
+      "row": 47,
+      "col": 4,
+      "type": "machine",
+      "number": 670
+    },
+    {
+      "row": 47,
+      "col": 5,
+      "type": "machine",
+      "number": 668
+    },
+    {
+      "row": 47,
+      "col": 6,
+      "type": "machine",
+      "number": 667
+    },
+    {
+      "row": 47,
+      "col": 7,
+      "type": "machine",
+      "number": 666
+    },
+    {
+      "row": 47,
+      "col": 8,
+      "type": "machine",
+      "number": 665
+    },
+    {
+      "row": 47,
+      "col": 9,
+      "type": "machine",
+      "number": 663
+    },
+    {
+      "row": 47,
+      "col": 10,
+      "type": "machine",
+      "number": 662
+    },
+    {
+      "row": 47,
+      "col": 11,
+      "type": "machine",
+      "number": 661
+    },
+    {
+      "row": 47,
+      "col": 12,
+      "type": "machine",
+      "number": 660
+    },
+    {
+      "row": 47,
+      "col": 13,
+      "type": "machine",
+      "number": 658
+    },
+    {
+      "row": 47,
+      "col": 14,
+      "type": "machine",
+      "number": 657
+    },
+    {
+      "row": 47,
+      "col": 15,
+      "type": "machine",
+      "number": 656
+    },
+    {
+      "row": 47,
+      "col": 16,
+      "type": "machine",
+      "number": 655
+    },
+    {
+      "row": 47,
+      "col": 17,
+      "type": "machine",
+      "number": 653
+    },
+    {
+      "row": 47,
+      "col": 18,
+      "type": "machine",
+      "number": 652
+    },
+    {
+      "row": 47,
+      "col": 19,
+      "type": "machine",
+      "number": 651
+    },
+    {
+      "row": 47,
+      "col": 20,
+      "type": "machine",
+      "number": 650
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "type": "structure",
+      "subtype": "shelf",
+      "label": "棚",
+      "mergeRows": 1,
+      "mergeCols": 2
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "type": "structure",
+      "subtype": "shelf",
+      "label": "棚",
+      "mergeRows": 1,
+      "mergeCols": 2
+    },
+    {
+      "row": 6,
+      "col": 6,
+      "type": "structure",
+      "subtype": "shelf",
+      "label": "棚",
+      "mergeRows": 2,
+      "mergeCols": 1
+    },
+    {
+      "row": 7,
+      "col": 1,
+      "type": "structure",
+      "subtype": "counter",
+      "label": "カウンター",
+      "mergeRows": 5,
+      "mergeCols": 2
+    },
+    {
+      "row": 7,
+      "col": 3,
+      "type": "structure",
+      "subtype": "counter",
+      "label": "POS"
+    },
+    {
+      "row": 8,
+      "col": 0,
+      "type": "structure",
+      "subtype": "shelf",
+      "label": "棚"
+    },
+    {
+      "row": 8,
+      "col": 31,
+      "type": "structure",
+      "subtype": "locker",
+      "label": "ロッカー",
+      "mergeRows": 1,
+      "mergeCols": 4
+    },
+    {
+      "row": 10,
+      "col": 3,
+      "type": "structure",
+      "subtype": "counter",
+      "label": "POS"
+    },
+    {
+      "row": 11,
+      "col": 10,
+      "type": "structure",
+      "subtype": "counter",
+      "label": "POS",
+      "mergeRows": 3,
+      "mergeCols": 1
+    },
+    {
+      "row": 12,
+      "col": 11,
+      "type": "structure",
+      "subtype": "escalator",
+      "label": "↑　エスカレーター下り",
+      "mergeRows": 9,
+      "mergeCols": 2
+    },
+    {
+      "row": 12,
+      "col": 14,
+      "type": "structure",
+      "subtype": "escalator",
+      "label": "↓　エスカレーター上り",
+      "mergeRows": 9,
+      "mergeCols": 2
+    },
+    {
+      "row": 15,
+      "col": 4,
+      "type": "label",
+      "text": "ＭＣ",
+      "mergeRows": 1,
+      "mergeCols": 2
+    },
+    {
+      "row": 25,
+      "col": 9,
+      "type": "structure",
+      "subtype": "shelf",
+      "label": "棚",
+      "mergeRows": 1,
+      "mergeCols": 2
+    },
+    {
+      "row": 25,
+      "col": 11,
+      "type": "structure",
+      "subtype": "vending",
+      "label": "自販機",
+      "mergeRows": 1,
+      "mergeCols": 3
+    },
+    {
+      "row": 30,
+      "col": 24,
+      "type": "structure",
+      "subtype": "counter",
+      "label": "MC",
+      "mergeRows": 2,
+      "mergeCols": 1
+    }
+  ]
+}

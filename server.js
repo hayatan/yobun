@@ -39,6 +39,7 @@ import createCorrectionsRouter from './src/api/routes/corrections.js';
 import createDedupeRouter from './src/api/routes/dedupe.js';
 import createEventsRouter from './src/api/routes/events.js';
 import createEventTypesRouter from './src/api/routes/event-types.js';
+import createHeatmapRouter from './src/api/routes/heatmap.js';
 
 // スケジューラー
 import { initScheduler } from './src/scheduler/index.js';
@@ -160,6 +161,16 @@ const eventsRouter = createEventsRouter(bigquery, db);
 app.use('/api/events', eventsRouter);
 const eventTypesRouter = createEventTypesRouter(db);
 app.use('/api/event-types', eventTypesRouter);
+
+// ヒートマップ（HTMLページと API）
+app.get('/heatmap', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'heatmap.html'));
+});
+app.get('/heatmap-editor', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'heatmap-editor.html'));
+});
+const heatmapRouter = createHeatmapRouter(bigquery);
+app.use('/api/heatmap', heatmapRouter);
 
 // ============================================================================
 // サーバー起動

@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>ヒートマップ - Yobun</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-orange: #f0883e;
+            --cell-size: 90px;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        nav {
+            display: flex;
+            gap: 16px;
+        }
+        
+        nav a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            background-color: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        label {
+            color: var(--text-secondary);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        select, input[type="date"] {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+        
+        button {
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 6px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button.btn-secondary {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .info-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .info-item strong {
+            color: var(--text-primary);
+        }
+        
+        /* ヒートマップコンテナ */
+        .heatmap-container {
+            overflow: auto;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            touch-action: pan-x pan-y pinch-zoom;
+        }
+        
+        .heatmap-grid {
+            display: grid;
+            gap: 2px;
+            width: fit-content;
+        }
+        
+        /* セルスタイル */
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: var(--bg-tertiary);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            padding: 4px;
+            font-size: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .cell.machine {
+            border-left: 3px solid var(--border-color);
+            cursor: pointer;
+        }
+        
+        .cell.machine:hover {
+            outline: 2px solid var(--accent-blue);
+        }
+        
+        .cell.empty {
+            background-color: transparent;
+        }
+        
+        .cell.structure {
+            background-color: #3d4450;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #a0aab8;
+            border: 1px dashed #556070;
+        }
+        
+        .cell.structure.escalator { 
+            background-color: #2a4a5a; 
+            border-color: #4a7a8a;
+        }
+        .cell.structure.stairs { 
+            background-color: #2a4a5a; 
+            border-color: #4a7a8a;
+        }
+        .cell.structure.counter { 
+            background-color: #5a4a3a; 
+            border-color: #8a7a5a;
+        }
+        .cell.structure.locker { 
+            background-color: #4a3a5a; 
+            border-color: #7a5a8a;
+        }
+        .cell.structure.vending { 
+            background-color: #3a5a4a; 
+            border-color: #5a8a7a;
+        }
+        .cell.structure.pillar { 
+            background-color: #5a5a5a; 
+            border-color: #8a8a8a;
+        }
+        .cell.structure.shelf { 
+            background-color: #4a4535; 
+            border-color: #7a7555;
+        }
+        .cell.structure.restroom { 
+            background-color: #3a4a5a; 
+            border-color: #5a7a9a;
+        }
+        .cell.structure.entrance { 
+            background-color: #3a5a3a; 
+            border-color: #5a8a5a;
+        }
+        .cell.structure.other { 
+            background-color: #4a4a4a; 
+            border-color: #7a7a7a;
+        }
+        
+        .cell.label {
+            background-color: #2a2f38;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #8090a0;
+            border: 1px solid #404550;
+        }
+        
+        /* 台セルの内容 */
+        .cell-number {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 11px;
+        }
+        
+        .cell-machine {
+            color: var(--text-secondary);
+            font-size: 9px;
+            line-height: 1.2;
+            height: 22px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        
+        .cell-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            flex: 1;
+            justify-content: flex-end;
+        }
+        
+        .cell-metric-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .cell-metric-period {
+            font-size: 8px;
+            color: var(--text-secondary);
+            width: 20px;
+        }
+        
+        .cell-metric-value {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .cell-metric-winrate {
+            font-size: 10px;
+        }
+        
+        /* 比較モード */
+        .cell.compare-mode .cell-metrics {
+            gap: 0;
+        }
+        
+        .cell.compare-mode .metric-divider {
+            border-top: 1px solid var(--border-color);
+            margin: 2px 0;
+        }
+        
+        /* ローディング */
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+        
+        /* モーダル */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .modal h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        
+        .modal-content {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .modal-content .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .modal-content .detail-label {
+            color: var(--text-secondary);
+        }
+        
+        .modal-content .detail-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .modal-close {
+            margin-top: 16px;
+            width: 100%;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            select, input[type="date"] {
+                flex: 1;
+            }
+            
+            :root {
+                --cell-size: 70px;
+            }
+            
+            .cell-number { font-size: 10px; }
+            .cell-machine { font-size: 8px; height: 18px; }
+            .cell-metric-value { font-size: 11px; }
+            .cell-metric-winrate { font-size: 9px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ヒートマップ</h1>
+            <nav>
+                <a href="/dashboard">ダッシュボード</a>
+                <a href="/heatmap-editor">レイアウト編集</a>
+            </nav>
+        </header>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="holeSelect">店舗:</label>
+                <select id="holeSelect">
+                    <option value="">選択してください</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="dateSelect">日付:</label>
+                <input type="date" id="dateSelect">
+            </div>
+            <div class="control-group">
+                <label for="period1Select">期間1:</label>
+                <select id="period1Select">
+                    <option value="d5">5日間</option>
+                    <option value="d3">3日間</option>
+                    <option value="d7">7日間</option>
+                    <option value="d14">14日間</option>
+                    <option value="d28">28日間</option>
+                    <option value="mtd">当月</option>
+                    <option value="all">全期間</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="compareModeCheck">
+                    <input type="checkbox" id="compareModeCheck"> 比較モード
+                </label>
+            </div>
+            <div class="control-group" id="period2Group" style="display: none;">
+                <label for="period2Select">期間2:</label>
+                <select id="period2Select">
+                    <option value="d28">28日間</option>
+                    <option value="d14">14日間</option>
+                    <option value="d7">7日間</option>
+                    <option value="mtd">当月</option>
+                    <option value="all">全期間</option>
+                </select>
+            </div>
+            <button id="loadBtn">表示</button>
+        </div>
+        
+        <div class="info-bar" id="infoBar">
+            <div class="info-item">データを読み込んでください</div>
+        </div>
+        
+        <div class="heatmap-container" id="heatmapContainer">
+            <div class="loading">店舗を選択して「表示」ボタンを押してください</div>
+        </div>
+    </div>
+    
+    <!-- 詳細モーダル -->
+    <div id="detailModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modalTitle">台詳細</h3>
+            <div class="modal-content" id="modalContent"></div>
+            <button class="modal-close btn-secondary" id="modalCloseBtn">閉じる</button>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================================================
+        // 状態管理
+        // ============================================================================
+        let layoutData = null;
+        let machineData = null;
+        let currentHole = '';
+        let currentDate = '';
+        
+        // ============================================================================
+        // 色計算（出率・勝率）
+        // ============================================================================
+        
+        // 出率の色計算
+        // 100%以下=白、105%=橙、110%以上=赤
+        function getPayoutColor(rate) {
+            if (rate === null || rate === undefined) return 'var(--text-secondary)';
+            const pct = rate * 100;
+            if (pct <= 100) {
+                return '#c9d1d9'; // 白
+            } else if (pct <= 105) {
+                // 100-105: 白→橙のグラデーション
+                const t = (pct - 100) / 5;
+                return interpolateColor('#c9d1d9', '#f0883e', t);
+            } else if (pct <= 110) {
+                // 105-110: 橙→赤のグラデーション
+                const t = (pct - 105) / 5;
+                return interpolateColor('#f0883e', '#f85149', t);
+            } else {
+                return '#f85149'; // 赤
+            }
+        }
+        
+        // 勝率の色計算
+        // 50%以下=白、80%=橙、99%=赤橙、0%=青、100%=赤
+        function getWinRateColor(rate) {
+            if (rate === null || rate === undefined) return 'var(--text-secondary)';
+            const pct = rate * 100;
+            if (pct === 0) {
+                return '#58a6ff'; // 青（全敗）
+            } else if (pct === 100) {
+                return '#f85149'; // 赤（全勝）
+            } else if (pct <= 50) {
+                return '#c9d1d9'; // 白
+            } else if (pct <= 80) {
+                // 50-80: 白→橙のグラデーション
+                const t = (pct - 50) / 30;
+                return interpolateColor('#c9d1d9', '#f0883e', t);
+            } else {
+                // 80-99: 橙→赤橙のグラデーション
+                const t = (pct - 80) / 19;
+                return interpolateColor('#f0883e', '#f85149', t);
+            }
+        }
+        
+        // 色の補間
+        function interpolateColor(color1, color2, t) {
+            const c1 = hexToRgb(color1);
+            const c2 = hexToRgb(color2);
+            const r = Math.round(c1.r + (c2.r - c1.r) * t);
+            const g = Math.round(c1.g + (c2.g - c1.g) * t);
+            const b = Math.round(c1.b + (c2.b - c1.b) * t);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 200, g: 200, b: 200 };
+        }
+        
+        // ============================================================================
+        // UI初期化
+        // ============================================================================
+        
+        async function init() {
+            // 店舗一覧を取得
+            try {
+                const response = await fetch('/api/heatmap/layouts');
+                const data = await response.json();
+                
+                const select = document.getElementById('holeSelect');
+                data.layouts.forEach(layout => {
+                    const option = document.createElement('option');
+                    option.value = layout.hole;
+                    option.textContent = layout.hole;
+                    select.appendChild(option);
+                });
+                
+                // デフォルト選択
+                if (data.layouts.length > 0) {
+                    select.value = data.layouts[0].hole;
+                }
+            } catch (error) {
+                console.error('レイアウト一覧取得エラー:', error);
+            }
+            
+            // 日付をデフォルト設定（昨日）
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            document.getElementById('dateSelect').value = yesterday.toISOString().split('T')[0];
+            
+            // イベントリスナー
+            document.getElementById('loadBtn').addEventListener('click', loadHeatmap);
+            document.getElementById('compareModeCheck').addEventListener('change', toggleCompareMode);
+            document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+            document.getElementById('detailModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('detailModal')) closeModal();
+            });
+        }
+        
+        function toggleCompareMode() {
+            const isCompare = document.getElementById('compareModeCheck').checked;
+            document.getElementById('period2Group').style.display = isCompare ? 'flex' : 'none';
+        }
+        
+        // ============================================================================
+        // データ読み込み
+        // ============================================================================
+        
+        async function loadHeatmap() {
+            const hole = document.getElementById('holeSelect').value;
+            const targetDate = document.getElementById('dateSelect').value;
+            
+            if (!hole) {
+                alert('店舗を選択してください');
+                return;
+            }
+            
+            currentHole = hole;
+            currentDate = targetDate;
+            
+            const container = document.getElementById('heatmapContainer');
+            container.innerHTML = '<div class="loading">読み込み中...</div>';
+            
+            try {
+                // レイアウトとデータを並列で取得
+                const [layoutRes, dataRes] = await Promise.all([
+                    fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}`),
+                    fetch(`/api/heatmap/data?hole=${encodeURIComponent(hole)}&targetDate=${targetDate}`)
+                ]);
+                
+                if (!layoutRes.ok) {
+                    throw new Error('レイアウトデータの取得に失敗しました');
+                }
+                if (!dataRes.ok) {
+                    throw new Error('機種データの取得に失敗しました');
+                }
+                
+                layoutData = await layoutRes.json();
+                machineData = await dataRes.json();
+                
+                // 情報バー更新
+                updateInfoBar();
+                
+                // ヒートマップ描画
+                renderHeatmap();
+                
+            } catch (error) {
+                console.error('ヒートマップ読み込みエラー:', error);
+                container.innerHTML = `<div class="loading" style="color: var(--accent-red);">エラー: ${error.message}</div>`;
+            }
+        }
+        
+        function updateInfoBar() {
+            const infoBar = document.getElementById('infoBar');
+            const period1 = document.getElementById('period1Select').value;
+            const isCompare = document.getElementById('compareModeCheck').checked;
+            const period2 = document.getElementById('period2Select').value;
+            
+            const periodLabel = {
+                d1: '1日', d2: '2日', d3: '3日', d4: '4日', d5: '5日',
+                d6: '6日', d7: '7日', d14: '14日', d28: '28日', mtd: '当月', all: '全期間'
+            };
+            
+            let html = `
+                <div class="info-item">店舗: <strong>${currentHole}</strong></div>
+                <div class="info-item">日付: <strong>${machineData.targetDate}</strong></div>
+                <div class="info-item">台数: <strong>${machineData.machineCount}</strong></div>
+                <div class="info-item">期間: <strong>${periodLabel[period1] || period1}</strong></div>
+            `;
+            
+            if (isCompare) {
+                html += `<div class="info-item">比較: <strong>${periodLabel[period2] || period2}</strong></div>`;
+            }
+            
+            infoBar.innerHTML = html;
+        }
+        
+        // ============================================================================
+        // ヒートマップ描画
+        // ============================================================================
+        
+        function renderHeatmap() {
+            const container = document.getElementById('heatmapContainer');
+            const period1 = document.getElementById('period1Select').value;
+            const isCompare = document.getElementById('compareModeCheck').checked;
+            const period2 = document.getElementById('period2Select').value;
+            
+            const { grid, cells, walls } = layoutData;
+            
+            // グリッドを作成
+            const gridElement = document.createElement('div');
+            gridElement.className = 'heatmap-grid';
+            gridElement.style.gridTemplateColumns = `repeat(${grid.cols}, var(--cell-size))`;
+            gridElement.style.gridTemplateRows = `repeat(${grid.rows}, var(--cell-size))`;
+            
+            // セルをマップ化
+            const cellMap = new Map();
+            cells.forEach(cell => {
+                cellMap.set(`${cell.row}-${cell.col}`, cell);
+            });
+            
+            // グリッドを埋める
+            for (let row = 0; row < grid.rows; row++) {
+                for (let col = 0; col < grid.cols; col++) {
+                    const key = `${row}-${col}`;
+                    const cellData = cellMap.get(key);
+                    
+                    const cellElement = document.createElement('div');
+                    cellElement.className = 'cell';
+                    cellElement.style.gridRow = row + 1;
+                    cellElement.style.gridColumn = col + 1;
+                    
+                    if (cellData) {
+                        renderCell(cellElement, cellData, period1, isCompare ? period2 : null);
+                    } else {
+                        cellElement.classList.add('empty');
+                    }
+                    
+                    gridElement.appendChild(cellElement);
+                }
+            }
+            
+            container.innerHTML = '';
+            container.appendChild(gridElement);
+        }
+        
+        function renderCell(element, cellData, period1, period2) {
+            const { type, subtype, number, text, label } = cellData;
+            
+            if (type === 'machine') {
+                element.classList.add('machine');
+                const data = machineData.machines[number];
+                
+                if (data) {
+                    const payout1 = data[`${period1}_payout_rate`];
+                    const winRate1 = data[`${period1}_win_rate`];
+                    
+                    // 左ボーダー色
+                    element.style.borderLeftColor = getPayoutColor(payout1);
+                    
+                    // 台番号
+                    const numberEl = document.createElement('div');
+                    numberEl.className = 'cell-number';
+                    numberEl.textContent = number;
+                    element.appendChild(numberEl);
+                    
+                    // 機種名
+                    const machineEl = document.createElement('div');
+                    machineEl.className = 'cell-machine';
+                    machineEl.textContent = data.machine || '';
+                    element.appendChild(machineEl);
+                    
+                    // メトリクス
+                    const metricsEl = document.createElement('div');
+                    metricsEl.className = 'cell-metrics';
+                    
+                    if (period2) {
+                        element.classList.add('compare-mode');
+                        // 期間1
+                        metricsEl.appendChild(createMetricRow(period1, payout1, winRate1));
+                        // 区切り線
+                        const divider = document.createElement('div');
+                        divider.className = 'metric-divider';
+                        metricsEl.appendChild(divider);
+                        // 期間2
+                        const payout2 = data[`${period2}_payout_rate`];
+                        const winRate2 = data[`${period2}_win_rate`];
+                        metricsEl.appendChild(createMetricRow(period2, payout2, winRate2));
+                    } else {
+                        metricsEl.appendChild(createMetricRow(period1, payout1, winRate1, true));
+                    }
+                    
+                    element.appendChild(metricsEl);
+                    
+                    // クリックイベント
+                    element.addEventListener('click', () => showDetail(number, data));
+                } else {
+                    // データなし
+                    element.innerHTML = `<div class="cell-number">${number}</div><div style="color: var(--text-secondary); font-size: 9px;">データなし</div>`;
+                }
+                
+            } else if (type === 'structure') {
+                element.classList.add('structure', subtype || '');
+                const icons = {
+                    escalator: '↑↓',
+                    stairs: '階段',
+                    counter: 'カウンター',
+                    locker: 'ロッカー',
+                    vending: '自販機',
+                    pillar: '■',
+                    other: label || ''
+                };
+                element.textContent = label || icons[subtype] || subtype || '';
+                
+            } else if (type === 'label') {
+                element.classList.add('label');
+                element.textContent = text || '';
+            }
+        }
+        
+        function createMetricRow(period, payout, winRate, showFull = false) {
+            const row = document.createElement('div');
+            row.className = 'cell-metric-row';
+            
+            // 期間ラベル
+            const periodEl = document.createElement('span');
+            periodEl.className = 'cell-metric-period';
+            periodEl.textContent = period;
+            row.appendChild(periodEl);
+            
+            // 出率
+            const payoutEl = document.createElement('span');
+            payoutEl.className = 'cell-metric-value';
+            payoutEl.style.color = getPayoutColor(payout);
+            payoutEl.textContent = payout !== null && payout !== undefined 
+                ? `${Math.round(payout * 100)}%` : '-';
+            row.appendChild(payoutEl);
+            
+            // 勝率
+            const winEl = document.createElement('span');
+            winEl.className = 'cell-metric-winrate';
+            winEl.style.color = getWinRateColor(winRate);
+            winEl.textContent = winRate !== null && winRate !== undefined 
+                ? `${Math.round(winRate * 100)}%` : '-';
+            row.appendChild(winEl);
+            
+            return row;
+        }
+        
+        // ============================================================================
+        // 詳細モーダル
+        // ============================================================================
+        
+        function showDetail(number, data) {
+            const modal = document.getElementById('detailModal');
+            const title = document.getElementById('modalTitle');
+            const content = document.getElementById('modalContent');
+            
+            title.textContent = `台番: ${number}`;
+            
+            const periods = ['d1', 'd3', 'd5', 'd7', 'd14', 'd28', 'mtd', 'all'];
+            const periodLabels = {
+                d1: '1日', d3: '3日', d5: '5日', d7: '7日',
+                d14: '14日', d28: '28日', mtd: '当月', all: '全期間'
+            };
+            
+            let html = `
+                <div class="detail-row">
+                    <span class="detail-label">機種名</span>
+                    <span class="detail-value">${data.machine || '-'}</span>
+                </div>
+            `;
+            
+            periods.forEach(p => {
+                const payout = data[`${p}_payout_rate`];
+                const winRate = data[`${p}_win_rate`];
+                const diff = data[`${p}_diff`];
+                
+                if (payout !== null && payout !== undefined) {
+                    html += `
+                        <div class="detail-row">
+                            <span class="detail-label">${periodLabels[p]}</span>
+                            <span class="detail-value">
+                                <span style="color: ${getPayoutColor(payout)}">${Math.round(payout * 100)}%</span>
+                                ${winRate !== null ? `/ <span style="color: ${getWinRateColor(winRate)}">${Math.round(winRate * 100)}%</span>` : ''}
+                                ${diff !== null ? `/ ${diff > 0 ? '+' : ''}${diff}枚` : ''}
+                            </span>
+                        </div>
+                    `;
+                }
+            });
+            
+            content.innerHTML = html;
+            modal.classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+        
+        // ============================================================================
+        // 初期化
+        // ============================================================================
+        init();
+    </script>
+</body>
+</html>
