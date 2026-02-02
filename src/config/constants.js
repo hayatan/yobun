@@ -24,6 +24,24 @@ export const SCRAPING = {
     machineRetryMaxDelayMs: 30000,   // 最大遅延（ミリ秒）
 };
 
+// データマート関連
+export const DATAMART = {
+    // バックフィル並列実行設定
+    concurrency: {
+        default: 10,     // デフォルト並列数
+        min: 1,         // 最小並列数
+        max: 100,        // 最大並列数
+    },
+    // リトライ設定
+    retry: {
+        maxAttempts: 3,     // 最大リトライ回数（初回実行含む）
+        delayMs: 5000,      // リトライ間隔（ミリ秒）
+    },
+    // 並列実行時のタスク開始間隔（ミリ秒）
+    // 200ms = 秒間最大5タスク開始（10 DML/秒の制限を回避）
+    intervalMs: 500,
+};
+
 // デフォルトのスクレイピング期間
 export const DEFAULT_SCRAPE_DAYS = 3;
 
@@ -45,6 +63,7 @@ export const DEFAULT_DATE_RANGES = {
 export default {
     BIGQUERY,
     SCRAPING,
+    DATAMART,
     DEFAULT_SCRAPE_DAYS,
     DEFAULT_DATE_RANGES,
 };

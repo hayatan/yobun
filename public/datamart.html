@@ -459,6 +459,12 @@
                     <label for="runEndDate">終了日:</label>
                     <input type="date" id="runEndDate">
                 </div>
+                <div class="form-group">
+                    <label for="runConcurrency">並列数:</label>
+                    <select id="runConcurrency">
+                        <!-- 動的に生成 -->
+                    </select>
+                </div>
                 <button id="runBtn" class="btn-purple">再実行</button>
             </div>
         </div>
@@ -514,6 +520,32 @@
             const runDays = CONFIG.defaultDateRanges.datamartRun;
             document.getElementById('runStartDate').value = getJSTDate(-runDays);
             document.getElementById('runEndDate').value = today;
+            
+            // 並列数セレクトボックスを生成
+            initConcurrencySelect();
+        }
+        
+        // 並列数セレクトボックスを初期化
+        function initConcurrencySelect() {
+            const select = document.getElementById('runConcurrency');
+            const { default: defaultValue, options } = CONFIG.datamart.concurrency;
+            
+            select.innerHTML = '';
+            options.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                if (value === 1) {
+                    option.textContent = `${value}（順次実行）`;
+                } else if (value === defaultValue) {
+                    option.textContent = `${value}（デフォルト）`;
+                    option.selected = true;
+                } else if (value === options[options.length - 1]) {
+                    option.textContent = `${value}（最大）`;
+                } else {
+                    option.textContent = value;
+                }
+                select.appendChild(option);
+            });
         }
         
         // イベントリスナー
@@ -736,6 +768,7 @@
         function showRunConfirm() {
             const startDate = document.getElementById('runStartDate').value;
             const endDate = document.getElementById('runEndDate').value;
+            const concurrency = parseInt(document.getElementById('runConcurrency').value);
             
             if (!startDate || !endDate) {
                 showError('開始日と終了日を指定してください');
@@ -748,9 +781,12 @@
             const targetEnd = new Date(endDate);
             targetEnd.setDate(targetEnd.getDate() - 1);
             
+            // 日数を計算
+            const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            
             showModal(
                 '🔄 データマート再実行',
-                `以下の期間でデータマートを再実行します。\n\n指定期間: ${startDate} 〜 ${endDate}\nデータマートの target_date: ${targetStart.toISOString().split('T')[0]} 〜 ${targetEnd.toISOString().split('T')[0]}\n\n既存のデータは上書きされます（MERGEによる更新）。`,
+                `以下の期間でデータマートを再実行します。\n\n指定期間: ${startDate} 〜 ${endDate}（${daysDiff}日間）\nデータマートの target_date: ${targetStart.toISOString().split('T')[0]} 〜 ${targetEnd.toISOString().split('T')[0]}\n並列数: ${concurrency}\n\n既存のデータは上書きされます（MERGEによる更新）。`,
                 runDatamart
             );
         }
@@ -758,18 +794,19 @@
         async function runDatamart() {
             const startDate = document.getElementById('runStartDate').value;
             const endDate = document.getElementById('runEndDate').value;
+            const concurrency = parseInt(document.getElementById('runConcurrency').value);
             
             try {
                 const response = await fetch('/api/datamart/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ startDate, endDate }),
+                    body: JSON.stringify({ startDate, endDate, concurrency }),
                 });
                 
                 const data = await response.json();
                 
                 if (response.status === 202) {
-                    showSuccess('データマート更新を開始しました');
+                    showSuccess(`データマート更新を開始しました（並列数: ${data.concurrency}）`);
                     fetchJobStatus();
                 } else {
                     showError('再実行に失敗しました: ' + data.error);

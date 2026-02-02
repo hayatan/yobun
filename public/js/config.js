@@ -19,7 +19,14 @@ const CONFIG = {
         rescrape: 28,        // データ再取得（ダッシュボード）
         datamartRun: 1,     // データマート再実行
         delete: 0,          // データ削除（今日のみ）
-    }
+    },
+    // データマート設定
+    datamart: {
+        concurrency: {
+            default: 5,                 // デフォルト並列数
+            options: [1, 3, 5, 7, 10, 15, 20, 30, 50, 100],  // UI選択肢
+        },
+    },
 };
 
 /**

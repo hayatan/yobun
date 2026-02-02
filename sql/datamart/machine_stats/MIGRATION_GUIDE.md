@@ -64,9 +64,15 @@ DROP TABLE IF EXISTS `yobun-450512.datamart.machine_stats`;
 **方法A: APIエンドポイント経由**
 
 ```bash
+# デフォルト並列数（5）で実行
 curl -X POST http://localhost:8080/api/datamart/run \
   -H "Content-Type: application/json" \
   -d '{"startDate": "2025-01-01", "endDate": "2026-02-01"}'
+
+# 並列数を指定して実行（最大10）
+curl -X POST http://localhost:8080/api/datamart/run \
+  -H "Content-Type: application/json" \
+  -d '{"startDate": "2025-01-01", "endDate": "2026-02-01", "concurrency": 10}'
 ```
 
 **方法B: BigQueryコンソールで手動実行**
@@ -224,10 +230,15 @@ SELECT bqfunc.holidays_in_japan__us.holiday_name(DATE('2026-01-01'));
 
 ### バックフィルが途中で失敗する
 
-APIエンドポイントでタイムアウトが発生する場合は、日付範囲を分割して実行してください。
+APIエンドポイントでタイムアウトが発生する場合は、並列数を下げるか日付範囲を分割して実行してください。
 
 ```bash
-# 1ヶ月ずつ実行
+# 並列数を下げて実行
+curl -X POST http://localhost:8080/api/datamart/run \
+  -H "Content-Type: application/json" \
+  -d '{"startDate": "2025-01-01", "endDate": "2026-02-01", "concurrency": 3}'
+
+# または1ヶ月ずつ分割して実行
 curl -X POST http://localhost:8080/api/datamart/run \
   -H "Content-Type: application/json" \
   -d '{"startDate": "2025-01-01", "endDate": "2025-01-31"}'

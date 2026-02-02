@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import { runDatamartUpdate, rebuildDatamart } from '../../services/datamart/runner.js';
 import { getHoles } from '../../config/slorepo-config.js';
+import { DATAMART } from '../../config/constants.js';
 import stateManager from '../state-manager.js';
 
 const JOB_TYPE = 'datamart';
@@ -183,11 +184,13 @@ const createDatamartRouter = (bigquery, db) => {
     /**
      * データマート再実行（バックフィル）
      * POST /api/datamart/run
-     * Body: { startDate, endDate }
+     * Body: { startDate, endDate, concurrency? }
      * 
      * 指定した日付範囲の各日付を target_date としてデータマートを再構築する。
      * 例: startDate='2026-01-07', endDate='2026-01-09' を指定
      *     → target_date = '2026-01-07', '2026-01-08', '2026-01-09' の3日分を実行
+     * 
+     * concurrency: 同時実行数（デフォルト: 5、最大: 10）
      */
     router.post('/run', async (req, res) => {
         if (stateManager.isRunning(JOB_TYPE)) {
@@ -198,7 +201,7 @@ const createDatamartRouter = (bigquery, db) => {
         }
 
         try {
-            const { startDate, endDate } = req.body;
+            const { startDate, endDate, concurrency: requestedConcurrency } = req.body;
             
             if (!startDate || !endDate) {
                 return res.status(400).json({
@@ -206,13 +209,17 @@ const createDatamartRouter = (bigquery, db) => {
                 });
             }
 
+            // 同時実行数を制限（設定値を参照）
+            const { default: defaultConcurrency, min, max } = DATAMART.concurrency;
+            const concurrency = Math.min(Math.max(requestedConcurrency || defaultConcurrency, min), max);
+
             stateManager.startJob(JOB_TYPE);
-            stateManager.updateProgress(JOB_TYPE, 0, 1, 'データマート更新を開始します...');
+            stateManager.updateProgress(JOB_TYPE, 0, 1, `データマート更新を開始します... (並列数: ${concurrency})`);
 
             // 非同期で実行
             (async () => {
                 try {
-                    const results = await rebuildDatamart(startDate, endDate);
+                    const results = await rebuildDatamart(startDate, endDate, { concurrency });
                     const successCount = results.filter(r => r.success).length;
                     const failCount = results.filter(r => !r.success).length;
                     
@@ -227,6 +234,7 @@ const createDatamartRouter = (bigquery, db) => {
                 message: 'データマート更新を開始しました',
                 note: '指定した日付がそのままtarget_dateになります',
                 period: { startDate, endDate },
+                concurrency,
                 status: stateManager.getState(JOB_TYPE)
             });
 
