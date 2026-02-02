@@ -156,8 +156,8 @@
         
         /* セルスタイル */
         .cell {
-            width: var(--cell-size);
-            height: var(--cell-size);
+            min-width: var(--cell-size);
+            min-height: var(--cell-size);
             background-color: var(--bg-tertiary);
             border-radius: 4px;
             display: flex;
@@ -166,6 +166,13 @@
             font-size: 10px;
             overflow: hidden;
             position: relative;
+        }
+        
+        /* マージされたセルは自動サイズ */
+        .cell.merged {
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
         }
         
         .cell.machine {
@@ -240,6 +247,14 @@
             font-size: 11px;
             color: #8090a0;
             border: 1px solid #404550;
+        }
+        
+        /* マージされたセル */
+        .cell.merged {
+            font-size: 12px;
+            text-align: center;
+            word-break: break-all;
+            padding: 8px;
         }
         
         /* 台セルの内容 */
@@ -671,8 +686,23 @@
             
             // セルをマップ化
             const cellMap = new Map();
+            const mergedCells = new Set(); // マージされた子セルの位置
+            
             cells.forEach(cell => {
                 cellMap.set(`${cell.row}-${cell.col}`, cell);
+                
+                // マージされたセルをマーク
+                if (cell.mergeRows > 1 || cell.mergeCols > 1) {
+                    const mr = cell.mergeRows || 1;
+                    const mc = cell.mergeCols || 1;
+                    for (let r = 0; r < mr; r++) {
+                        for (let c = 0; c < mc; c++) {
+                            if (r !== 0 || c !== 0) {
+                                mergedCells.add(`${cell.row + r}-${cell.col + c}`);
+                            }
+                        }
+                    }
+                }
             });
             
             // グリッドを埋める
@@ -681,15 +711,31 @@
                     const key = `${row}-${col}`;
                     const cellData = cellMap.get(key);
                     
+                    // マージされた子セルはスキップ（親セルがspanで覆う）
+                    if (mergedCells.has(key)) {
+                        continue;
+                    }
+                    
                     const cellElement = document.createElement('div');
                     cellElement.className = 'cell';
-                    cellElement.style.gridRow = row + 1;
-                    cellElement.style.gridColumn = col + 1;
                     
                     if (cellData) {
                         renderCell(cellElement, cellData, period1, isCompare ? period2 : null);
+                        
+                        // マージされたセル（親）は大きく表示
+                        if (cellData.mergeRows > 1 || cellData.mergeCols > 1) {
+                            const mr = cellData.mergeRows || 1;
+                            const mc = cellData.mergeCols || 1;
+                            cellElement.style.gridRow = `${row + 1} / span ${mr}`;
+                            cellElement.style.gridColumn = `${col + 1} / span ${mc}`;
+                        } else {
+                            cellElement.style.gridRow = String(row + 1);
+                            cellElement.style.gridColumn = String(col + 1);
+                        }
                     } else {
                         cellElement.classList.add('empty');
+                        cellElement.style.gridRow = String(row + 1);
+                        cellElement.style.gridColumn = String(col + 1);
                     }
                     
                     gridElement.appendChild(cellElement);
@@ -701,7 +747,12 @@
         }
         
         function renderCell(element, cellData, period1, period2) {
-            const { type, subtype, number, text, label } = cellData;
+            const { type, subtype, number, text, label, mergeRows, mergeCols } = cellData;
+            
+            // マージされたセル
+            if (mergeRows > 1 || mergeCols > 1) {
+                element.classList.add('merged');
+            }
             
             if (type === 'machine') {
                 element.classList.add('machine');

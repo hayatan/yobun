@@ -5,62 +5,12 @@
 // /api/heatmap/data - 台別統計データを取得（BigQuery machine_stats）
 // /api/heatmap/layouts - レイアウト一覧を取得
 // /api/heatmap/layouts/:hole - 特定店舗のレイアウトを取得/保存
+// 
+// ストレージ: GCS優先、ローカルファイルをfallbackとして使用
 // ============================================================================
 
 import { Router } from 'express';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// レイアウトファイルのディレクトリ
-const LAYOUTS_DIR = path.join(__dirname, '../../config/heatmap-layouts');
-
-/**
- * 店舗名からファイル名を生成
- */
-const holeToFilename = (hole) => {
-    const mapping = {
-        'アイランド秋葉原店': 'island-akihabara.json',
-        'エスパス秋葉原駅前店': 'espace-akihabara.json',
-        'ビッグアップル秋葉原店': 'bigapple-akihabara.json',
-        '秋葉原UNO': 'uno-akihabara.json',
-        'エスパス上野本館': 'espace-ueno.json',
-        '三ノ輪ＵＮＯ': 'uno-minowa.json',
-        'マルハン新宿東宝ビル店': 'maruhan-shinjuku.json',
-        'マルハン鹿浜店': 'maruhan-shikahama.json',
-        'ジュラク王子店': 'juraku-oji.json',
-        'メッセ竹の塚': 'messe-takenotsuka.json',
-        'ニュークラウン綾瀬店': 'newcrown-ayase.json',
-        'タイヨーネオ富山店': 'taiyoneo-toyama.json',
-        'KEIZ富山田中店': 'keiz-toyama.json',
-    };
-    return mapping[hole] || `${hole.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}.json`;
-};
-
-/**
- * ファイル名から店舗名を逆引き
- */
-const filenameToHole = (filename) => {
-    const mapping = {
-        'island-akihabara.json': 'アイランド秋葉原店',
-        'espace-akihabara.json': 'エスパス秋葉原駅前店',
-        'bigapple-akihabara.json': 'ビッグアップル秋葉原店',
-        'uno-akihabara.json': '秋葉原UNO',
-        'espace-ueno.json': 'エスパス上野本館',
-        'uno-minowa.json': '三ノ輪ＵＮＯ',
-        'maruhan-shinjuku.json': 'マルハン新宿東宝ビル店',
-        'maruhan-shikahama.json': 'マルハン鹿浜店',
-        'juraku-oji.json': 'ジュラク王子店',
-        'messe-takenotsuka.json': 'メッセ竹の塚',
-        'newcrown-ayase.json': 'ニュークラウン綾瀬店',
-        'taiyoneo-toyama.json': 'タイヨーネオ富山店',
-        'keiz-toyama.json': 'KEIZ富山田中店',
-    };
-    return mapping[filename] || null;
-};
+import layoutStorage from '../../config/heatmap-layouts/storage.js';
 
 const createHeatmapRouter = (bigquery) => {
     const router = Router();
@@ -261,34 +211,13 @@ const createHeatmapRouter = (bigquery) => {
     /**
      * レイアウト一覧を取得
      * GET /api/heatmap/layouts
+     * 
+     * GCSとローカルの両方からレイアウトを取得し、マージして返す（GCS優先）
      */
     router.get('/layouts', async (req, res) => {
         try {
-            const files = await fs.readdir(LAYOUTS_DIR);
-            const layouts = [];
-
-            for (const file of files) {
-                if (file.endsWith('.json') && !file.startsWith('_')) {
-                    try {
-                        const filePath = path.join(LAYOUTS_DIR, file);
-                        const content = await fs.readFile(filePath, 'utf-8');
-                        const layout = JSON.parse(content);
-                        layouts.push({
-                            filename: file,
-                            hole: layout.hole,
-                            version: layout.version,
-                            updated: layout.updated,
-                            description: layout.description,
-                            cellCount: layout.cells?.length || 0,
-                        });
-                    } catch (e) {
-                        console.warn(`レイアウトファイル読み込みエラー: ${file}`, e.message);
-                    }
-                }
-            }
-
+            const layouts = await layoutStorage.listLayouts();
             res.json({ layouts });
-
         } catch (error) {
             console.error('レイアウト一覧取得中にエラーが発生しました:', error);
             res.status(500).json({
@@ -301,27 +230,25 @@ const createHeatmapRouter = (bigquery) => {
     /**
      * 特定店舗のレイアウトを取得
      * GET /api/heatmap/layouts/:hole
+     * 
+     * GCS優先、ローカルファイルをfallbackとして使用
      */
     router.get('/layouts/:hole', async (req, res) => {
         try {
             const hole = decodeURIComponent(req.params.hole);
-            const filename = holeToFilename(hole);
-            const filePath = path.join(LAYOUTS_DIR, filename);
-
-            try {
-                const content = await fs.readFile(filePath, 'utf-8');
-                const layout = JSON.parse(content);
-                res.json(layout);
-            } catch (e) {
-                if (e.code === 'ENOENT') {
-                    return res.status(404).json({
-                        error: `店舗「${hole}」のレイアウトが見つかりません`,
-                        filename,
-                    });
-                }
-                throw e;
+            const { layout, source } = await layoutStorage.loadLayout(hole);
+            
+            if (!layout) {
+                const filename = layoutStorage.holeToFilename(hole);
+                return res.status(404).json({
+                    error: `店舗「${hole}」のレイアウトが見つかりません`,
+                    filename,
+                });
             }
-
+            
+            // ソース情報をヘッダーに追加
+            res.set('X-Layout-Source', source);
+            res.json(layout);
         } catch (error) {
             console.error('レイアウト取得中にエラーが発生しました:', error);
             res.status(500).json({
@@ -335,6 +262,8 @@ const createHeatmapRouter = (bigquery) => {
      * レイアウトを保存
      * PUT /api/heatmap/layouts/:hole
      * Body: レイアウトJSON
+     * 
+     * GCSに保存
      */
     router.put('/layouts/:hole', async (req, res) => {
         try {
@@ -355,18 +284,12 @@ const createHeatmapRouter = (bigquery) => {
                 });
             }
 
-            // 更新日時を設定
-            layout.updated = new Date().toISOString().split('T')[0];
-
-            const filename = holeToFilename(hole);
-            const filePath = path.join(LAYOUTS_DIR, filename);
-
-            await fs.writeFile(filePath, JSON.stringify(layout, null, 2), 'utf-8');
+            const result = await layoutStorage.saveLayout(hole, layout);
 
             res.json({
                 success: true,
-                message: 'レイアウトを保存しました',
-                filename,
+                message: 'レイアウトを保存しました（GCS）',
+                ...result,
                 hole,
                 updated: layout.updated,
                 cellCount: layout.cells.length,
