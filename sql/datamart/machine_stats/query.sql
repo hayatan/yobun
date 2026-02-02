@@ -43,7 +43,7 @@ USING (
         PARTITION BY date, hole, machine_number
         ORDER BY timestamp DESC
       ) AS rn
-    FROM `yobun-450512.slot_data.data_*`
+    FROM `yobun-450512.scraped_data.data_*`
     -- 集計日から最大31日前までのデータを取得（当月対応）
     -- @run_time からJSTの日付を取得して計算（_TABLE_SUFFIXはJST基準）
     WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(DATE(@run_time, 'Asia/Tokyo'), INTERVAL 32 DAY))

@@ -134,7 +134,7 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
   - 一括登録（日付リストから）
 - **イベントタイプ管理**: イベント種類のマスター管理
 - **BigQuery同期**: 分析用にBigQueryへ同期
-- **分析での利用**: `slot_data.events` テーブルとJOINして分析可能
+- **分析での利用**: `scraped_data.events` テーブルとJOINして分析可能
 
 ### データマート管理
 

@@ -138,6 +138,6 @@ MERGE INTO ...                      -- 11. UPSERT
 
 ## 依存関係
 
-- **データソース**: `yobun-450512.slot_data.data_*` テーブル
+- **データソース**: `yobun-450512.scraped_data.data_*` テーブル
 - **祝日判定**: `bqfunc.holidays_in_japan__us.holiday_name()` 関数
 - **宛先**: `yobun-450512.datamart.machine_stats` テーブル

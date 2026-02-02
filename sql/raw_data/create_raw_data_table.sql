@@ -9,9 +9,9 @@
 -- ============================================================================
 
 -- ============================================================================
--- slot_data データセットの作成（存在しない場合）
+-- scraped_data データセットの作成（存在しない場合）
 -- ============================================================================
-CREATE SCHEMA IF NOT EXISTS `yobun-450512.slot_data`
+CREATE SCHEMA IF NOT EXISTS `yobun-450512.scraped_data`
 OPTIONS (
   location = 'US',
   description = 'スロットデータ元データ用データセット'
@@ -23,7 +23,7 @@ OPTIONS (
 -- 実際の日次テーブル（data_YYYYMMDD）はスクレイパーが動的に作成
 -- このテーブルはスキーマの参照用として作成
 
-CREATE TABLE IF NOT EXISTS `yobun-450512.slot_data._template` (
+CREATE TABLE IF NOT EXISTS `yobun-450512.scraped_data._template` (
   -- 識別子
   id STRING NOT NULL OPTIONS(description = 'ユニークID: {date}_{hole}_{machine_number}_{source}'),
   
@@ -53,22 +53,22 @@ CREATE TABLE IF NOT EXISTS `yobun-450512.slot_data._template` (
 )
 OPTIONS (
   description = '元データテンプレート。実際のデータは data_YYYYMMDD テーブルに格納。',
-  labels = [('purpose', 'raw_data'), ('data_type', 'slot_data')]
+  labels = [('purpose', 'raw_data'), ('data_type', 'scraped_data')]
 );
 
 -- ============================================================================
 -- 確認用クエリ
 -- ============================================================================
 -- テンプレートスキーマの確認
--- SELECT * FROM `yobun-450512.slot_data.INFORMATION_SCHEMA.COLUMNS` 
+-- SELECT * FROM `yobun-450512.scraped_data.INFORMATION_SCHEMA.COLUMNS` 
 -- WHERE table_name = '_template';
 
 -- 日次テーブル一覧の確認
--- SELECT table_name FROM `yobun-450512.slot_data.INFORMATION_SCHEMA.TABLES`
+-- SELECT table_name FROM `yobun-450512.scraped_data.INFORMATION_SCHEMA.TABLES`
 -- WHERE table_name LIKE 'data_%'
 -- ORDER BY table_name DESC;
 
 -- データソース別の件数確認（日次テーブル）
 -- SELECT source, COUNT(*) as count 
--- FROM `yobun-450512.slot_data.data_20250101`
+-- FROM `yobun-450512.scraped_data.data_20250101`
 -- GROUP BY source;

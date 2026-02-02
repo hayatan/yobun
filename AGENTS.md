@@ -57,7 +57,7 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 
 - **イベント**: 店舗のイベント情報（LINE告知、特定日など）を管理
 - **イベントタイプ**: イベント種類のマスターデータ（フロント選択肢用）
-- **BigQuery同期**: 分析用に `slot_data.events` テーブルに同期
+- **BigQuery同期**: 分析用に `scraped_data.events` テーブルに同期
 - DB: `src/db/sqlite/events.js`, `src/db/sqlite/event-types.js`
 - API: `src/api/routes/events.js`, `src/api/routes/event-types.js`
 - UI: `public/events.html`

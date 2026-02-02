@@ -101,7 +101,7 @@ SELECT ...                        -- 6. 最終出力
 ## 依存関係
 
 - **祝日判定**: `bqfunc.holidays_in_japan__us.holiday_name()` 関数を使用
-- **データソース**: `yobun-450512.slot_data.data_*` テーブル
+- **データソース**: `yobun-450512.scraped_data.data_*` テーブル
 
 ## 関連ファイル
 

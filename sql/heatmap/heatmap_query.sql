@@ -220,7 +220,7 @@ ranked_data AS (
       ELSE FALSE
     END AS is_day_double_digit,
     ROW_NUMBER() OVER (PARTITION BY d.id ORDER BY d.timestamp DESC) AS row_num
-  FROM `yobun-450512.slot_data.data_*` d
+  FROM `yobun-450512.scraped_data.data_*` d
   CROSS JOIN params p
   LEFT JOIN machine_number_mapping_island m
     ON d.hole = 'アイランド秋葉原店'

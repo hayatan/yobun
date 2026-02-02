@@ -15,7 +15,7 @@ const storage = new Storage();
 const TEMP_BUCKET = 'youbun-sqlite';
 
 // BigQueryのデータセットとテーブル
-const EVENTS_DATASET = 'slot_data';
+const EVENTS_DATASET = 'scraped_data';
 const EVENTS_TABLE = 'events';
 
 /**

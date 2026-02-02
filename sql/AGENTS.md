@@ -224,7 +224,7 @@ ORDER BY ...
 #### 3. データマートの参照
 
 - 分析クエリは `yobun-450512.datamart.machine_stats` テーブルを参照する
-- 生データテーブル（`yobun-450512.slot_data.data_*`）は直接参照しない
+- 生データテーブル（`yobun-450512.scraped_data.data_*`）は直接参照しない
 - 集計期間は `prev_d*`（当日を含まない）と `d*`（当日を含む）を適切に使い分ける
 
 #### 4. README の更新

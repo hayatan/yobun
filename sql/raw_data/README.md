@@ -46,7 +46,7 @@ sql/raw_data/
 
 ## 格納場所
 
-- **BigQuery**: `yobun-450512.slot_data.data_YYYYMMDD`（日付ごとのテーブル）
+- **BigQuery**: `yobun-450512.scraped_data.data_YYYYMMDD`（日付ごとのテーブル）
 - **SQLite**: `scraped_data` テーブル（Litestream経由でGCSにバックアップ）
 
 ## スキーマ定義

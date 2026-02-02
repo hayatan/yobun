@@ -176,7 +176,7 @@ const getTable = async (bigquery, datasetId, tableId) => {
             location: BIGQUERY.location,
             description: 'スロットデータの日次テーブル',
             labels: {
-                'purpose': 'slot_data',
+                'purpose': 'scraped_data',
                 'environment': 'production'
             }
         }

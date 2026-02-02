@@ -211,7 +211,7 @@ base_data AS (
     -- 月末
     PARSE_DATE('%Y-%m-%d', d.date) = LAST_DAY(PARSE_DATE('%Y-%m-%d', d.date)) AS is_last_day,
     ROW_NUMBER() OVER (PARTITION BY d.id ORDER BY d.timestamp DESC) AS row_num
-  FROM `yobun-450512.slot_data.data_*` d
+  FROM `yobun-450512.scraped_data.data_*` d
   CROSS JOIN params p
   LEFT JOIN machine_number_mapping_island m
     ON d.hole = 'アイランド秋葉原店'

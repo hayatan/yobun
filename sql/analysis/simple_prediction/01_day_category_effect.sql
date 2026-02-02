@@ -66,7 +66,7 @@ events_data AS (
     PARSE_DATE('%Y-%m-%d', date) AS event_date,
     hole,
     event
-  FROM `yobun-450512.slot_data.events`
+  FROM `yobun-450512.scraped_data.events`
   WHERE hole = target_hole
 ),
 

@@ -7,7 +7,7 @@
 
 // BigQuery関連
 export const BIGQUERY = {
-    datasetId: process.env.BQ_DATASET_ID || 'slot_data',
+    datasetId: process.env.BQ_DATASET_ID || 'scraped_data',
     tableIdPrefix: 'data_',
     location: 'US',
 };

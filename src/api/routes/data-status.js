@@ -37,7 +37,7 @@ const createDataStatusRouter = (bigquery, db) => {
                     hole,
                     COUNT(*) as count,
                     MAX(timestamp) as last_updated
-                FROM \`yobun-450512.slot_data.data_*\`
+                FROM \`yobun-450512.scraped_data.data_*\`
                 WHERE 
                     _TABLE_SUFFIX BETWEEN REPLACE(@start, '-', '') AND REPLACE(@end, '-', '')
                     AND date BETWEEN @start AND @end
@@ -144,7 +144,7 @@ const createDataStatusRouter = (bigquery, db) => {
                     combined_rate,
                     win,
                     timestamp
-                FROM \`yobun-450512.slot_data.data_${date.replace(/-/g, '')}\`
+                FROM \`yobun-450512.scraped_data.data_${date.replace(/-/g, '')}\`
                 WHERE date = @date AND hole = @hole
                 ORDER BY machine, machine_number
             `;
@@ -204,7 +204,7 @@ const createDataStatusRouter = (bigquery, db) => {
             
             for (const date of dateRange) {
                 const tableId = `data_${date.replace(/-/g, '')}`;
-                const tableName = `\`yobun-450512.slot_data.${tableId}\``;
+                const tableName = `\`yobun-450512.scraped_data.${tableId}\``;
                 
                 try {
                     if (hole) {

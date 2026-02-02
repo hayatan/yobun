@@ -43,7 +43,7 @@ BigQueryコンソールで以下を実行：
 
 ```sql
 SELECT table_name 
-FROM `yobun-450512.slot_data.INFORMATION_SCHEMA.TABLES`
+FROM `yobun-450512.scraped_data.INFORMATION_SCHEMA.TABLES`
 WHERE table_name LIKE 'data_%'
 ORDER BY table_name;
 ```
@@ -52,11 +52,11 @@ ORDER BY table_name;
 
 ```sql
 SELECT CONCAT(
-  'ALTER TABLE `yobun-450512.slot_data.', 
+  'ALTER TABLE `yobun-450512.scraped_data.', 
   table_name, 
   '` ADD COLUMN IF NOT EXISTS source STRING DEFAULT ''slorepo'';'
 ) AS alter_statement
-FROM `yobun-450512.slot_data.INFORMATION_SCHEMA.TABLES`
+FROM `yobun-450512.scraped_data.INFORMATION_SCHEMA.TABLES`
 WHERE table_name LIKE 'data_%'
 ORDER BY table_name;
 ```
@@ -70,11 +70,11 @@ Step 2の結果をコピーして、BigQueryコンソールで実行。
 ```sql
 -- カラム追加の確認
 SELECT column_name, data_type 
-FROM `yobun-450512.slot_data.INFORMATION_SCHEMA.COLUMNS`
+FROM `yobun-450512.scraped_data.INFORMATION_SCHEMA.COLUMNS`
 WHERE table_name = 'data_20250101' AND column_name = 'source';
 
 -- データ確認
-SELECT DISTINCT source FROM `yobun-450512.slot_data.data_20250101`;
+SELECT DISTINCT source FROM `yobun-450512.scraped_data.data_20250101`;
 ```
 
 ---
@@ -93,7 +93,7 @@ SELECT DISTINCT source FROM `yobun-450512.slot_data.data_20250101`;
 
 ```sql
 -- カラム削除（各テーブルに対して実行）
-ALTER TABLE `yobun-450512.slot_data.data_YYYYMMDD`
+ALTER TABLE `yobun-450512.scraped_data.data_YYYYMMDD`
 DROP COLUMN source;
 ```
 
