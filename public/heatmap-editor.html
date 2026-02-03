@@ -645,6 +645,9 @@
         let rangeSelectStart = null;
         let rangeSelectEnd = null;
         
+        // セル要素キャッシュ（querySelectorを避けるため）
+        let cellElementCache = new Map(); // key: "row-col", value: DOM element
+        
         // ============================================================================
         // 初期化
         // ============================================================================
@@ -716,6 +719,44 @@
             
             // キーボードショートカット
             document.addEventListener('keydown', handleKeydown);
+            
+            // グリッドのイベント委譲（セルごとにリスナーを追加する代わりに、グリッドに1つだけ追加）
+            const grid = document.getElementById('editorGrid');
+            grid.addEventListener('click', (e) => {
+                const cell = e.target.closest('.editor-cell');
+                if (!cell) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                handleCellClick(e, row, col);
+            });
+            grid.addEventListener('mousedown', (e) => {
+                const cell = e.target.closest('.editor-cell');
+                if (!cell) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                handleCellMouseDown(e, row, col);
+            });
+            grid.addEventListener('mouseenter', (e) => {
+                const cell = e.target.closest('.editor-cell');
+                if (!cell) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                handleCellMouseEnter(e, row, col);
+            }, true); // キャプチャフェーズで処理（子要素へのenterも検知）
+            grid.addEventListener('mouseup', (e) => {
+                const cell = e.target.closest('.editor-cell');
+                if (!cell) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                handleCellMouseUp(e, row, col);
+            });
+            grid.addEventListener('mouseover', (e) => {
+                const cell = e.target.closest('.editor-cell');
+                if (!cell) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                handleCellMouseEnter(e, row, col);
+            });
         }
         
         // ============================================================================
@@ -784,6 +825,7 @@
         function renderGrid() {
             const grid = document.getElementById('editorGrid');
             grid.innerHTML = '';
+            cellElementCache.clear(); // キャッシュをクリア
             
             if (!layoutData) return;
             
@@ -866,15 +908,17 @@
                         cellElement.classList.add('selected');
                     }
                     
-                    // イベントリスナー
-                    cellElement.addEventListener('click', (e) => handleCellClick(e, row, col));
-                    cellElement.addEventListener('mousedown', (e) => handleCellMouseDown(e, row, col));
-                    cellElement.addEventListener('mouseenter', (e) => handleCellMouseEnter(e, row, col));
-                    cellElement.addEventListener('mouseup', (e) => handleCellMouseUp(e, row, col));
+                    // イベントリスナーはイベント委譲で処理（setupEventListeners参照）
                     
                     grid.appendChild(cellElement);
+                    cellElementCache.set(key, cellElement); // キャッシュに保存
                 }
             }
+        }
+        
+        // キャッシュからセル要素を取得（querySelectorの代わり）
+        function getCellElement(row, col) {
+            return cellElementCache.get(`${row}-${col}`);
         }
         
         function renderCellContent(element, cellData) {
@@ -1142,16 +1186,16 @@
                     rangeSelectStart = { row, col };
                     rangeSelectEnd = { row, col };
                     if (!e.shiftKey) {
-                        // 前の選択を解除
+                        // 前の選択を解除（キャッシュを使用）
                         selectedCells.forEach(k => {
-                            const el = document.querySelector(`.editor-cell[data-row="${k.split('-')[0]}"][data-col="${k.split('-')[1]}"]`);
+                            const el = cellElementCache.get(k);
                             if (el) el.classList.remove('selected');
                         });
                         selectedCells.clear();
                     }
                     selectedCells.add(key);
-                    // クリックしたセルだけ選択
-                    const clickedEl = document.querySelector(`.editor-cell[data-row="${row}"][data-col="${col}"]`);
+                    // クリックしたセルだけ選択（キャッシュを使用）
+                    const clickedEl = cellElementCache.get(key);
                     if (clickedEl) clickedEl.classList.add('selected');
                     e.preventDefault();
                 }
@@ -1160,19 +1204,23 @@
                 isRangeSelecting = true;
                 rangeSelectStart = { row, col };
                 rangeSelectEnd = { row, col };
-                // 前の選択を解除
+                const key = `${row}-${col}`;
+                // 前の選択を解除（キャッシュを使用）
                 selectedCells.forEach(k => {
-                    const el = document.querySelector(`.editor-cell[data-row="${k.split('-')[0]}"][data-col="${k.split('-')[1]}"]`);
+                    const el = cellElementCache.get(k);
                     if (el) el.classList.remove('selected');
                 });
                 selectedCells.clear();
-                selectedCells.add(`${row}-${col}`);
-                // クリックしたセルだけ選択
-                const clickedEl = document.querySelector(`.editor-cell[data-row="${row}"][data-col="${col}"]`);
+                selectedCells.add(key);
+                // クリックしたセルだけ選択（キャッシュを使用）
+                const clickedEl = cellElementCache.get(key);
                 if (clickedEl) clickedEl.classList.add('selected');
                 e.preventDefault();
             }
         }
+        
+        // ドラッグ時のハイライト対象セルを追跡
+        let dragOverCells = new Set();
         
         function handleCellMouseEnter(e, row, col) {
             // 範囲選択中
@@ -1185,21 +1233,25 @@
             // ドラッグ移動中
             if (!isDragging) return;
             
-            const cellElement = e.target.closest('.editor-cell');
-            document.querySelectorAll('.editor-cell.drag-over').forEach(el => {
-                el.classList.remove('drag-over');
+            // 前回のドラッグオーバーを解除（キャッシュを使用）
+            dragOverCells.forEach(key => {
+                const el = cellElementCache.get(key);
+                if (el) el.classList.remove('drag-over');
             });
+            dragOverCells.clear();
             
-            // ドロップ先をハイライト
+            // ドロップ先をハイライト（キャッシュを使用）
             const offsetRow = row - dragStartCell.row;
             const offsetCol = col - dragStartCell.col;
             
             draggedCells.forEach(cell => {
                 const newRow = cell.row + offsetRow;
                 const newCol = cell.col + offsetCol;
-                const targetCell = document.querySelector(`.editor-cell[data-row="${newRow}"][data-col="${newCol}"]`);
+                const key = `${newRow}-${newCol}`;
+                const targetCell = cellElementCache.get(key);
                 if (targetCell) {
                     targetCell.classList.add('drag-over');
+                    dragOverCells.add(key);
                 }
             });
         }
@@ -1223,19 +1275,20 @@
                 const minCol = Math.min(rangeSelectStart.col, rangeSelectEnd.col);
                 const maxCol = Math.max(rangeSelectStart.col, rangeSelectEnd.col);
                 
-                // 前の選択を解除
+                // 前の選択を解除（キャッシュを使用）
                 selectedCells.forEach(key => {
-                    const el = document.querySelector(`.editor-cell[data-row="${key.split('-')[0]}"][data-col="${key.split('-')[1]}"]`);
+                    const el = cellElementCache.get(key);
                     if (el) el.classList.remove('selected');
                 });
                 
                 selectedCells.clear();
                 
-                // 新しい選択を追加
+                // 新しい選択を追加（キャッシュを使用）
                 for (let r = minRow; r <= maxRow; r++) {
                     for (let c = minCol; c <= maxCol; c++) {
-                        selectedCells.add(`${r}-${c}`);
-                        const el = document.querySelector(`.editor-cell[data-row="${r}"][data-col="${c}"]`);
+                        const key = `${r}-${c}`;
+                        selectedCells.add(key);
+                        const el = cellElementCache.get(key);
                         if (el) el.classList.add('selected');
                     }
                 }
@@ -1317,9 +1370,12 @@
             dragStartCell = null;
             draggedCells = [];
             
-            document.querySelectorAll('.editor-cell.drag-over').forEach(el => {
-                el.classList.remove('drag-over');
+            // ドラッグオーバーを解除（キャッシュを使用）
+            dragOverCells.forEach(key => {
+                const el = cellElementCache.get(key);
+                if (el) el.classList.remove('drag-over');
             });
+            dragOverCells.clear();
             
             renderGrid();
         }
@@ -1573,7 +1629,7 @@
         
         function setupPropertyEvents(cellData) {
             document.getElementById('deleteCellBtn')?.addEventListener('click', () => {
-                saveState();
+                saveState(); // 削除は即時保存
                 const index = layoutData.cells.indexOf(cellData);
                 if (index >= 0) {
                     layoutData.cells.splice(index, 1);
@@ -1584,22 +1640,23 @@
                 }
             });
             
+            // プロパティ変更はデバウンスで保存（連続入力対応）
             document.getElementById('propMachineNumber')?.addEventListener('change', (e) => {
-                saveState();
+                saveStateDebounced();
                 cellData.number = parseInt(e.target.value);
                 markDirty();
                 renderGrid();
             });
             
             document.getElementById('propLabel')?.addEventListener('change', (e) => {
-                saveState();
+                saveStateDebounced();
                 cellData.label = e.target.value;
                 markDirty();
                 renderGrid();
             });
             
             document.getElementById('propText')?.addEventListener('change', (e) => {
-                saveState();
+                saveStateDebounced();
                 cellData.text = e.target.value;
                 markDirty();
                 renderGrid();
@@ -1628,7 +1685,13 @@
         // Undo/Redo
         // ============================================================================
         
+        // 即時保存（クリック操作など）
         function saveState() {
+            // デバウンス中のタイマーがあればキャンセル
+            if (saveStateTimer) {
+                clearTimeout(saveStateTimer);
+                saveStateTimer = null;
+            }
             undoStack.push(JSON.stringify(layoutData));
             redoStack = [];
             
@@ -1636,6 +1699,18 @@
             if (undoStack.length > 50) {
                 undoStack.shift();
             }
+        }
+        
+        // デバウンス保存（プロパティ変更など連続入力時）
+        let saveStateTimer = null;
+        function saveStateDebounced() {
+            if (saveStateTimer) clearTimeout(saveStateTimer);
+            saveStateTimer = setTimeout(() => {
+                saveStateTimer = null;
+                undoStack.push(JSON.stringify(layoutData));
+                redoStack = [];
+                if (undoStack.length > 50) undoStack.shift();
+            }, 300);
         }
         
         function undo() {

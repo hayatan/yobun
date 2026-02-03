@@ -70,9 +70,9 @@ export const runDatamartUpdate = async (runTime = null) => {
     console.log('データマート更新を開始します...');
     
     try {
-        // SQLファイルを読み込み
+        // SQLファイルを読み込み（非同期でイベントループをブロックしない）
         const sqlPath = path.join(__dirname, '../../../sql/datamart/machine_stats/query.sql');
-        let sql = fs.readFileSync(sqlPath, 'utf8');
+        let sql = await fs.promises.readFile(sqlPath, 'utf8');
         
         // run_time を決定（null の場合は現在時刻）
         const effectiveRunTime = runTime || new Date().toISOString();
