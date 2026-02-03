@@ -15,13 +15,13 @@ Cloud Run Serviceを使用した読み取り専用ビューアーのデプロイ
 ├── スクレイピング実行
 ├── SQLite保存
 └── Litestream → GCS バックアップ
-         ↓
-GitHub (main) → Cloud Build → Container Registry
-                                    ↓
-                              Cloud Run Service
-                              (READONLY_MODE=true)
-                                    ↓
-                              ユーザーがヒートマップ閲覧
+                   ↓
+GitHub (main) → Cloud Run 継続的デプロイ
+                        ↓
+                  Cloud Run Service
+                  (READONLY_MODE=true)
+                        ↓
+                  ユーザーがヒートマップ閲覧
 ```
 
 - **ローカル**: Dockerでスクレイピング・データ収集を実行
@@ -34,9 +34,6 @@ GitHub (main) → Cloud Build → Container Registry
 ```bash
 # Cloud Run API有効化
 gcloud services enable run.googleapis.com --project yobun-450512
-
-# Cloud Build API有効化
-gcloud services enable cloudbuild.googleapis.com --project yobun-450512
 ```
 
 ### 2. サービスアカウントの権限設定
@@ -60,50 +57,56 @@ gcloud projects add-iam-policy-binding yobun-450512 \
   --condition=None
 ```
 
-### 3. Cloud Buildトリガーの設定
+### 3. Cloud Run Serviceの作成
 
-[Cloud Build > トリガー](https://console.cloud.google.com/cloud-build/triggers?project=yobun-450512)にアクセスして設定：
-
-1. 「トリガーを作成」をクリック
-2. 以下を設定：
-   - 名前: `yobun-main-push`
-   - リージョン: `us-central1`
-   - イベント: `ブランチにpush`
-   - ソース: `hayatan/yobun` (GitHub接続: hayatan)
-   - ブランチ: `^main$`
-   - 構成: `Cloud Build 構成ファイル (yaml または json)`
-   - 場所: `リポジトリ`
-   - ファイルの場所: `/cloudbuild.yaml`
-3. 「作成」をクリック
-
-### 4. Cloud Buildサービスアカウントの権限設定
-
-Cloud BuildからCloud Run Serviceをデプロイするために権限が必要：
+以下のコマンドでサービスを作成：
 
 ```bash
-# Cloud Buildサービスアカウントを取得
-PROJECT_NUMBER=$(gcloud projects describe yobun-450512 --format='value(projectNumber)')
-CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+gcloud run deploy yobun-viewer \
+  --image gcr.io/yobun-450512/yobun-scraper:latest \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars "READONLY_MODE=true,NODE_ENV=production,GOOGLE_CLOUD_PROJECT=yobun-450512" \
+  --memory 1Gi \
+  --cpu 1 \
+  --timeout 60 \
+  --min-instances 0 \
+  --max-instances 2 \
+  --service-account slot-data-scraper@yobun-450512.iam.gserviceaccount.com \
+  --project yobun-450512
+```
 
-# Cloud Run管理者権限を付与
-gcloud projects add-iam-policy-binding yobun-450512 \
-  --member="serviceAccount:${CLOUD_BUILD_SA}" \
-  --role="roles/run.admin" \
-  --condition=None
+### 4. 継続的デプロイの設定
 
-# サービスアカウントの使用権限を付与
-gcloud iam service-accounts add-iam-policy-binding \
-  slot-data-scraper@yobun-450512.iam.gserviceaccount.com \
-  --member="serviceAccount:${CLOUD_BUILD_SA}" \
-  --role="roles/iam.serviceAccountUser" \
-  --project=yobun-450512
+※ CLIでは設定できないため、コンソールから設定が必要
+
+[Cloud Run](https://console.cloud.google.com/run?project=yobun-450512)にアクセスして設定：
+
+1. 作成したサービス `yobun-viewer` を選択
+2. 「継続的デプロイを設定」をクリック
+3. 以下を設定：
+   - リポジトリプロバイダ: GitHub
+   - リポジトリ: `hayatan/yobun`
+   - ブランチ: `main`
+   - ビルドタイプ: `Dockerfile`
+   - ソースの場所: `/Dockerfile`
+4. 「保存」をクリック
+
+### 5. サービスの削除
+
+```bash
+gcloud run services delete yobun-viewer \
+  --region us-central1 \
+  --project yobun-450512 \
+  --quiet
 ```
 
 ## デプロイ方法
 
 ### 自動デプロイ（推奨）
 
-mainブランチにpushすると自動的にビルド・デプロイされます：
+mainブランチにpushすると、Cloud Runの継続的デプロイが自動実行されます：
 
 ```bash
 git add .
@@ -111,18 +114,14 @@ git commit -m "[変更] ○○の修正"
 git push origin main
 ```
 
-Cloud Buildが以下を自動実行：
+Cloud Runが以下を自動実行：
 1. Dockerイメージのビルド
-2. Container Registryへのプッシュ
-3. Cloud Run Serviceへのデプロイ
+2. Cloud Run Serviceへのデプロイ
 
 ### 手動デプロイ
 
 ```bash
-# イメージビルド・プッシュ
-gcloud builds submit --config cloudbuild.yaml --project yobun-450512
-
-# または、デプロイスクリプトを使用（イメージビルド後）
+# デプロイスクリプトを使用
 ./deploy/deploy-service.sh
 ```
 

@@ -227,7 +227,7 @@ yobun/
 │       └── status-header.js  # 共通ヘッダー
 ├── deploy/               # デプロイスクリプト
 ├── server.js             # Webサーバーエントリポイント
-├── job.js                # Cloud Run Jobsエントリポイント
+├── job.js                # ローカルスクレイピング用エントリポイント
 └── Makefile
 ```
 
