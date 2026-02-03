@@ -17,7 +17,7 @@
             --accent-yellow: #d29922;
             --accent-red: #f85149;
             --accent-orange: #f0883e;
-            --cell-size: 90px;
+            --cell-size: 100px;
         }
         
         * {
@@ -477,15 +477,6 @@
         
         /* モバイル向けセルサイズ調整 */
         @media (max-width: 768px) {
-            :root {
-                --cell-size: 70px;
-            }
-            
-            .cell-number { font-size: 10px; }
-            .cell-machine { font-size: 8px; height: 18px; }
-            .cell-metric-value { font-size: 11px; }
-            .cell-metric-winrate { font-size: 9px; }
-            
             .compact-header {
                 padding: 6px 4px;
             }
@@ -607,6 +598,8 @@
         let lastPanY = 0;
         let initialPinchDistance = 0;
         let initialZoom = 1;
+        let pinchGridX = 0;  // ピンチ中心のグリッドX座標
+        let pinchGridY = 0;  // ピンチ中心のグリッドY座標
         
         // ============================================================================
         // 色計算（出率・勝率）
@@ -833,12 +826,14 @@
                     );
                     initialZoom = zoomLevel;
                     
-                    const centerX = (touch1.clientX + touch2.clientX) / 2;
-                    const centerY = (touch1.clientY + touch2.clientY) / 2;
-                    panStartX = centerX;
-                    panStartY = centerY;
-                    lastPanX = panX;
-                    lastPanY = panY;
+                    // ピンチ中心のコンテナ内座標
+                    const rect = container.getBoundingClientRect();
+                    const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+                    
+                    // ピンチ中心のグリッド座標を記録（ズーム基準点）
+                    pinchGridX = (centerX - panX) / zoomLevel;
+                    pinchGridY = (centerY - panY) / zoomLevel;
                 }
             }, { passive: false });
             
@@ -855,6 +850,7 @@
                     const touch1 = e.touches[0];
                     const touch2 = e.touches[1];
                     
+                    // 現在のピンチ距離からズーム倍率を計算
                     const currentDistance = Math.hypot(
                         touch2.clientX - touch1.clientX,
                         touch2.clientY - touch1.clientY
@@ -862,10 +858,14 @@
                     const scale = currentDistance / initialPinchDistance;
                     zoomLevel = Math.max(0.2, Math.min(3, initialZoom * scale));
                     
-                    const centerX = (touch1.clientX + touch2.clientX) / 2;
-                    const centerY = (touch1.clientY + touch2.clientY) / 2;
-                    panX = lastPanX + (centerX - panStartX);
-                    panY = lastPanY + (centerY - panStartY);
+                    // 現在のピンチ中心（コンテナ内座標）
+                    const rect = container.getBoundingClientRect();
+                    const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+                    
+                    // ピンチ中心が画面上の同じ位置に留まるようにパン調整
+                    panX = centerX - pinchGridX * zoomLevel;
+                    panY = centerY - pinchGridY * zoomLevel;
                     
                     applyZoomPan();
                 }
