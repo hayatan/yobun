@@ -62,6 +62,15 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 - API: `src/api/routes/events.js`, `src/api/routes/event-types.js`
 - UI: `public/events.html`
 
+### ヒートマップ
+
+- **データ可視化**: 台別統計データをフロアレイアウト上に表示
+- **レイアウト管理**: GCSに保存、ローカルファイルをfallbackとして使用
+- **レイアウトエディタ**: セルのマージ・分割、台番号配置
+- API: `src/api/routes/heatmap.js`
+- レイアウト: `src/config/heatmap-layouts/storage.js`
+- UI: `public/heatmap.html`, `public/heatmap-editor.html`
+
 ### スケジューラー
 
 - GCSベースのロック機構（排他制御）
@@ -88,6 +97,7 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 |---------|------|
 | `src/config/constants.js` | 定数定義 |
 | `src/config/slorepo-config.js` | 店舗設定 |
+| `src/config/heatmap-layouts/storage.js` | ヒートマップレイアウト管理 |
 | `sql/raw_data/schema.js` | 生データスキーマ（Single Source of Truth） |
 | `sql/scrape_failures/schema.js` | 失敗記録スキーマ |
 | `sql/manual_corrections/schema.js` | 手動補正スキーマ |

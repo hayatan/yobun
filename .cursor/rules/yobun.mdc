@@ -19,6 +19,7 @@ alwaysApply: true
     - `constants.js`: 定数定義
     - `sources/`: データソース別設定
     - `slorepo-config.js`: 店舗設定
+    - `heatmap-layouts/`: ヒートマップレイアウト設定
   - `db/`: データベース関連の処理
     - `sqlite/`: SQLite関連（プライマリストレージ）
     - `bigquery/`: BigQuery関連（分析用DB）
@@ -225,6 +226,9 @@ alwaysApply: true
   - **重複削除**: `GET/POST /util/dedupe/*`
   - **スケジュール**: `GET/PUT/POST/DELETE /api/schedules/*`
   - **データマート**: `GET/DELETE/POST /api/datamart/*`
+  - **イベント管理**: `GET/POST/PATCH/DELETE /api/events/*`
+  - **イベントタイプ**: `GET/POST/PATCH/DELETE /api/event-types/*`
+  - **ヒートマップ**: `GET/PUT /api/heatmap/*`
   - **ヘルスチェック**: `GET /health`
 
 ### 7.3 データベース管理

@@ -136,14 +136,27 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
 - **BigQuery同期**: 分析用にBigQueryへ同期
 - **分析での利用**: `scraped_data.events` テーブルとJOINして分析可能
 
+### ヒートマップ
+
+店舗のフロアレイアウトにデータを重ねて可視化する機能。
+
+- **ヒートマップ表示**: 台別統計データをフロアマップ上に表示
+  - 差枚数・勝率・出玉率などの指標で色分け
+  - 期間選択（1日〜全期間）
+  - ズーム・パン操作対応
+- **レイアウトエディタ**: フロアマップの編集
+  - セルのマージ・分割
+  - 台番号の配置
+  - GCSへの保存
+
 ### データマート管理
 
 - 統計データの確認
-- データの削除/再実行
+- データの削除/再実行（並列実行数指定可能）
 
 ### ユーティリティ
 
-- **SQLite → BigQuery 同期**: Load Jobを使用した重複防止同期
+- **SQLite → BigQuery 同期**: Load Jobを使用した重複防止同期（期間指定必須）
 - **再取得**: 日付範囲・店舗指定での再スクレイピング
 - **重複データ削除**: 既存の重複データをクリーンアップ（BigQuery/SQLite）
 
@@ -158,6 +171,7 @@ yobun/
 │   ├── config/           # 設定ファイル
 │   │   ├── constants.js
 │   │   ├── slorepo-config.js  # 店舗設定
+│   │   ├── heatmap-layouts/   # ヒートマップレイアウト
 │   │   └── sources/      # データソース設定
 │   ├── db/               # データベース操作
 │   │   ├── bigquery/
@@ -185,6 +199,8 @@ yobun/
 │   ├── datamart.html     # データマート管理
 │   ├── failures.html     # 失敗管理・手動補正
 │   ├── events.html       # イベント管理
+│   ├── heatmap.html      # ヒートマップ表示
+│   ├── heatmap-editor.html # ヒートマップエディタ
 │   ├── util/
 │   │   ├── sync.html     # SQLite→BigQuery同期
 │   │   └── dedupe.html   # 重複データ削除
@@ -208,6 +224,8 @@ yobun/
 | `/datamart` | データマート管理 |
 | `/failures` | 失敗管理・手動補正 |
 | `/events` | イベント管理 |
+| `/heatmap` | ヒートマップ表示 |
+| `/heatmap-editor` | ヒートマップエディタ |
 | `/util/sync` | SQLite→BigQuery同期 |
 | `/util/dedupe` | 重複データ削除 |
 
@@ -264,7 +282,54 @@ yobun/
 | `/api/event-types` | POST | イベントタイプ登録 |
 | `/api/event-types/:id` | PATCH | イベントタイプ更新 |
 | `/api/event-types/:id` | DELETE | イベントタイプ削除 |
+| `/api/heatmap/data` | GET | ヒートマップデータ取得 |
+| `/api/heatmap/layouts` | GET | レイアウト一覧取得 |
+| `/api/heatmap/layouts/:hole` | GET | 特定店舗レイアウト取得 |
+| `/api/heatmap/layouts/:hole` | PUT | レイアウト保存 |
 | `/health` | GET | ヘルスチェック |
+
+### API パラメータ詳細
+
+#### POST /util/sync
+
+SQLite→BigQuery同期（期間指定必須）
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `startDate` | Yes | 開始日（YYYY-MM-DD） |
+| `endDate` | Yes | 終了日（YYYY-MM-DD） |
+
+#### POST /api/datamart/run
+
+データマート再実行（日付範囲指定）
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `startDate` | Yes | 開始日（YYYY-MM-DD） |
+| `endDate` | Yes | 終了日（YYYY-MM-DD） |
+| `concurrency` | No | 同時実行数（デフォルト: 5、最大: 10） |
+
+#### GET /api/failures
+
+失敗一覧取得（複数店舗対応）
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `startDate` | No | 開始日（YYYY-MM-DD） |
+| `endDate` | No | 終了日（YYYY-MM-DD） |
+| `holes` | No | 店舗名（カンマ区切りで複数指定可） |
+| `hole` | No | 店舗名（単一指定、holesが優先） |
+| `status` | No | ステータス（pending/resolved/ignored） |
+| `limit` | No | 取得件数上限 |
+
+#### GET /api/heatmap/data
+
+ヒートマップデータ取得
+
+| パラメータ | 必須 | 説明 |
+|-----------|------|------|
+| `hole` | Yes | 店舗名 |
+| `targetDate` | No | 対象日付（省略時は最新日） |
 
 ## スケジューラー設定
 
