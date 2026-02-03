@@ -57,8 +57,8 @@ RUN curl -L https://github.com/benbjohnson/litestream/releases/download/v0.3.13/
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 
-# Node.jsのメモリ制限（1.5GB - Puppeteer/Chromium用に余裕を確保）
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+# Node.jsのメモリ制限（3GB - Puppeteer/Chromium用に余裕を確保）
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 
 # 作業ディレクトリの設定
 WORKDIR /app

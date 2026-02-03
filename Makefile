@@ -6,7 +6,7 @@ ENV=.env
 # Docker設定
 IMAGE_NAME=yobun-scraper
 PORT=8080
-MEMORY_LIMIT=2g
+MEMORY_LIMIT=4g
 
 # ホストのユーザーID
 HOST_UID=$(shell id -u)
