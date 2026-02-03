@@ -169,12 +169,15 @@
         .setting-group select,
         .setting-group input[type="date"] {
             width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
             background-color: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             color: var(--text-primary);
             padding: 10px 12px;
             font-size: 14px;
+            -webkit-appearance: none;
         }
         
         .settings-actions {
