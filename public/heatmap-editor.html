@@ -224,9 +224,10 @@
         /* グリッドコンテナ */
         .grid-container {
             flex: 1;
-            overflow: auto;
+            overflow: hidden;
             padding: 16px;
             background-color: var(--bg-primary);
+            touch-action: none;
         }
         
         .editor-grid {
@@ -288,11 +289,6 @@
             color: #8090a0;
         }
         
-        /* 壁（ボーダー） */
-        .editor-cell.wall-top { border-top: 3px solid #888 !important; }
-        .editor-cell.wall-right { border-right: 3px solid #888 !important; }
-        .editor-cell.wall-bottom { border-bottom: 3px solid #888 !important; }
-        .editor-cell.wall-left { border-left: 3px solid #888 !important; }
         
         /* プロパティパネル */
         .property-panel {
@@ -476,25 +472,14 @@
         <!-- ツールバー -->
         <div class="toolbar">
             <div class="tool-group">
-                <button class="tool-btn active" data-tool="select" title="選択 (V)">
-                    <span>↖</span> 選択
-                </button>
-                <button class="tool-btn" data-tool="machine" title="台追加 (M)">
-                    <span>🎰</span> 台追加
-                </button>
-                <button class="tool-btn" data-tool="structure" title="構造物 (S)">
-                    <span>🏗</span> 構造物
-                </button>
-                <button class="tool-btn" data-tool="wall" title="壁 (W)">
-                    <span>▬</span> 壁
-                </button>
-                <button class="tool-btn" data-tool="eraser" title="消しゴム (E)">
-                    <span>🧹</span> 削除
-                </button>
-            </div>
-            <div class="tool-group">
                 <button class="tool-btn" id="undoBtn" title="元に戻す (Ctrl+Z)">↩ 戻す</button>
                 <button class="tool-btn" id="redoBtn" title="やり直し (Ctrl+Shift+Z)">↪ やり直し</button>
+            </div>
+            <div class="tool-group">
+                <button class="tool-btn" id="zoomOutBtn" title="縮小">−</button>
+                <span id="zoomLevel" style="min-width: 50px; text-align: center; padding: 0 8px;">100%</span>
+                <button class="tool-btn" id="zoomInBtn" title="拡大">+</button>
+                <button class="tool-btn" id="zoomResetBtn" title="リセット">⟲</button>
             </div>
             <div class="tool-group">
                 <button class="tool-btn" id="gridSettingsBtn" title="グリッド設定">⚙ グリッド</button>
@@ -506,11 +491,15 @@
         
         <!-- メインコンテンツ -->
         <div class="main-content">
-            <!-- サイドパネル（構造物リスト） -->
+            <!-- サイドパネル（オブジェクトリスト） -->
             <div class="side-panel">
                 <div class="panel-section">
-                    <div class="panel-title">構造物タイプ</div>
+                    <div class="panel-title">オブジェクトタイプ</div>
                     <div class="structure-list" id="structureList">
+                        <div class="structure-item selected" data-subtype="machine">
+                            <span class="structure-icon machine">🎰</span>
+                            <span>台</span>
+                        </div>
                         <div class="structure-item" data-subtype="escalator">
                             <span class="structure-icon escalator">↑↓</span>
                             <span>エスカレーター</span>
@@ -536,10 +525,10 @@
                             <span>棚</span>
                         </div>
                         <div class="structure-item" data-subtype="pillar">
-                            <span class="structure-icon pillar">■</span>
+                            <span class="structure-icon pillar">柱</span>
                             <span>柱</span>
                         </div>
-                        <div class="structure-item selected" data-subtype="label">
+                        <div class="structure-item" data-subtype="label">
                             <span class="structure-icon label">T</span>
                             <span>ラベル</span>
                         </div>
@@ -615,6 +604,28 @@
                 <label class="property-label">列数</label>
                 <input type="number" id="gridColsInput" class="property-input" min="1" max="200">
             </div>
+            <div class="property-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                <label class="property-label">行の拡張方向</label>
+                <div style="display: flex; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="radio" name="rowExpand" value="bottom" checked> 下へ
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="radio" name="rowExpand" value="top"> 上へ
+                    </label>
+                </div>
+            </div>
+            <div class="property-row">
+                <label class="property-label">列の拡張方向</label>
+                <div style="display: flex; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="radio" name="colExpand" value="right" checked> 右へ
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                        <input type="radio" name="colExpand" value="left"> 左へ
+                    </label>
+                </div>
+            </div>
             <div class="modal-buttons">
                 <button class="modal-btn secondary" id="gridModalCancel">キャンセル</button>
                 <button class="modal-btn primary" id="gridModalOk">適用</button>
@@ -627,8 +638,7 @@
         // 状態管理
         // ============================================================================
         let layoutData = null;
-        let currentTool = 'select';
-        let selectedStructureType = 'label';
+        let selectedObjectType = 'machine'; // machine, escalator, stairs, counter, locker, vending, shelf, pillar, label
         let selectedCells = new Set();
         let undoStack = [];
         let redoStack = [];
@@ -648,6 +658,20 @@
         // セル要素キャッシュ（querySelectorを避けるため）
         let cellElementCache = new Map(); // key: "row-col", value: DOM element
         
+        // ズーム・パン関連
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let lastPanX = 0;
+        let lastPanY = 0;
+        
+        // タッチ関連（ピンチズーム用）
+        let initialPinchDistance = 0;
+        let initialZoom = 1;
+        
         // ============================================================================
         // 初期化
         // ============================================================================
@@ -658,6 +682,9 @@
             
             // イベントリスナー
             setupEventListeners();
+            
+            // ズーム・パン機能
+            setupZoomPan();
         }
         
         async function loadHoleList() {
@@ -684,15 +711,15 @@
             // 保存ボタン
             document.getElementById('saveBtn').addEventListener('click', saveLayout);
             
-            // ツールボタン
-            document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
-                btn.addEventListener('click', () => selectTool(btn.dataset.tool));
+            // オブジェクトタイプ選択
+            document.querySelectorAll('.structure-item').forEach(item => {
+                item.addEventListener('click', () => selectObjectType(item.dataset.subtype));
             });
             
-            // 構造物タイプ選択
-            document.querySelectorAll('.structure-item').forEach(item => {
-                item.addEventListener('click', () => selectStructureType(item.dataset.subtype));
-            });
+            // ズームコントロール
+            document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+            document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+            document.getElementById('zoomResetBtn').addEventListener('click', resetZoom);
             
             // Undo/Redo
             document.getElementById('undoBtn').addEventListener('click', undo);
@@ -757,6 +784,181 @@
                 const col = parseInt(cell.dataset.col);
                 handleCellMouseEnter(e, row, col);
             });
+        }
+        
+        // ============================================================================
+        // ズーム・パン機能
+        // ============================================================================
+        
+        // スペースキー押下状態
+        let isSpacePressed = false;
+        
+        function setupZoomPan() {
+            const container = document.getElementById('gridContainer');
+            const grid = document.getElementById('editorGrid');
+            
+            // ホイールでズーム（スクロール無効化）
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                const newZoom = Math.max(0.2, Math.min(3, zoomLevel + delta));
+                
+                // マウス位置を中心にズーム
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // ズーム前のマウス位置（グリッド座標）
+                const gridX = (mouseX - panX) / zoomLevel;
+                const gridY = (mouseY - panY) / zoomLevel;
+                
+                zoomLevel = newZoom;
+                
+                // ズーム後のマウス位置を保持するようにパン調整
+                panX = mouseX - gridX * zoomLevel;
+                panY = mouseY - gridY * zoomLevel;
+                
+                applyZoomPan();
+            }, { passive: false });
+            
+            // スペースキーでパンモード（モーダルが開いていない場合のみ）
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !isSpacePressed && !document.querySelector('.modal-overlay.active')) {
+                    e.preventDefault();
+                    isSpacePressed = true;
+                    container.style.cursor = 'grab';
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    isSpacePressed = false;
+                    if (!isPanning) {
+                        container.style.cursor = '';
+                    }
+                }
+            });
+            
+            // スペース+左クリック または 中ボタンでパン
+            container.addEventListener('mousedown', (e) => {
+                if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
+                    e.preventDefault();
+                    isPanning = true;
+                    panStartX = e.clientX;
+                    panStartY = e.clientY;
+                    lastPanX = panX;
+                    lastPanY = panY;
+                    container.style.cursor = 'grabbing';
+                }
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isPanning) {
+                    panX = lastPanX + (e.clientX - panStartX);
+                    panY = lastPanY + (e.clientY - panStartY);
+                    applyZoomPan();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isPanning) {
+                    isPanning = false;
+                    document.getElementById('gridContainer').style.cursor = isSpacePressed ? 'grab' : '';
+                }
+            });
+            
+            // タッチ操作（ピンチズーム、2本指パン）
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    initialPinchDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    initialZoom = zoomLevel;
+                    
+                    // パンの開始位置
+                    const centerX = (touch1.clientX + touch2.clientX) / 2;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2;
+                    panStartX = centerX;
+                    panStartY = centerY;
+                    lastPanX = panX;
+                    lastPanY = panY;
+                }
+            }, { passive: false });
+            
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    
+                    // ピンチズーム
+                    const currentDistance = Math.hypot(
+                        touch2.clientX - touch1.clientX,
+                        touch2.clientY - touch1.clientY
+                    );
+                    const scale = currentDistance / initialPinchDistance;
+                    zoomLevel = Math.max(0.2, Math.min(3, initialZoom * scale));
+                    
+                    // 2本指パン
+                    const centerX = (touch1.clientX + touch2.clientX) / 2;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2;
+                    panX = lastPanX + (centerX - panStartX);
+                    panY = lastPanY + (centerY - panStartY);
+                    
+                    applyZoomPan();
+                }
+            }, { passive: false });
+        }
+        
+        function applyZoomPan() {
+            const container = document.getElementById('gridContainer');
+            const grid = document.getElementById('editorGrid');
+            
+            // パン範囲を制限（グリッドの20%は常に見えるように）
+            const containerRect = container.getBoundingClientRect();
+            const gridWidth = grid.offsetWidth * zoomLevel;
+            const gridHeight = grid.offsetHeight * zoomLevel;
+            const margin = 50; // 最低限見える範囲（px）
+            
+            const minX = containerRect.width - gridWidth - margin;
+            const maxX = margin;
+            const minY = containerRect.height - gridHeight - margin;
+            const maxY = margin;
+            
+            panX = Math.max(minX, Math.min(maxX, panX));
+            panY = Math.max(minY, Math.min(maxY, panY));
+            
+            grid.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            grid.style.transformOrigin = '0 0';
+            updateZoomDisplay();
+        }
+        
+        function updateZoomDisplay() {
+            const zoomDisplay = document.getElementById('zoomLevel');
+            if (zoomDisplay) {
+                zoomDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
+            }
+        }
+        
+        function zoomIn() {
+            zoomLevel = Math.min(3, zoomLevel + 0.2);
+            applyZoomPan();
+        }
+        
+        function zoomOut() {
+            zoomLevel = Math.max(0.2, zoomLevel - 0.2);
+            applyZoomPan();
+        }
+        
+        function resetZoom() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            applyZoomPan();
         }
         
         // ============================================================================
@@ -854,20 +1056,11 @@
                 }
             });
             
-            // 壁マップを作成
-            const wallMap = new Map();
-            (layoutData.walls || []).forEach(wall => {
-                const key = `${wall.row}-${wall.col}`;
-                if (!wallMap.has(key)) wallMap.set(key, []);
-                wallMap.get(key).push(wall.side);
-            });
-            
             // グリッドを生成
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
                     const key = `${row}-${col}`;
                     const cellData = cellMap.get(key);
-                    const walls = wallMap.get(key) || [];
                     
                     // マージされた子セルはスキップ（親セルがspanで覆う）
                     if (mergedCells.has(key)) {
@@ -878,11 +1071,6 @@
                     cellElement.className = 'editor-cell';
                     cellElement.dataset.row = row;
                     cellElement.dataset.col = col;
-                    
-                    // 壁クラスを追加
-                    walls.forEach(side => {
-                        cellElement.classList.add(`wall-${side}`);
-                    });
                     
                     if (cellData) {
                         renderCellContent(cellElement, cellData);
@@ -929,7 +1117,8 @@
                 element.textContent = number;
             } else if (type === 'structure') {
                 element.classList.add('structure', subtype || '');
-                element.textContent = label || subtype || '';
+                // ラベルがある場合のみ表示（デフォルトは空）
+                element.textContent = label || '';
             } else if (type === 'label') {
                 element.classList.add('label');
                 element.textContent = text || '';
@@ -940,21 +1129,8 @@
         // ツール操作
         // ============================================================================
         
-        function selectTool(tool) {
-            currentTool = tool;
-            document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tool === tool);
-            });
-            
-            // 選択解除
-            if (tool !== 'select') {
-                selectedCells.clear();
-                renderGrid();
-            }
-        }
-        
-        function selectStructureType(subtype) {
-            selectedStructureType = subtype;
+        function selectObjectType(subtype) {
+            selectedObjectType = subtype;
             document.querySelectorAll('.structure-item').forEach(item => {
                 item.classList.toggle('selected', item.dataset.subtype === subtype);
             });
@@ -966,73 +1142,42 @@
         
         function handleCellClick(e, row, col) {
             const key = `${row}-${col}`;
+            const existingCell = layoutData.cells.find(c => c.row === row && c.col === col);
             
-            switch (currentTool) {
-                case 'select':
-                    handleSelectClick(e, row, col, key);
-                    break;
-                case 'machine':
-                    handleMachineClick(row, col, key);
-                    break;
-                case 'structure':
-                    handleStructureClick(row, col, key);
-                    break;
-                case 'wall':
-                    handleWallClick(e, row, col);
-                    break;
-                case 'eraser':
-                    handleEraserClick(row, col, key);
-                    break;
-            }
-        }
-        
-        function handleSelectClick(e, row, col, key) {
-            if (e.shiftKey) {
-                // 複数選択
-                if (selectedCells.has(key)) {
-                    selectedCells.delete(key);
+            // 既存のセルがある場合は選択（編集用）
+            if (existingCell) {
+                if (e.shiftKey) {
+                    // Shift+クリックで複数選択
+                    if (selectedCells.has(key)) {
+                        selectedCells.delete(key);
+                    } else {
+                        selectedCells.add(key);
+                    }
                 } else {
+                    // 単一選択
+                    selectedCells.clear();
                     selectedCells.add(key);
                 }
-            } else {
-                // 単一選択
-                selectedCells.clear();
-                selectedCells.add(key);
-            }
-            
-            renderGrid();
-            updatePropertyPanel();
-        }
-        
-        function handleMachineClick(row, col, key) {
-            const existingCell = layoutData.cells.find(c => c.row === row && c.col === col);
-            if (existingCell && existingCell.type === 'machine') {
-                alert('このセルには既に台があります。削除してから追加してください。');
+                renderGrid();
+                updatePropertyPanel();
                 return;
             }
             
-            // 構造物やラベルがある場合は削除する
-            if (existingCell) {
-                const index = layoutData.cells.indexOf(existingCell);
-                if (index >= 0) layoutData.cells.splice(index, 1);
-            }
-            
-            // モーダルを表示
-            pendingCellPosition = { row, col };
-            document.getElementById('machineNumberInput').value = '';
-            openModal('machineModal');
-            document.getElementById('machineNumberInput').focus();
+            // 空のセルの場合は配置
+            placeObjectAtCell(row, col);
         }
         
-        function handleStructureClick(row, col, key) {
+        // 選択したオブジェクトタイプをセルに配置
+        function placeObjectAtCell(row, col) {
             const existingCell = layoutData.cells.find(c => c.row === row && c.col === col);
-            if (existingCell && existingCell.type === 'machine') {
-                alert('このセルには台があります。削除してから追加してください。');
-                return;
-            }
             
-            // 既存の構造物やラベルがある場合は削除する
+            // 既存のセルがある場合は上書き確認
             if (existingCell) {
+                if (existingCell.type === 'machine') {
+                    alert('このセルには台があります。右パネルから削除してください。');
+                    return;
+                }
+                // 構造物やラベルは上書き
                 saveState();
                 const index = layoutData.cells.indexOf(existingCell);
                 if (index >= 0) layoutData.cells.splice(index, 1);
@@ -1040,18 +1185,25 @@
                 saveState();
             }
             
-            if (selectedStructureType === 'label') {
+            if (selectedObjectType === 'machine') {
+                // 台の場合はモーダルで番号入力
+                pendingCellPosition = { row, col };
+                document.getElementById('machineNumberInput').value = '';
+                openModal('machineModal');
+                document.getElementById('machineNumberInput').focus();
+            } else if (selectedObjectType === 'label') {
                 // ラベルの場合はモーダルで入力
                 pendingCellPosition = { row, col };
                 document.getElementById('labelInput').value = '';
+                document.getElementById('labelModalTitle').textContent = 'ラベルを入力';
                 openModal('labelModal');
                 document.getElementById('labelInput').focus();
             } else {
-                // 構造物を追加
+                // 構造物を追加（ラベル入力なし）
                 layoutData.cells.push({
                     row, col,
                     type: 'structure',
-                    subtype: selectedStructureType,
+                    subtype: selectedObjectType,
                 });
                 markDirty();
                 renderGrid();
@@ -1059,8 +1211,15 @@
         }
         
         // 範囲に構造物を配置
-        function placeStructureInRange() {
-            if (selectedCells.size < 2) return;
+        // 範囲選択でオブジェクトを配置
+        function placeObjectInRange() {
+            if (selectedCells.size < 1) return;
+            
+            // 台は範囲配置できない
+            if (selectedObjectType === 'machine') {
+                alert('台は1つずつ配置してください。');
+                return;
+            }
             
             // 選択範囲の境界を計算
             let minRow = Infinity, maxRow = -Infinity;
@@ -1092,17 +1251,18 @@
                 return;
             }
             
-            // ラベル入力を求める（現在選択中の構造物タイプを使用）
-            pendingRangeSelection = { minRow, maxRow, minCol, maxCol, structureType: selectedStructureType };
+            // ラベル入力を求める（現在選択中のオブジェクトタイプを使用）
+            pendingRangeSelection = { minRow, maxRow, minCol, maxCol, objectType: selectedObjectType };
             document.getElementById('labelInput').value = '';
             document.getElementById('labelModalTitle').textContent = 
-                selectedStructureType === 'label' ? 'ラベルを入力' : `${getStructureTypeName(selectedStructureType)}のラベルを入力`;
+                selectedObjectType === 'label' ? 'ラベルを入力' : `${getObjectTypeName(selectedObjectType)}のラベルを入力（任意）`;
             openModal('labelModal');
             document.getElementById('labelInput').focus();
         }
         
-        function getStructureTypeName(subtype) {
+        function getObjectTypeName(subtype) {
             const names = {
+                machine: '台',
                 escalator: 'エスカレーター',
                 stairs: '階段',
                 counter: 'カウンター',
@@ -1117,100 +1277,37 @@
         
         let pendingRangeSelection = null;
         
-        function handleWallClick(e, row, col) {
-            const cellElement = e.target.closest('.editor-cell');
-            const rect = cellElement.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            // クリック位置から辺を判定
-            const threshold = 10;
-            let side = null;
-            
-            if (y < threshold) side = 'top';
-            else if (y > rect.height - threshold) side = 'bottom';
-            else if (x < threshold) side = 'left';
-            else if (x > rect.width - threshold) side = 'right';
-            
-            if (!side) return;
-            
-            // 壁のトグル
-            saveState();
-            if (!layoutData.walls) layoutData.walls = [];
-            
-            const existingIndex = layoutData.walls.findIndex(w => 
-                w.row === row && w.col === col && w.side === side
-            );
-            
-            if (existingIndex >= 0) {
-                layoutData.walls.splice(existingIndex, 1);
-            } else {
-                layoutData.walls.push({ row, col, side });
-            }
-            
-            markDirty();
-            renderGrid();
-        }
-        
-        function handleEraserClick(row, col, key) {
-            const cellIndex = layoutData.cells.findIndex(c => c.row === row && c.col === col);
-            if (cellIndex >= 0) {
-                saveState();
-                layoutData.cells.splice(cellIndex, 1);
-                markDirty();
-                renderGrid();
-            }
-        }
         
         // ============================================================================
         // ドラッグ&ドロップ
         // ============================================================================
         
         function handleCellMouseDown(e, row, col) {
-            if (currentTool === 'select') {
-                const key = `${row}-${col}`;
-                const cellData = layoutData.cells.find(c => c.row === row && c.col === col);
-                
-                if (cellData && selectedCells.has(key) && !e.shiftKey) {
-                    // 選択済みセルをドラッグ移動
-                    isDragging = true;
-                    dragStartCell = { row, col };
-                    draggedCells = Array.from(selectedCells).map(k => {
-                        const [r, c] = k.split('-').map(Number);
-                        return layoutData.cells.find(cell => cell.row === r && cell.col === c);
-                    }).filter(Boolean);
-                    e.preventDefault();
-                } else {
-                    // 範囲選択開始
-                    isRangeSelecting = true;
-                    rangeSelectStart = { row, col };
-                    rangeSelectEnd = { row, col };
-                    if (!e.shiftKey) {
-                        // 前の選択を解除（キャッシュを使用）
-                        selectedCells.forEach(k => {
-                            const el = cellElementCache.get(k);
-                            if (el) el.classList.remove('selected');
-                        });
-                        selectedCells.clear();
-                    }
-                    selectedCells.add(key);
-                    // クリックしたセルだけ選択（キャッシュを使用）
-                    const clickedEl = cellElementCache.get(key);
-                    if (clickedEl) clickedEl.classList.add('selected');
-                    e.preventDefault();
-                }
-            } else if (currentTool === 'structure') {
-                // 構造物ツールでも範囲選択
+            const key = `${row}-${col}`;
+            const cellData = layoutData.cells.find(c => c.row === row && c.col === col);
+            
+            if (cellData && selectedCells.has(key) && !e.shiftKey) {
+                // 選択済みセルをドラッグ移動
+                isDragging = true;
+                dragStartCell = { row, col };
+                draggedCells = Array.from(selectedCells).map(k => {
+                    const [r, c] = k.split('-').map(Number);
+                    return layoutData.cells.find(cell => cell.row === r && cell.col === c);
+                }).filter(Boolean);
+                e.preventDefault();
+            } else {
+                // 範囲選択開始
                 isRangeSelecting = true;
                 rangeSelectStart = { row, col };
                 rangeSelectEnd = { row, col };
-                const key = `${row}-${col}`;
-                // 前の選択を解除（キャッシュを使用）
-                selectedCells.forEach(k => {
-                    const el = cellElementCache.get(k);
-                    if (el) el.classList.remove('selected');
-                });
-                selectedCells.clear();
+                if (!e.shiftKey) {
+                    // 前の選択を解除（キャッシュを使用）
+                    selectedCells.forEach(k => {
+                        const el = cellElementCache.get(k);
+                        if (el) el.classList.remove('selected');
+                    });
+                    selectedCells.clear();
+                }
                 selectedCells.add(key);
                 // クリックしたセルだけ選択（キャッシュを使用）
                 const clickedEl = cellElementCache.get(key);
@@ -1298,22 +1395,9 @@
         function handleCellMouseUp(e, row, col) {
             // 範囲選択終了
             if (isRangeSelecting) {
-                const wasSingleCell = selectedCells.size === 1;
-                const tool = currentTool;
-                
                 isRangeSelecting = false;
                 rangeSelectStart = null;
                 rangeSelectEnd = null;
-                
-                // 構造物ツールで単一セルの場合は直接配置
-                if (tool === 'structure' && wasSingleCell) {
-                    const key = Array.from(selectedCells)[0];
-                    const [r, c] = key.split('-').map(Number);
-                    selectedCells.clear();
-                    renderGrid();
-                    handleStructureClick(r, c, key);
-                    return;
-                }
                 
                 updatePropertyPanel();
                 return;
@@ -1433,7 +1517,7 @@
             
             // 範囲選択の場合
             if (pendingRangeSelection) {
-                const { minRow, maxRow, minCol, maxCol, structureType } = pendingRangeSelection;
+                const { minRow, maxRow, minCol, maxCol, objectType } = pendingRangeSelection;
                 const mergeRows = maxRow - minRow + 1;
                 const mergeCols = maxCol - minCol + 1;
                 
@@ -1448,7 +1532,7 @@
                 }
                 
                 // 結合された構造物を追加（左上のセルに配置）
-                if (structureType === 'label') {
+                if (objectType === 'label') {
                     layoutData.cells.push({
                         row: minRow,
                         col: minCol,
@@ -1462,7 +1546,7 @@
                         row: minRow,
                         col: minCol,
                         type: 'structure',
-                        subtype: structureType,
+                        subtype: objectType,
                         label: text || '',
                         mergeRows,
                         mergeCols,
@@ -1478,8 +1562,8 @@
                 return;
             }
             
-            // 単一セルの場合
-            if (!text) {
+            // 単一セルの場合（ラベルタイプの時だけテキスト必須）
+            if (selectedObjectType === 'label' && !text) {
                 alert('ラベルを入力してください');
                 return;
             }
@@ -1506,21 +1590,42 @@
         }
         
         function applyGridSettings() {
-            const rows = parseInt(document.getElementById('gridRowsInput').value);
-            const cols = parseInt(document.getElementById('gridColsInput').value);
+            const newRows = parseInt(document.getElementById('gridRowsInput').value);
+            const newCols = parseInt(document.getElementById('gridColsInput').value);
+            const rowExpand = document.querySelector('input[name="rowExpand"]:checked').value;
+            const colExpand = document.querySelector('input[name="colExpand"]:checked').value;
             
-            if (!rows || !cols || rows < 1 || cols < 1) {
+            if (!newRows || !newCols || newRows < 1 || newCols < 1) {
                 alert('有効な値を入力してください');
                 return;
             }
             
             saveState();
-            layoutData.grid.rows = rows;
-            layoutData.grid.cols = cols;
             
-            // 範囲外のセルを削除
+            const oldRows = layoutData.grid.rows;
+            const oldCols = layoutData.grid.cols;
+            const rowDiff = newRows - oldRows;
+            const colDiff = newCols - oldCols;
+            
+            // 上または左から拡張/縮小する場合、既存のセルをシフト
+            if (rowExpand === 'top' && rowDiff !== 0) {
+                layoutData.cells.forEach(cell => {
+                    cell.row += rowDiff;
+                });
+            }
+            
+            if (colExpand === 'left' && colDiff !== 0) {
+                layoutData.cells.forEach(cell => {
+                    cell.col += colDiff;
+                });
+            }
+            
+            layoutData.grid.rows = newRows;
+            layoutData.grid.cols = newCols;
+            
+            // 範囲外のセルを削除（シフト後）
             layoutData.cells = layoutData.cells.filter(c => 
-                c.row < rows && c.col < cols
+                c.row >= 0 && c.row < newRows && c.col >= 0 && c.col < newCols
             );
             
             markDirty();
@@ -1577,13 +1682,13 @@
                         <span class="property-label">セル数</span>
                         <span class="property-value">${selectedCells.size}セル</span>
                     </div>
-                    <button class="property-btn" id="placeStructureBtn" style="background-color: var(--accent-blue); border-color: var(--accent-blue); color: white; margin-bottom: 8px;">
-                        構造物を配置
+                    <button class="property-btn" id="placeObjectBtn" style="background-color: var(--accent-blue); border-color: var(--accent-blue); color: white; margin-bottom: 8px;">
+                        オブジェクトを配置
                     </button>
                     <button class="property-btn danger" id="deleteSelectedBtn">選択を削除</button>
                 `;
                 document.getElementById('deleteSelectedBtn')?.addEventListener('click', deleteSelected);
-                document.getElementById('placeStructureBtn')?.addEventListener('click', placeStructureInRange);
+                document.getElementById('placeObjectBtn')?.addEventListener('click', placeObjectInRange);
             }
         }
         
@@ -1606,11 +1711,21 @@
                 html += `
                     <div class="property-row">
                         <span class="property-label">タイプ</span>
-                        <span class="property-value">${cellData.subtype}</span>
+                        <span class="property-value">${getObjectTypeName(cellData.subtype)}</span>
                     </div>
                     <div class="property-row">
                         <label class="property-label">ラベル</label>
                         <input type="text" id="propLabel" class="property-input" value="${cellData.label || ''}">
+                    </div>
+                    <div class="property-row">
+                        <label class="property-label">サイズ</label>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <input type="number" id="propMergeRows" class="property-input" style="width: 50px;" value="${cellData.mergeRows || 1}" min="1">
+                            <span>行</span>
+                            <span style="margin: 0 4px;">×</span>
+                            <input type="number" id="propMergeCols" class="property-input" style="width: 50px;" value="${cellData.mergeCols || 1}" min="1">
+                            <span>列</span>
+                        </div>
                     </div>
                 `;
             } else if (cellData.type === 'label') {
@@ -1618,6 +1733,16 @@
                     <div class="property-row">
                         <label class="property-label">テキスト</label>
                         <input type="text" id="propText" class="property-input" value="${cellData.text || ''}">
+                    </div>
+                    <div class="property-row">
+                        <label class="property-label">サイズ</label>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <input type="number" id="propMergeRows" class="property-input" style="width: 50px;" value="${cellData.mergeRows || 1}" min="1">
+                            <span>行</span>
+                            <span style="margin: 0 4px;">×</span>
+                            <input type="number" id="propMergeCols" class="property-input" style="width: 50px;" value="${cellData.mergeCols || 1}" min="1">
+                            <span>列</span>
+                        </div>
                     </div>
                 `;
             }
@@ -1661,6 +1786,78 @@
                 markDirty();
                 renderGrid();
             });
+            
+            // 構造物サイズ変更
+            document.getElementById('propMergeRows')?.addEventListener('change', (e) => {
+                const newRows = parseInt(e.target.value) || 1;
+                if (newRows < 1) return;
+                
+                // 新しいサイズで既存の台や構造物と重複しないかチェック
+                const row = cellData.row;
+                const col = cellData.col;
+                const newMergeCols = cellData.mergeCols || 1;
+                
+                if (checkOverlap(row, col, newRows, newMergeCols, cellData)) {
+                    alert('他のオブジェクトと重複します');
+                    e.target.value = cellData.mergeRows || 1;
+                    return;
+                }
+                
+                saveState();
+                cellData.mergeRows = newRows;
+                if (cellData.mergeRows === 1 && (cellData.mergeCols || 1) === 1) {
+                    delete cellData.mergeRows;
+                    delete cellData.mergeCols;
+                }
+                markDirty();
+                renderGrid();
+                updatePropertyPanel();
+            });
+            
+            document.getElementById('propMergeCols')?.addEventListener('change', (e) => {
+                const newCols = parseInt(e.target.value) || 1;
+                if (newCols < 1) return;
+                
+                const row = cellData.row;
+                const col = cellData.col;
+                const newMergeRows = cellData.mergeRows || 1;
+                
+                if (checkOverlap(row, col, newMergeRows, newCols, cellData)) {
+                    alert('他のオブジェクトと重複します');
+                    e.target.value = cellData.mergeCols || 1;
+                    return;
+                }
+                
+                saveState();
+                cellData.mergeCols = newCols;
+                if ((cellData.mergeRows || 1) === 1 && cellData.mergeCols === 1) {
+                    delete cellData.mergeRows;
+                    delete cellData.mergeCols;
+                }
+                markDirty();
+                renderGrid();
+                updatePropertyPanel();
+            });
+        }
+        
+        // 重複チェック（自身を除く）
+        function checkOverlap(row, col, mergeRows, mergeCols, excludeCell) {
+            for (let r = row; r < row + mergeRows; r++) {
+                for (let c = col; c < col + mergeCols; c++) {
+                    const existing = layoutData.cells.find(cell => {
+                        if (cell === excludeCell) return false;
+                        
+                        const cellRows = cell.mergeRows || 1;
+                        const cellCols = cell.mergeCols || 1;
+                        
+                        return r >= cell.row && r < cell.row + cellRows &&
+                               c >= cell.col && c < cell.col + cellCols;
+                    });
+                    
+                    if (existing) return true;
+                }
+            }
+            return false;
         }
         
         function deleteSelected() {
@@ -1768,21 +1965,6 @@
                         selectedCells.clear();
                         renderGrid();
                         updatePropertyPanel();
-                        break;
-                    case 'v':
-                        selectTool('select');
-                        break;
-                    case 'm':
-                        selectTool('machine');
-                        break;
-                    case 's':
-                        selectTool('structure');
-                        break;
-                    case 'w':
-                        selectTool('wall');
-                        break;
-                    case 'e':
-                        selectTool('eraser');
                         break;
                 }
             }
