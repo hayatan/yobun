@@ -19,12 +19,12 @@ help:
 	@echo "【サーバー起動】"
 	@echo "  make build               # Dockerイメージビルド"
 	@echo "  make run-docker          # 管理画面として起動（書き込み可）"
-	@echo "  make run-docker-readonly # 読み取り専用モードで起動（Web公開用）"
+	@echo "  make run-docker-readonly # 読み取り専用モードで起動（Cloud Run Service互換）"
 	@echo "  make shell               # Docker内でシェル起動"
 	@echo ""
-	@echo "【Jobテスト】"
-	@echo "  make run-job-priority # 優先店舗のみスクレイピング（Cloud Run Jobs互換）"
-	@echo "  make run-job-normal   # 全店舗の未取得分をスクレイピング（Cloud Run Jobs互換）"
+	@echo "【ローカルスクレイピング】"
+	@echo "  make run-job-priority # 優先店舗のみスクレイピング"
+	@echo "  make run-job-normal   # 全店舗の未取得分をスクレイピング"
 	@echo "  make run-job-all      # 全店舗強制スクレイピング（テスト用）"
 	@echo ""
 	@echo "【その他】"
@@ -56,15 +56,15 @@ shell:
 	docker run -it --memory $(MEMORY_LIMIT) --env-file .env -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials -w /app $(IMAGE_NAME) /bin/sh
 
 # ============================================================================
-# Job実行（Cloud Run Jobs互換）
+# ローカルスクレイピング実行
 # ============================================================================
 
-# 優先店舗のみ（7:00-8:00の集中リトライ用）
+# 優先店舗のみ
 run-job-priority: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
 	docker run --memory $(MEMORY_LIMIT) --env-file .env -e JOB_MODE=priority -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials $(IMAGE_NAME) node job.js
 
-# 全店舗の未取得分（8:30, 10:00, 12:30の通常実行用）
+# 全店舗の未取得分
 run-job-normal: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
 	docker run --memory $(MEMORY_LIMIT) --env-file .env -e JOB_MODE=normal -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials $(IMAGE_NAME) node job.js

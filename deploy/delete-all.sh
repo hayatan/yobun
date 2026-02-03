@@ -7,9 +7,13 @@ set -e
 
 PROJECT_ID="yobun-450512"
 REGION="us-central1"
+SERVICE_NAME="yobun-viewer"
 
 echo "=================================================="
-echo "⚠️  警告: すべてのCloud Run JobsとSchedulerを削除します"
+echo "警告: Cloud Run Service を削除します"
+echo "=================================================="
+echo "  サービス名: ${SERVICE_NAME}"
+echo "  リージョン: ${REGION}"
 echo "=================================================="
 read -p "続行しますか？ (y/N): " confirm
 if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
@@ -18,53 +22,12 @@ if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
 fi
 
 echo ""
-echo "1. Cloud Schedulerジョブを削除中..."
+echo "Cloud Run Service を削除中..."
 
-# 優先店舗スケジュール
-for minute in 0 10 20 30 40 50; do
-    gcloud scheduler jobs delete yobun-priority-07${minute} \
-      --project ${PROJECT_ID} \
-      --location ${REGION} \
-      --quiet 2>/dev/null || echo "  - yobun-priority-07${minute} (存在しません)"
-done
-
-gcloud scheduler jobs delete yobun-priority-0800 \
-  --project ${PROJECT_ID} \
-  --location ${REGION} \
-  --quiet 2>/dev/null || echo "  - yobun-priority-0800 (存在しません)"
-
-# 通常店舗スケジュール
-gcloud scheduler jobs delete yobun-normal-0830 \
-  --project ${PROJECT_ID} \
-  --location ${REGION} \
-  --quiet 2>/dev/null || echo "  - yobun-normal-0830 (存在しません)"
-
-gcloud scheduler jobs delete yobun-normal-1000 \
-  --project ${PROJECT_ID} \
-  --location ${REGION} \
-  --quiet 2>/dev/null || echo "  - yobun-normal-1000 (存在しません)"
-
-gcloud scheduler jobs delete yobun-normal-1230 \
-  --project ${PROJECT_ID} \
-  --location ${REGION} \
-  --quiet 2>/dev/null || echo "  - yobun-normal-1230 (存在しません)"
-
-echo "✓ Cloud Schedulerジョブを削除しました"
-
-echo ""
-echo "2. Cloud Run Jobsを削除中..."
-
-gcloud run jobs delete yobun-priority-job \
+gcloud run services delete ${SERVICE_NAME} \
   --project ${PROJECT_ID} \
   --region ${REGION} \
-  --quiet 2>/dev/null || echo "  - yobun-priority-job (存在しません)"
-
-gcloud run jobs delete yobun-normal-job \
-  --project ${PROJECT_ID} \
-  --region ${REGION} \
-  --quiet 2>/dev/null || echo "  - yobun-normal-job (存在しません)"
-
-echo "✓ Cloud Run Jobsを削除しました"
+  --quiet 2>/dev/null && echo "✓ ${SERVICE_NAME} を削除しました" || echo "  - ${SERVICE_NAME} (存在しません)"
 
 echo ""
 echo "=================================================="

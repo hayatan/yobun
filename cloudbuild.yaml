@@ -20,6 +20,23 @@ steps:
       - 'push'
       - 'gcr.io/$PROJECT_ID/yobun-scraper:$SHORT_SHA'
 
+  # Cloud Run Service にデプロイ（読み取り専用モード）
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'yobun-viewer'
+      - '--image=gcr.io/$PROJECT_ID/yobun-scraper:latest'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=READONLY_MODE=true,NODE_ENV=production,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
+      - '--memory=2Gi'
+      - '--cpu=1'
+      - '--timeout=60'
+      - '--service-account=slot-data-scraper@$PROJECT_ID.iam.gserviceaccount.com'
+
 images:
   - 'gcr.io/$PROJECT_ID/yobun-scraper:latest'
   - 'gcr.io/$PROJECT_ID/yobun-scraper:$SHORT_SHA'

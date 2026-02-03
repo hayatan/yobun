@@ -13,17 +13,32 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 ## アーキテクチャ
 
 ```
+ローカル (Docker)
 スロレポ → Puppeteer → SQLite → BigQuery → データマート
                          ↓
                    Litestream → GCS（バックアップ）
+                                    ↓
+                              Cloud Run Service
+                              (READONLY_MODE=true)
+                                    ↓
+                              ユーザー（ヒートマップ閲覧）
 ```
 
-**データフロー**:
+**運用モード**:
+- **ローカル（Docker）**: スクレイピング・データ収集（書き込み可能）
+- **Cloud Run Service**: 読み取り専用でヒートマップを公開（書き込み不可）
+
+**データフロー（ローカル）**:
 1. スケジューラーがジョブを実行
 2. Puppeteer + Stealthでスクレイピング
 3. SQLiteに保存（プライマリ）
 4. GCS経由Load JobでBigQueryに同期
 5. データマート更新（統計情報生成）
+
+**デプロイフロー**:
+1. GitHub mainブランチにpush
+2. Cloud Buildが自動実行（イメージビルド・プッシュ・デプロイ）
+3. Cloud Run Serviceが更新される
 
 ## 実装方針
 
