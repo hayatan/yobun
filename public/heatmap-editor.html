@@ -273,7 +273,6 @@
         .editor-cell.structure {
             background-color: #3d4450;
             color: #a0aab8;
-            border: 1px dashed #556070;
         }
         
         .editor-cell.structure.escalator { background-color: #2a4a5a; }
@@ -445,9 +444,6 @@
             word-break: break-all;
         }
         
-        .editor-cell.merged-parent.structure {
-            border: 2px dashed #556070;
-        }
     </style>
 </head>
 <body>
@@ -1142,29 +1138,22 @@
         
         function handleCellClick(e, row, col) {
             const key = `${row}-${col}`;
-            const existingCell = layoutData.cells.find(c => c.row === row && c.col === col);
             
-            // 既存のセルがある場合は選択（編集用）
-            if (existingCell) {
-                if (e.shiftKey) {
-                    // Shift+クリックで複数選択
-                    if (selectedCells.has(key)) {
-                        selectedCells.delete(key);
-                    } else {
-                        selectedCells.add(key);
-                    }
+            // クリックで選択（空でも既存でも）
+            if (e.shiftKey) {
+                // Shift+クリックで複数選択
+                if (selectedCells.has(key)) {
+                    selectedCells.delete(key);
                 } else {
-                    // 単一選択
-                    selectedCells.clear();
                     selectedCells.add(key);
                 }
-                renderGrid();
-                updatePropertyPanel();
-                return;
+            } else {
+                // 単一選択
+                selectedCells.clear();
+                selectedCells.add(key);
             }
-            
-            // 空のセルの場合は配置
-            placeObjectAtCell(row, col);
+            renderGrid();
+            updatePropertyPanel();
         }
         
         // 選択したオブジェクトタイプをセルに配置
@@ -1655,13 +1644,18 @@
                     content.innerHTML = renderCellProperties(cellData, row, col);
                     setupPropertyEvents(cellData);
                 } else {
+                    // 空のセル - オブジェクト配置ボタンを表示
                     content.innerHTML = `
                         <div class="property-row">
                             <span class="property-label">位置</span>
                             <span class="property-value">行 ${row}, 列 ${col}</span>
                         </div>
-                        <div style="color: var(--text-secondary); font-size: 12px;">空のセル</div>
+                        <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">空のセル</div>
+                        <button class="property-btn" id="placeObjectBtn" style="background-color: var(--accent-blue); border-color: var(--accent-blue); color: white;">
+                            オブジェクトを配置
+                        </button>
                     `;
+                    document.getElementById('placeObjectBtn')?.addEventListener('click', placeObjectInRange);
                 }
             } else {
                 // 範囲選択時
