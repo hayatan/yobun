@@ -847,7 +847,49 @@
             const TAP_THRESHOLD = 10; // タップ判定の移動許容範囲（px）
             const TAP_DURATION = 300; // タップ判定の最大時間（ms）
             
+            // 慣性スクロール用
+            let velocityX = 0;
+            let velocityY = 0;
+            let lastTouchX = 0;
+            let lastTouchY = 0;
+            let lastTouchTime = 0;
+            let inertiaAnimationId = null;
+            const FRICTION = 0.96; // 摩擦係数（小さいほど早く止まる）
+            const MIN_VELOCITY = 0.5; // 停止する最小速度
+            
+            function stopInertia() {
+                if (inertiaAnimationId) {
+                    cancelAnimationFrame(inertiaAnimationId);
+                    inertiaAnimationId = null;
+                }
+                velocityX = 0;
+                velocityY = 0;
+            }
+            
+            function applyInertia() {
+                // 速度が十分小さくなったら停止
+                if (Math.abs(velocityX) < MIN_VELOCITY && Math.abs(velocityY) < MIN_VELOCITY) {
+                    stopInertia();
+                    return;
+                }
+                
+                // 摩擦を適用
+                velocityX *= FRICTION;
+                velocityY *= FRICTION;
+                
+                // 位置を更新
+                panX += velocityX;
+                panY += velocityY;
+                applyZoomPan();
+                
+                // 次のフレームをリクエスト
+                inertiaAnimationId = requestAnimationFrame(applyInertia);
+            }
+            
             container.addEventListener('touchstart', (e) => {
+                // 慣性アニメーションを停止
+                stopInertia();
+                
                 if (e.touches.length === 1) {
                     // 1本指: パン準備（タップかもしれない）
                     e.preventDefault();
@@ -860,6 +902,11 @@
                     panStartY = e.touches[0].clientY;
                     lastPanX = panX;
                     lastPanY = panY;
+                    
+                    // 速度追跡用
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                    lastTouchTime = Date.now();
                 } else if (e.touches.length === 2) {
                     // 2本指: ピンチズーム
                     e.preventDefault();
@@ -888,13 +935,26 @@
                 if (e.touches.length === 1 && isTouchPanning) {
                     // 1本指パン
                     e.preventDefault();
-                    const deltaX = e.touches[0].clientX - panStartX;
-                    const deltaY = e.touches[0].clientY - panStartY;
+                    const currentX = e.touches[0].clientX;
+                    const currentY = e.touches[0].clientY;
+                    const deltaX = currentX - panStartX;
+                    const deltaY = currentY - panStartY;
                     
                     // 移動距離が閾値を超えたらドラッグとみなす
                     if (Math.abs(deltaX) > TAP_THRESHOLD || Math.abs(deltaY) > TAP_THRESHOLD) {
                         touchMoved = true;
                     }
+                    
+                    // 速度を計算（慣性用）
+                    const now = Date.now();
+                    const dt = now - lastTouchTime;
+                    if (dt > 0) {
+                        velocityX = (currentX - lastTouchX) / dt * 16; // 16ms = 60fps基準
+                        velocityY = (currentY - lastTouchY) / dt * 16;
+                    }
+                    lastTouchX = currentX;
+                    lastTouchY = currentY;
+                    lastTouchTime = now;
                     
                     panX = lastPanX + deltaX;
                     panY = lastPanY + deltaY;
@@ -933,6 +993,13 @@
                     const cell = touchStartTarget?.closest('.cell');
                     if (cell) {
                         cell.click();
+                    }
+                    velocityX = 0;
+                    velocityY = 0;
+                } else if (isTouchPanning && touchMoved) {
+                    // フリック終了 → 慣性スクロール開始
+                    if (Math.abs(velocityX) > MIN_VELOCITY || Math.abs(velocityY) > MIN_VELOCITY) {
+                        inertiaAnimationId = requestAnimationFrame(applyInertia);
                     }
                 }
                 
