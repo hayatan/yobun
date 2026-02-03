@@ -364,51 +364,6 @@
             }
         }
         
-        .iframe-container {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            min-height: 500px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .iframe-header {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .iframe-content {
-            flex: 1;
-            position: relative;
-        }
-        
-        .iframe-content iframe {
-            width: 100%;
-            height: 100%;
-            min-height: 450px;
-            border: none;
-        }
-        
-        .iframe-fallback {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            min-height: 450px;
-            color: var(--text-secondary);
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .iframe-fallback p {
-            margin-bottom: 16px;
-        }
-        
         /* プレビューテーブル */
         .preview-table {
             max-height: 300px;
@@ -504,9 +459,52 @@
         .hidden {
             display: none !important;
         }
+        
+        /* ローディングオーバーレイ */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(13, 17, 23, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-overlay.hidden {
+            display: none !important;
+        }
+        
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            margin-top: 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
+    <!-- ローディングオーバーレイ -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">処理中...</div>
+    </div>
     <div class="container">
         <header>
             <h1>失敗管理・手動補正</h1>
@@ -584,6 +582,7 @@
                 <!-- 一括操作 -->
                 <div id="failuresBulkActions" class="bulk-actions hidden">
                     <span class="selected-count"><span id="failuresSelectedCount">0</span>件選択中</span>
+                    <button id="ignoreSelectedFailuresBtn" class="btn-secondary">選択を無視</button>
                     <button id="deleteSelectedFailuresBtn" class="btn-danger">選択を削除</button>
                 </div>
             </div>
@@ -624,7 +623,9 @@
                     <div><span>ステータス:</span> <strong id="selectedStatus">-</strong></div>
                 </div>
                 <div class="selected-actions" id="selectedActions">
-                    <button id="markResolvedBtn" class="btn-success">解決済みにする</button>
+                    <button id="openNewTabBtn" class="btn-secondary">新しいタブで開く</button>
+                    <button id="copyUrlBtn" class="btn-secondary">URLをコピー</button>
+                    <span style="flex: 1;"></span>
                     <button id="markIgnoredBtn" class="btn-secondary">無視する</button>
                     <button id="deleteFailureBtn" class="btn-danger">削除</button>
                 </div>
@@ -632,80 +633,69 @@
             
             <!-- 補正入力レイアウト（2カラム） -->
             <div class="correction-layout">
-                <!-- 左: スロレポ参照（iframe） -->
-                <div class="iframe-container">
-                    <div class="iframe-header">
-                        <span>スロレポ参照（オプション）</span>
-                        <button id="openNewTabBtn" class="btn-secondary">新しいタブで開く</button>
-                    </div>
-                    <div class="iframe-content" id="iframeContent">
-                        <div class="iframe-fallback" id="iframeFallback">
-                            <p>失敗レコードを選択してください</p>
-                            <p style="font-size: 12px;">または上のボタンで新しいタブで開いてください</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 右: データ入力 -->
-                <div>
-                    <div class="section">
-                        <h2>データ入力</h2>
-                        
-                        <!-- 機種名入力 -->
-                        <div class="controls">
-                            <div class="control-group" style="flex: 1;">
-                                <label>機種名 *</label>
-                                <input type="text" id="machineName" placeholder="例: バジリスク絆2" style="width: 100%;">
-                            </div>
-                        </div>
-                        
-                        <!-- クリップボード貼り付けエリア -->
-                        <div class="control-group" style="margin-bottom: 16px;">
-                            <label>スロレポの一覧テーブルをコピーして貼り付け</label>
-                            <textarea id="pasteArea" placeholder="台番&#09;差枚&#09;G数&#09;BB&#09;RB&#09;合成
-1223&#09;-4,986&#09;6,566&#09;23&#09;0&#09;1/285
-1225&#09;-3,877&#09;6,450&#09;37&#09;0&#09;1/174
-..."></textarea>
-                        </div>
-                        
-                        <div class="controls">
-                            <button id="parseBtn">パース</button>
-                            <button id="clearBtn" class="btn-secondary">クリア</button>
+                <!-- 左: データ入力 -->
+                <div class="section">
+                    <h2>データ入力</h2>
+                    
+                    <!-- 機種名入力 -->
+                    <div class="controls">
+                        <div class="control-group" style="flex: 1;">
+                            <label>機種名 *</label>
+                            <input type="text" id="machineName" placeholder="例: バジリスク絆2" style="width: 100%;">
                         </div>
                     </div>
                     
-                    <!-- プレビュー -->
-                    <div class="section">
-                        <h2>プレビュー (<span id="previewCount">0</span>件)</h2>
-                        <div class="preview-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>台番</th>
-                                        <th>差枚</th>
-                                        <th>G数</th>
-                                        <th>BB</th>
-                                        <th>RB</th>
-                                        <th>合成</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="previewTableBody">
-                                    <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">データを貼り付けてパースしてください</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="control-group" style="margin-top: 16px;">
-                            <label>メモ（任意）</label>
-                            <input type="text" id="correctionNotes" placeholder="補正理由など" style="width: 100%;">
-                        </div>
-                        
-                        <div class="action-buttons">
-                            <button id="registerBtn" class="btn-success" disabled>登録のみ</button>
-                            <button id="registerNextBtn" class="btn-success" disabled>登録して次へ</button>
-                            <button id="resolveNextBtn" class="btn-primary" disabled>解決して次へ</button>
-                            <button id="skipNextBtn" class="btn-secondary" disabled>スキップ</button>
-                        </div>
+                    <!-- クリップボード貼り付けエリア -->
+                    <div class="control-group" style="margin-bottom: 16px;">
+                        <label>スロレポの一覧テーブルをコピーして貼り付け（自動パース）</label>
+                        <textarea id="pasteArea" style="min-height: 200px;" placeholder="台番&#09;差枚&#09;G数&#09;BB&#09;RB&#09;合成
+1223&#09;-4,986&#09;6,566&#09;23&#09;0&#09;1/285
+1225&#09;-3,877&#09;6,450&#09;37&#09;0&#09;1/174
+..."></textarea>
+                    </div>
+                    
+                    <div class="controls">
+                        <button id="parseBtn">パース</button>
+                        <button id="clearBtn" class="btn-secondary">クリア</button>
+                    </div>
+                </div>
+                
+                <!-- 右: プレビュー -->
+                <div class="section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h2 style="margin-bottom: 0;">プレビュー (<span id="previewCount">0</span>件)</h2>
+                    </div>
+                    
+                    <!-- メモとアクションボタン（上部固定） -->
+                    <div class="control-group" style="margin-bottom: 12px;">
+                        <label>メモ（任意）</label>
+                        <input type="text" id="correctionNotes" placeholder="補正理由など" style="width: 100%;">
+                    </div>
+                    
+                    <div class="action-buttons" style="margin-top: 0; margin-bottom: 16px; justify-content: flex-start;">
+                        <button id="registerNextBtn" class="btn-success" disabled>登録して次へ</button>
+                        <span style="flex: 1;"></span>
+                        <button id="registerBtn" class="btn-secondary" disabled>登録のみ</button>
+                        <button id="skipNextBtn" class="btn-secondary" disabled>スキップ</button>
+                    </div>
+                    
+                    <!-- プレビューテーブル -->
+                    <div class="preview-table" style="max-height: 400px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>台番</th>
+                                    <th>差枚</th>
+                                    <th>G数</th>
+                                    <th>BB</th>
+                                    <th>RB</th>
+                                    <th>合成</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody">
+                                <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">データを貼り付けると自動でパースされます</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -782,6 +772,9 @@
         let selectedFailureIds = new Set();
         let selectedHistoryItems = new Set(); // `${date}|${hole}|${machine}` 形式
         
+        // 自動パース用debounceタイマー
+        let parseDebounceTimer = null;
+        
         // ============================================
         // 初期化
         // ============================================
@@ -843,19 +836,27 @@
             document.getElementById('clearBtn').addEventListener('click', clearForm);
             document.getElementById('registerBtn').addEventListener('click', () => registerCorrection(false));
             document.getElementById('registerNextBtn').addEventListener('click', () => registerCorrection(true));
-            document.getElementById('resolveNextBtn').addEventListener('click', resolveAndNext);
             document.getElementById('skipNextBtn').addEventListener('click', skipToNext);
             document.getElementById('openNewTabBtn').addEventListener('click', openSlorepoInNewTab);
+            document.getElementById('copyUrlBtn').addEventListener('click', copySlorepoUrl);
+            
+            // 自動パース（1秒debounce）
+            document.getElementById('pasteArea').addEventListener('input', () => {
+                clearTimeout(parseDebounceTimer);
+                parseDebounceTimer = setTimeout(() => {
+                    parseDataAuto();
+                }, 1000);
+            });
             
             // 補正履歴
             document.getElementById('searchHistoryBtn').addEventListener('click', loadHistory);
             
-            // 一括削除
+            // 一括操作
+            document.getElementById('ignoreSelectedFailuresBtn').addEventListener('click', ignoreSelectedFailures);
             document.getElementById('deleteSelectedFailuresBtn').addEventListener('click', deleteSelectedFailures);
             document.getElementById('deleteSelectedHistoryBtn').addEventListener('click', deleteSelectedHistory);
             
             // 選択中レコードのアクション
-            document.getElementById('markResolvedBtn').addEventListener('click', () => markSelectedAs('resolved'));
             document.getElementById('markIgnoredBtn').addEventListener('click', () => markSelectedAs('ignored'));
             document.getElementById('deleteFailureBtn').addEventListener('click', deleteSelectedFailure);
         }
@@ -1218,7 +1219,6 @@
             
             // ステータスに応じてボタンを表示/非表示
             const isPending = selectedFailure.status === 'pending';
-            document.getElementById('markResolvedBtn').style.display = isPending ? '' : 'none';
             document.getElementById('markIgnoredBtn').style.display = isPending ? '' : 'none';
             
             // 機種名を自動入力
@@ -1229,8 +1229,9 @@
             // スロレポURLを設定
             slorepoUrl = selectedFailure.machine_url;
             
-            // iframeを読み込み
-            loadIframe();
+            // URLボタンの表示/非表示
+            document.getElementById('openNewTabBtn').style.display = slorepoUrl ? '' : 'none';
+            document.getElementById('copyUrlBtn').style.display = slorepoUrl ? '' : 'none';
             
             // アクションボタンの状態更新
             updateActionButtonsState();
@@ -1243,6 +1244,7 @@
             const statusLabel = status === 'resolved' ? '解決済み' : '無視';
             if (!confirm(`このレコードを「${statusLabel}」にしますか？`)) return;
             
+            showLoading('ステータスを更新中...');
             try {
                 const response = await fetch(`/api/failures/${selectedFailure.id}`, {
                     method: 'PATCH',
@@ -1260,7 +1262,6 @@
                     // 選択中レコードを更新
                     selectedFailure.status = status;
                     document.getElementById('selectedStatus').textContent = getStatusLabel(status);
-                    document.getElementById('markResolvedBtn').style.display = 'none';
                     document.getElementById('markIgnoredBtn').style.display = 'none';
                     // 一覧を更新
                     loadStats();
@@ -1271,6 +1272,8 @@
             } catch (error) {
                 console.error('ステータス更新エラー:', error);
                 showMessage('更新中にエラーが発生しました', 'error');
+            } finally {
+                hideLoading();
             }
         }
         
@@ -1280,6 +1283,7 @@
             
             if (!confirm('この失敗レコードを削除しますか？')) return;
             
+            showLoading('削除中...');
             try {
                 const response = await fetch(`/api/failures/${selectedFailure.id}`, {
                     method: 'DELETE',
@@ -1301,35 +1305,9 @@
             } catch (error) {
                 console.error('削除エラー:', error);
                 showMessage('削除中にエラーが発生しました', 'error');
+            } finally {
+                hideLoading();
             }
-        }
-        
-        function loadIframe() {
-            // スロレポはiframe埋め込みをブロックしているため、
-            // 常に「新しいタブで開く」UIを表示
-            const fallback = document.getElementById('iframeFallback');
-            fallback.classList.remove('hidden');
-            
-            if (!slorepoUrl) {
-                fallback.innerHTML = `
-                    <p>失敗レコードを選択してください</p>
-                    <p style="font-size: 12px;">選択後、下のボタンでスロレポを開けます</p>
-                `;
-                return;
-            }
-            
-            fallback.innerHTML = `
-                <p style="margin-bottom: 8px; font-weight: bold;">スロレポでデータを確認</p>
-                <p style="font-size: 12px; margin-bottom: 16px; color: var(--text-secondary);">
-                    スロレポのページからデータをコピーして、<br>右側の入力エリアに貼り付けてください
-                </p>
-                <button onclick="openSlorepoInNewTab()" class="btn-primary" style="padding: 12px 24px; font-size: 14px;">
-                    スロレポを新しいタブで開く
-                </button>
-                <p style="font-size: 11px; margin-top: 12px; color: var(--text-secondary);">
-                    URL: ${slorepoUrl}
-                </p>
-            `;
         }
         
         function openSlorepoInNewTab() {
@@ -1340,6 +1318,22 @@
             }
         }
         
+        async function copySlorepoUrl() {
+            if (!slorepoUrl) {
+                showMessage('URLが設定されていません', 'error');
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(slorepoUrl);
+                showMessage('URLをクリップボードにコピーしました', 'success');
+            } catch (error) {
+                console.error('コピーエラー:', error);
+                showMessage('コピーに失敗しました', 'error');
+            }
+        }
+        
+        // 手動パース（エラーメッセージあり）
         function parseData() {
             const text = document.getElementById('pasteArea').value;
             
@@ -1372,6 +1366,36 @@
             
             renderPreviewTable();
             showMessage(`${previewData.length}件のデータをパースしました`, 'success');
+        }
+        
+        // 自動パース（エラーメッセージなし、静かに動作）
+        function parseDataAuto() {
+            const text = document.getElementById('pasteArea').value;
+            
+            if (!text.trim()) {
+                previewData = [];
+                renderPreviewTable();
+                return;
+            }
+            
+            const lines = text.trim().split('\n');
+            previewData = lines
+                .map(line => line.split('\t'))
+                .filter(cells => {
+                    const firstCell = cells[0]?.trim();
+                    return firstCell && firstCell !== '台番' && firstCell !== '平均';
+                })
+                .map(cells => ({
+                    machineNumber: parseInt(cells[0]?.trim() || '0', 10),
+                    diff: parseInt((cells[1] || '0').replace(/[,+]/g, ''), 10),
+                    game: parseInt((cells[2] || '0').replace(/,/g, ''), 10),
+                    big: parseInt(cells[3]?.trim() || '0', 10),
+                    reg: parseInt(cells[4]?.trim() || '0', 10),
+                    combinedRate: cells[5]?.trim() || '',
+                }))
+                .filter(row => !isNaN(row.machineNumber) && row.machineNumber > 0);
+            
+            renderPreviewTable();
         }
         
         function clearForm() {
@@ -1418,8 +1442,7 @@
             document.getElementById('registerBtn').disabled = !hasSelection || !hasData;
             document.getElementById('registerNextBtn').disabled = !hasSelection || !hasData;
             
-            // 解決して次へ、スキップは選択があれば有効（未解決の場合のみ）
-            document.getElementById('resolveNextBtn').disabled = !hasSelection || !isPending;
+            // スキップは選択があれば有効
             document.getElementById('skipNextBtn').disabled = !hasSelection;
         }
         
@@ -1443,6 +1466,7 @@
             
             const notes = document.getElementById('correctionNotes').value.trim();
             
+            showLoading('補正データを登録中...');
             try {
                 const response = await fetch('/api/corrections', {
                     method: 'POST',
@@ -1484,42 +1508,8 @@
             } catch (error) {
                 console.error('登録エラー:', error);
                 showMessage('登録中にエラーが発生しました', 'error');
-            }
-        }
-        
-        // データなしで解決して次へ
-        async function resolveAndNext() {
-            if (!selectedFailure) return;
-            
-            // データ未入力の場合のみ確認
-            if (previewData.length === 0) {
-                if (!confirm('補正データなしで解決済みにしますか？')) return;
-            }
-            
-            try {
-                const response = await fetch(`/api/failures/${selectedFailure.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        status: 'resolved', 
-                        resolvedMethod: 'manual' 
-                    }),
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showMessage('解決済みにしました', 'success');
-                    selectedFailure.status = 'resolved';
-                    loadStats();
-                    await loadFailures();
-                    goToNextPendingFailure();
-                } else {
-                    showMessage(result.error || '更新に失敗しました', 'error');
-                }
-            } catch (error) {
-                console.error('更新エラー:', error);
-                showMessage('更新中にエラーが発生しました', 'error');
+            } finally {
+                hideLoading();
             }
         }
         
@@ -1531,6 +1521,7 @@
         async function ignoreFailure(id) {
             if (!confirm('この失敗レコードを無視しますか？')) return;
             
+            showLoading('ステータスを更新中...');
             try {
                 const response = await fetch(`/api/failures/${id}`, {
                     method: 'PATCH',
@@ -1550,12 +1541,15 @@
             } catch (error) {
                 console.error('更新エラー:', error);
                 showMessage('更新中にエラーが発生しました', 'error');
+            } finally {
+                hideLoading();
             }
         }
         
         async function deleteCorrections(date, hole, machine) {
             if (!confirm(`${date} / ${hole} / ${machine} の補正データを削除しますか？`)) return;
             
+            showLoading('補正データを削除中...');
             try {
                 const response = await fetch('/api/corrections/bulk', {
                     method: 'DELETE',
@@ -1574,6 +1568,53 @@
             } catch (error) {
                 console.error('削除エラー:', error);
                 showMessage('削除中にエラーが発生しました', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 失敗レコード一括無視
+        async function ignoreSelectedFailures() {
+            if (selectedFailureIds.size === 0) return;
+            
+            if (!confirm(`${selectedFailureIds.size}件の失敗レコードを無視しますか？`)) return;
+            
+            showLoading(`${selectedFailureIds.size}件を無視中...`);
+            let successCount = 0;
+            let errorCount = 0;
+            
+            try {
+                for (const id of selectedFailureIds) {
+                    try {
+                        const response = await fetch(`/api/failures/${id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'ignored' }),
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        errorCount++;
+                    }
+                }
+                
+                if (successCount > 0) {
+                    showMessage(`${successCount}件の失敗レコードを無視しました${errorCount > 0 ? `（${errorCount}件失敗）` : ''}`, errorCount > 0 ? 'warning' : 'success');
+                } else {
+                    showMessage('更新に失敗しました', 'error');
+                }
+                
+                selectedFailureIds.clear();
+                updateBulkActionsVisibility('failures');
+                loadStats();
+                loadFailures();
+            } finally {
+                hideLoading();
             }
         }
         
@@ -1583,6 +1624,7 @@
             
             if (!confirm(`${selectedFailureIds.size}件の失敗レコードを削除しますか？`)) return;
             
+            showLoading(`${selectedFailureIds.size}件を削除中...`);
             try {
                 const response = await fetch('/api/failures/bulk', {
                     method: 'DELETE',
@@ -1604,6 +1646,8 @@
             } catch (error) {
                 console.error('一括削除エラー:', error);
                 showMessage('削除中にエラーが発生しました', 'error');
+            } finally {
+                hideLoading();
             }
         }
         
@@ -1613,38 +1657,43 @@
             
             if (!confirm(`${selectedHistoryItems.size}件の補正データを削除しますか？`)) return;
             
+            showLoading(`${selectedHistoryItems.size}件を削除中...`);
             let successCount = 0;
             let errorCount = 0;
             
-            for (const key of selectedHistoryItems) {
-                const [date, hole, machine] = key.split('|');
-                try {
-                    const response = await fetch('/api/corrections/bulk', {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ date, hole, machine }),
-                    });
-                    
-                    const result = await response.json();
-                    if (result.success) {
-                        successCount++;
-                    } else {
+            try {
+                for (const key of selectedHistoryItems) {
+                    const [date, hole, machine] = key.split('|');
+                    try {
+                        const response = await fetch('/api/corrections/bulk', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ date, hole, machine }),
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                    } catch (error) {
                         errorCount++;
                     }
-                } catch (error) {
-                    errorCount++;
                 }
+                
+                if (successCount > 0) {
+                    showMessage(`${successCount}件の補正データを削除しました${errorCount > 0 ? `（${errorCount}件失敗）` : ''}`, errorCount > 0 ? 'warning' : 'success');
+                } else {
+                    showMessage('削除に失敗しました', 'error');
+                }
+                
+                selectedHistoryItems.clear();
+                updateBulkActionsVisibility('history');
+                loadHistory();
+            } finally {
+                hideLoading();
             }
-            
-            if (successCount > 0) {
-                showMessage(`${successCount}件の補正データを削除しました${errorCount > 0 ? `（${errorCount}件失敗）` : ''}`, errorCount > 0 ? 'warning' : 'success');
-            } else {
-                showMessage('削除に失敗しました', 'error');
-            }
-            
-            selectedHistoryItems.clear();
-            updateBulkActionsVisibility('history');
-            loadHistory();
         }
         
         // ============================================
@@ -1673,6 +1722,17 @@
             const container = document.getElementById('messageContainer');
             container.innerHTML = `<div class="message ${type}">${message}</div>`;
             setTimeout(() => { container.innerHTML = ''; }, 5000);
+        }
+        
+        // ローディングオーバーレイ表示
+        function showLoading(text = '処理中...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+        
+        // ローディングオーバーレイ非表示
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
         }
     </script>
 </body>
