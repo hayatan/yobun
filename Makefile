@@ -11,15 +11,16 @@ MEMORY_LIMIT=4g
 # ホストのユーザーID
 HOST_UID=$(shell id -u)
 
-.PHONY: help build run-docker shell clean run-job-priority run-job-normal run-job-all
+.PHONY: help build run-docker run-docker-readonly shell clean run-job-priority run-job-normal run-job-all
 
 help:
 	@echo "使えるコマンド一覧："
 	@echo ""
 	@echo "【サーバー起動】"
-	@echo "  make build            # Dockerイメージビルド"
-	@echo "  make run-docker       # Dockerでサーバー起動（Webフロントエンド）"
-	@echo "  make shell            # Docker内でシェル起動"
+	@echo "  make build               # Dockerイメージビルド"
+	@echo "  make run-docker          # 管理画面として起動（書き込み可）"
+	@echo "  make run-docker-readonly # 読み取り専用モードで起動（Web公開用）"
+	@echo "  make shell               # Docker内でシェル起動"
 	@echo ""
 	@echo "【Jobテスト】"
 	@echo "  make run-job-priority # 優先店舗のみスクレイピング（Cloud Run Jobs互換）"
@@ -40,9 +41,15 @@ build:
 # サーバー起動（Webフロントエンド）
 # ============================================================================
 
+# 管理画面として起動（書き込み可、スケジューラー有効）
 run-docker: $(ENV_PROD)
 	cp $(ENV_PROD) $(ENV)
 	docker run --memory $(MEMORY_LIMIT) --env-file .env -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials -p $(PORT):8080 $(IMAGE_NAME)
+
+# 読み取り専用モードで起動（Web公開用、書き込みAPIは403）
+run-docker-readonly: $(ENV_PROD)
+	cp $(ENV_PROD) $(ENV)
+	docker run --memory $(MEMORY_LIMIT) --env-file .env -e READONLY_MODE=true -v $(PWD)/data:/tmp -v $(PWD)/credentials:/app/credentials -p $(PORT):8080 $(IMAGE_NAME)
 
 # Dockerでシェル起動（デバッグ用）
 shell:

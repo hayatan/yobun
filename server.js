@@ -20,12 +20,22 @@ process.on('uncaughtException', (error) => {
     // 注意: 一部の致命的エラーではプロセス再起動が必要な場合あり
 });
 
+// グレースフルシャットダウン
+const gracefulShutdown = (signal) => {
+    console.log(`\n${signal} を受信しました。シャットダウンします...`);
+    process.exit(0);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 // DB初期化
 import bigquery from './src/db/bigquery/init.js';
 import db from './src/db/sqlite/init.js';
 
 // ユーティリティ
 import { getLockStatus, releaseLock } from './src/util/lock.js';
+import { readonlyMiddleware, isReadonlyMode } from './src/middleware/readonly.js';
 
 // ルーター
 import createScrapeRouter from './src/api/routes/scrape.js';
@@ -51,6 +61,9 @@ const app = express();
 
 // JSON パーサー
 app.use(express.json());
+
+// 読み取り専用モードのミドルウェア（書き込み操作をブロック）
+app.use(readonlyMiddleware);
 
 // アクセスログを出力するミドルウェア
 app.use((req, res, next) => {
@@ -125,9 +138,13 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// トップページ → ダッシュボード
+// トップページ → 読み取り専用モードならヒートマップ、通常はダッシュボード
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    if (isReadonlyMode()) {
+        res.sendFile(path.join(__dirname, 'public', 'heatmap.html'));
+    } else {
+        res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    }
 });
 
 // データマート関連（HTMLページと API）
@@ -183,12 +200,14 @@ app.listen(PORT, async () => {
         console.log('開発環境で起動中...');
     }
     
-    // スケジューラーを初期化（ローカル実行時のみ）
-    if (process.env.ENABLE_SCHEDULER !== 'false') {
+    // スケジューラーを初期化（ローカル実行時のみ、読み取り専用モードでは無効）
+    if (process.env.ENABLE_SCHEDULER !== 'false' && !isReadonlyMode()) {
         try {
             await initScheduler(bigquery, db);
         } catch (error) {
             console.error('スケジューラーの初期化に失敗しました:', error);
         }
+    } else if (isReadonlyMode()) {
+        console.log('📖 読み取り専用モードで起動中（スケジューラー無効）');
     }
 });
