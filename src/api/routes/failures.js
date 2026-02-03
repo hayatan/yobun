@@ -17,16 +17,24 @@ const createFailuresRouter = (db) => {
 
     /**
      * 失敗一覧取得（フィルタ対応）
-     * GET /api/failures?startDate=2026-01-01&endDate=2026-01-31&hole=xxx&status=pending&limit=100
+     * GET /api/failures?startDate=2026-01-01&endDate=2026-01-31&holes=xxx,yyy&status=pending&limit=100
+     * holes: カンマ区切りで複数店舗指定可能
      */
     router.get('/', async (req, res) => {
         try {
-            const { startDate, endDate, hole, status, limit } = req.query;
+            const { startDate, endDate, holes, hole, status, limit } = req.query;
             
             const filters = {};
             if (startDate) filters.startDate = startDate;
             if (endDate) filters.endDate = endDate;
-            if (hole) filters.hole = hole;
+            
+            // 複数店舗対応（holes優先）
+            if (holes) {
+                filters.holes = holes.split(',').map(h => h.trim()).filter(h => h);
+            } else if (hole) {
+                filters.hole = hole;
+            }
+            
             if (status) filters.status = status;
             if (limit) filters.limit = parseInt(limit, 10);
             

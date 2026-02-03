@@ -135,6 +135,21 @@
             font-size: 14px;
         }
         
+        select[multiple] {
+            padding: 4px;
+        }
+        
+        select[multiple] option {
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 1px 0;
+        }
+        
+        select[multiple] option:checked {
+            background-color: var(--accent-blue);
+            color: white;
+        }
+        
         textarea {
             font-family: monospace;
             resize: vertical;
@@ -548,10 +563,10 @@
                         <input type="date" id="filterEndDate">
                     </div>
                     <div class="control-group">
-                        <label>店舗</label>
-                        <select id="filterHole">
-                            <option value="">全て</option>
+                        <label>店舗（複数選択可・Ctrl+クリック）</label>
+                        <select id="filterHole" multiple size="4" style="min-width: 200px;">
                         </select>
+                        <button type="button" class="btn-secondary" onclick="clearHoleFilter()" style="margin-top: 4px; padding: 4px 8px; font-size: 12px;">選択クリア</button>
                     </div>
                     <div class="control-group">
                         <label>ステータス</label>
@@ -809,6 +824,12 @@
             });
         }
         
+        // 店舗フィルターの選択をクリア
+        function clearHoleFilter() {
+            const select = document.getElementById('filterHole');
+            Array.from(select.options).forEach(opt => opt.selected = false);
+        }
+        
         function initEventListeners() {
             // 失敗一覧
             document.getElementById('searchFailuresBtn').addEventListener('click', loadFailures);
@@ -945,13 +966,18 @@
         async function loadFailures() {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
-            const hole = document.getElementById('filterHole').value;
             const status = document.getElementById('filterStatus').value;
+            
+            // 複数選択された店舗を取得
+            const filterHoleSelect = document.getElementById('filterHole');
+            const selectedHoles = Array.from(filterHoleSelect.selectedOptions).map(opt => opt.value);
             
             const params = new URLSearchParams();
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
-            if (hole) params.append('hole', hole);
+            if (selectedHoles.length > 0) {
+                params.append('holes', selectedHoles.join(','));
+            }
             if (status) params.append('status', status);
             
             try {
@@ -977,15 +1003,22 @@
                 const result = await response.json();
                 
                 if (result.holes) {
-                    const selectors = ['filterHole', 'historyHole'];
-                    selectors.forEach(id => {
-                        const select = document.getElementById(id);
-                        result.holes.forEach(hole => {
-                            const option = document.createElement('option');
-                            option.value = hole.name;
-                            option.textContent = hole.name;
-                            select.appendChild(option);
-                        });
+                    // 失敗一覧（複数選択）
+                    const filterSelect = document.getElementById('filterHole');
+                    result.holes.forEach(hole => {
+                        const option = document.createElement('option');
+                        option.value = hole.name;
+                        option.textContent = hole.name;
+                        filterSelect.appendChild(option);
+                    });
+                    
+                    // 補正履歴（単一選択、従来通り）
+                    const historySelect = document.getElementById('historyHole');
+                    result.holes.forEach(hole => {
+                        const option = document.createElement('option');
+                        option.value = hole.name;
+                        option.textContent = hole.name;
+                        historySelect.appendChild(option);
                     });
                 }
             } catch (error) {

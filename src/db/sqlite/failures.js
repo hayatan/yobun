@@ -141,7 +141,8 @@ const addFailure = async (db, failure) => {
  * @param {object} [filters] - フィルタ条件
  * @param {string} [filters.startDate] - 開始日
  * @param {string} [filters.endDate] - 終了日
- * @param {string} [filters.hole] - 店舗名
+ * @param {string} [filters.hole] - 店舗名（単一）
+ * @param {Array<string>} [filters.holes] - 店舗名（複数）
  * @param {string} [filters.status] - ステータス
  * @param {number} [filters.limit] - 取得件数上限
  * @returns {Promise<Array>} 失敗レコード配列
@@ -162,7 +163,12 @@ const getFailures = async (db, filters = {}) => {
         params.push(filters.endDate);
     }
     
-    if (filters.hole) {
+    // 複数店舗対応（holes配列優先、なければhole単一値）
+    if (filters.holes && filters.holes.length > 0) {
+        const placeholders = filters.holes.map(() => '?').join(',');
+        query += ` AND hole IN (${placeholders})`;
+        params.push(...filters.holes);
+    } else if (filters.hole) {
         query += ' AND hole = ?';
         params.push(filters.hole);
     }
