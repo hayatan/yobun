@@ -713,8 +713,10 @@
             const today = new Date();
             const oneYearAgo = new Date(today);
             oneYearAgo.setFullYear(today.getFullYear() - 1);
-            
-            document.getElementById('filterEndDate').value = today.toISOString().split('T')[0];
+            // 翌日をデフォルトの終了日に設定
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            document.getElementById('filterEndDate').value = tomorrow.toISOString().split('T')[0];
             document.getElementById('filterStartDate').value = oneYearAgo.toISOString().split('T')[0];
             document.getElementById('addDate').value = today.toISOString().split('T')[0];
             
