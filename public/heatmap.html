@@ -38,85 +38,46 @@
         .container {
             max-width: 100%;
             margin: 0 auto;
-            padding: 16px;
+            padding: 0;
             height: 100%;
             display: flex;
             flex-direction: column;
         }
         
-        header {
+        /* コンパクトヘッダー */
+        .compact-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        
-        h1 {
-            font-size: 20px;
-            font-weight: 600;
-        }
-        
-        nav {
-            display: flex;
-            gap: 16px;
-        }
-        
-        nav a {
-            color: var(--accent-blue);
-            text-decoration: none;
-            font-size: 14px;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            align-items: center;
+            padding: 8px 4px;
+            gap: 8px;
             background-color: var(--bg-secondary);
-            padding: 12px;
-            border-radius: 8px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        
+        .settings-btn {
+            background-color: var(--bg-tertiary);
             border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
         }
         
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        label {
-            color: var(--text-secondary);
+        .current-info {
+            flex: 1;
             font-size: 13px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
         
-        select, input[type="date"] {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-primary);
-            padding: 6px 10px;
-            font-size: 13px;
-        }
-        
-        button {
-            background-color: var(--accent-blue);
-            border: none;
-            border-radius: 6px;
-            color: white;
-            padding: 6px 14px;
-            font-size: 13px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-        
-        button:hover {
-            opacity: 0.9;
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         
         .zoom-btn {
@@ -125,6 +86,130 @@
             background-color: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #zoomLevel {
+            min-width: 45px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* 設定オーバーレイ */
+        .settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        
+        .settings-overlay.active {
+            display: flex;
+        }
+        
+        .settings-panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .settings-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .settings-content {
+            padding: 16px;
+        }
+        
+        .setting-group {
+            margin-bottom: 16px;
+        }
+        
+        .setting-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+        
+        .setting-group select,
+        .setting-group input[type="date"] {
+            width: 100%;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+        
+        .settings-actions {
+            margin-top: 20px;
+        }
+        
+        .primary-btn {
+            width: 100%;
+            background-color: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .primary-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .settings-nav {
+            display: flex;
+            gap: 16px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            justify-content: center;
+        }
+        
+        .settings-nav a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 13px;
         }
         
         button.btn-secondary {
@@ -132,32 +217,13 @@
             border: 1px solid var(--border-color);
         }
         
-        .info-bar {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 12px;
-            font-size: 13px;
-            color: var(--text-secondary);
-            flex-wrap: wrap;
-        }
-        
-        .info-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .info-item strong {
-            color: var(--text-primary);
-        }
-        
         /* ヒートマップコンテナ */
         .heatmap-container {
             overflow: hidden;
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
+            background-color: var(--bg-primary);
+            border: none;
+            border-radius: 0;
+            padding: 4px;
             touch-action: none;
             flex: 1;
             cursor: grab;
@@ -165,6 +231,17 @@
         
         .heatmap-container:active {
             cursor: grabbing;
+        }
+        
+        /* PC向けはやや余裕を持たせる */
+        @media (min-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+            .heatmap-container {
+                padding: 8px;
+                border-radius: 8px;
+            }
         }
         
         .heatmap-grid {
@@ -398,21 +475,8 @@
             width: 100%;
         }
         
-        /* レスポンシブ */
+        /* モバイル向けセルサイズ調整 */
         @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .control-group {
-                width: 100%;
-            }
-            
-            select, input[type="date"] {
-                flex: 1;
-            }
-            
             :root {
                 --cell-size: 70px;
             }
@@ -421,72 +485,96 @@
             .cell-machine { font-size: 8px; height: 18px; }
             .cell-metric-value { font-size: 11px; }
             .cell-metric-winrate { font-size: 9px; }
+            
+            .compact-header {
+                padding: 6px 4px;
+            }
+            
+            .zoom-btn {
+                min-width: 28px;
+                padding: 4px 6px;
+                font-size: 12px;
+            }
+            
+            #zoomLevel {
+                min-width: 40px;
+                font-size: 11px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>ヒートマップ</h1>
-            <nav>
-                <a href="/dashboard">ダッシュボード</a>
-                <a href="/heatmap-editor">レイアウト編集</a>
-            </nav>
-        </header>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label for="holeSelect">店舗:</label>
-                <select id="holeSelect">
-                    <option value="">選択してください</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="dateSelect">日付:</label>
-                <input type="date" id="dateSelect">
-            </div>
-            <div class="control-group">
-                <label for="period1Select">期間1:</label>
-                <select id="period1Select">
-                    <option value="d5">5日間</option>
-                    <option value="d3">3日間</option>
-                    <option value="d7">7日間</option>
-                    <option value="d14">14日間</option>
-                    <option value="d28">28日間</option>
-                    <option value="mtd">当月</option>
-                    <option value="all">全期間</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="compareModeCheck">
-                    <input type="checkbox" id="compareModeCheck"> 比較モード
-                </label>
-            </div>
-            <div class="control-group" id="period2Group" style="display: none;">
-                <label for="period2Select">期間2:</label>
-                <select id="period2Select">
-                    <option value="d28">28日間</option>
-                    <option value="d14">14日間</option>
-                    <option value="d7">7日間</option>
-                    <option value="mtd">当月</option>
-                    <option value="all">全期間</option>
-                </select>
-            </div>
-            <button id="loadBtn">表示</button>
-            <div class="control-group" style="margin-left: auto;">
+        <!-- コンパクトヘッダー（常時表示） -->
+        <div class="compact-header">
+            <button class="settings-btn" id="settingsBtn" title="設定">☰</button>
+            <span class="current-info" id="currentInfo">データを読み込んでください</span>
+            <div class="zoom-controls">
                 <button id="zoomOutBtn" class="zoom-btn">−</button>
-                <span id="zoomLevel" style="min-width: 50px; text-align: center;">100%</span>
+                <span id="zoomLevel">100%</span>
                 <button id="zoomInBtn" class="zoom-btn">+</button>
                 <button id="zoomResetBtn" class="zoom-btn">⟲</button>
             </div>
         </div>
         
-        <div class="info-bar" id="infoBar">
-            <div class="info-item">データを読み込んでください</div>
-        </div>
-        
         <div class="heatmap-container" id="heatmapContainer">
-            <div class="loading">店舗を選択して「表示」ボタンを押してください</div>
+            <div class="loading">設定ボタンから店舗を選択してください</div>
+        </div>
+    </div>
+    
+    <!-- 設定オーバーレイ -->
+    <div class="settings-overlay active" id="settingsOverlay">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <h2>設定</h2>
+                <button class="close-btn" id="settingsCloseBtn">×</button>
+            </div>
+            <div class="settings-content">
+                <div class="setting-group">
+                    <label for="holeSelect">店舗</label>
+                    <select id="holeSelect">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="dateSelect">日付</label>
+                    <input type="date" id="dateSelect">
+                </div>
+                <div class="setting-group">
+                    <label for="period1Select">期間</label>
+                    <select id="period1Select">
+                        <option value="d5">5日間</option>
+                        <option value="d3">3日間</option>
+                        <option value="d7">7日間</option>
+                        <option value="d14">14日間</option>
+                        <option value="d28">28日間</option>
+                        <option value="mtd">当月</option>
+                        <option value="all">全期間</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>
+                        <input type="checkbox" id="compareModeCheck"> 比較モード
+                    </label>
+                </div>
+                <div class="setting-group" id="period2Group" style="display: none;">
+                    <label for="period2Select">期間2</label>
+                    <select id="period2Select">
+                        <option value="d28">28日間</option>
+                        <option value="d14">14日間</option>
+                        <option value="d7">7日間</option>
+                        <option value="mtd">当月</option>
+                        <option value="all">全期間</option>
+                    </select>
+                </div>
+                <div class="settings-actions">
+                    <button id="loadBtn" class="primary-btn">表示</button>
+                </div>
+                <nav class="settings-nav">
+                    <a href="/dashboard">ダッシュボード</a>
+                    <a href="/heatmap-editor">レイアウト編集</a>
+                </nav>
+            </div>
         </div>
     </div>
     
@@ -624,6 +712,13 @@
                 if (e.target === document.getElementById('detailModal')) closeModal();
             });
             
+            // 設定オーバーレイ
+            document.getElementById('settingsBtn').addEventListener('click', openSettings);
+            document.getElementById('settingsCloseBtn').addEventListener('click', closeSettings);
+            document.getElementById('settingsOverlay').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('settingsOverlay')) closeSettings();
+            });
+            
             // ズーム・パン機能
             setupZoomPan();
             
@@ -631,6 +726,27 @@
             document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
             document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
             document.getElementById('zoomResetBtn').addEventListener('click', resetZoom);
+        }
+        
+        function openSettings() {
+            document.getElementById('settingsOverlay').classList.add('active');
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsOverlay').classList.remove('active');
+        }
+        
+        function updateCurrentInfo() {
+            const hole = document.getElementById('holeSelect').value;
+            const date = document.getElementById('dateSelect').value;
+            const period = document.getElementById('period1Select');
+            const periodText = period.options[period.selectedIndex]?.text || '';
+            
+            if (hole && date) {
+                document.getElementById('currentInfo').textContent = `${hole} | ${date} | ${periodText}`;
+            } else {
+                document.getElementById('currentInfo').textContent = 'データを読み込んでください';
+            }
         }
         
         // ============================================================================
@@ -691,9 +807,24 @@
             });
             
             // タッチ操作
+            let isTouchPanning = false;
+            let isPinching = false;
+            
             container.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 2) {
+                if (e.touches.length === 1) {
+                    // 1本指: パン
                     e.preventDefault();
+                    isTouchPanning = true;
+                    isPinching = false;
+                    panStartX = e.touches[0].clientX;
+                    panStartY = e.touches[0].clientY;
+                    lastPanX = panX;
+                    lastPanY = panY;
+                } else if (e.touches.length === 2) {
+                    // 2本指: ピンチズーム
+                    e.preventDefault();
+                    isTouchPanning = false;
+                    isPinching = true;
                     const touch1 = e.touches[0];
                     const touch2 = e.touches[1];
                     initialPinchDistance = Math.hypot(
@@ -712,7 +843,14 @@
             }, { passive: false });
             
             container.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 2) {
+                if (e.touches.length === 1 && isTouchPanning) {
+                    // 1本指パン
+                    e.preventDefault();
+                    panX = lastPanX + (e.touches[0].clientX - panStartX);
+                    panY = lastPanY + (e.touches[0].clientY - panStartY);
+                    applyZoomPan();
+                } else if (e.touches.length === 2 && isPinching) {
+                    // 2本指ピンチズーム
                     e.preventDefault();
                     const touch1 = e.touches[0];
                     const touch2 = e.touches[1];
@@ -732,6 +870,11 @@
                     applyZoomPan();
                 }
             }, { passive: false });
+            
+            container.addEventListener('touchend', () => {
+                isTouchPanning = false;
+                isPinching = false;
+            });
         }
         
         function applyZoomPan() {
@@ -823,8 +966,11 @@
                 layoutData = await layoutRes.json();
                 machineData = await dataRes.json();
                 
-                // 情報バー更新
-                updateInfoBar();
+                // 現在の情報を更新
+                updateCurrentInfo();
+                
+                // 設定オーバーレイを閉じる
+                closeSettings();
                 
                 // ヒートマップ描画
                 renderHeatmap();
