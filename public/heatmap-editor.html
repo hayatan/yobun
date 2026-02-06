@@ -483,6 +483,7 @@
             <div class="tool-group">
                 <button class="tool-btn save-btn" id="saveBtn" title="保存 (Ctrl+S)">💾 保存</button>
             </div>
+            <span id="fpsCounter" style="display: none; margin-left: auto; font-size: 11px; color: var(--accent-green); font-family: monospace; min-width: 60px; text-align: right;">-- FPS</span>
         </div>
         
         <!-- メインコンテンツ -->
@@ -631,6 +632,127 @@
 
     <script>
         // ============================================================================
+        // パフォーマンス計測基盤（?perf=true で有効化）
+        // ============================================================================
+        const PERF_ENABLED = new URLSearchParams(window.location.search).has('perf');
+
+        const PerfLogger = {
+            enabled: PERF_ENABLED,
+            metrics: [],
+            
+            measure(label, fn) {
+                if (!this.enabled) return fn();
+                const start = performance.now();
+                const result = fn();
+                const duration = performance.now() - start;
+                this.log(label, duration);
+                return result;
+            },
+            
+            async measureAsync(label, fn) {
+                if (!this.enabled) return fn();
+                const start = performance.now();
+                const result = await fn();
+                const duration = performance.now() - start;
+                this.log(label, duration);
+                return result;
+            },
+            
+            log(label, duration) {
+                const entry = { label, duration, timestamp: Date.now() };
+                this.metrics.push(entry);
+                // メモリ上限: 最新1000件のみ保持
+                if (this.metrics.length > 1000) this.metrics.shift();
+                if (duration > 16) {
+                    console.warn(`[PERF] ${label}: ${duration.toFixed(1)}ms (> 16ms frame budget)`);
+                } else if (duration > 4) {
+                    console.log(`[PERF] ${label}: ${duration.toFixed(1)}ms`);
+                } else {
+                    console.debug(`[PERF] ${label}: ${duration.toFixed(1)}ms`);
+                }
+            },
+            
+            report() {
+                const grouped = {};
+                this.metrics.forEach(m => {
+                    if (!grouped[m.label]) {
+                        grouped[m.label] = { count: 0, total: 0, max: 0, min: Infinity };
+                    }
+                    const g = grouped[m.label];
+                    g.count++;
+                    g.total += m.duration;
+                    g.max = Math.max(g.max, m.duration);
+                    g.min = Math.min(g.min, m.duration);
+                });
+                const rows = Object.entries(grouped).map(([label, g]) => ({
+                    label,
+                    count: g.count,
+                    avg: (g.total / g.count).toFixed(1) + 'ms',
+                    max: g.max.toFixed(1) + 'ms',
+                    min: g.min.toFixed(1) + 'ms',
+                    total: g.total.toFixed(1) + 'ms',
+                }));
+                console.table(rows);
+                return rows;
+            },
+            
+            clear() {
+                this.metrics = [];
+                console.log('[PERF] Metrics cleared');
+            }
+        };
+
+        const FPSMonitor = {
+            frames: 0,
+            lastTime: performance.now(),
+            display: null,
+            running: false,
+            
+            start() {
+                this.display = document.getElementById('fpsCounter');
+                if (this.display) this.display.style.display = '';
+                this.running = true;
+                this.tick();
+            },
+            stop() {
+                this.running = false;
+                if (this.display) this.display.style.display = 'none';
+            },
+            tick() {
+                if (!this.running) return;
+                this.frames++;
+                const now = performance.now();
+                if (now - this.lastTime >= 1000) {
+                    const fps = Math.round(this.frames * 1000 / (now - this.lastTime));
+                    if (this.display) {
+                        this.display.textContent = `${fps} FPS`;
+                        this.display.style.color = fps >= 50 ? 'var(--accent-green)' : fps >= 30 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                    }
+                    this.frames = 0;
+                    this.lastTime = now;
+                }
+                requestAnimationFrame(() => this.tick());
+            }
+        };
+
+        // Long Task 検知（50ms超のタスクを自動ログ）
+        if (PERF_ENABLED && typeof PerformanceObserver !== 'undefined') {
+            try {
+                new PerformanceObserver(list => {
+                    list.getEntries().forEach(entry => {
+                        console.warn(`[PERF] Long Task detected: ${entry.duration.toFixed(1)}ms`);
+                    });
+                }).observe({ entryTypes: ['longtask'] });
+            } catch (e) { /* longtask not supported */ }
+        }
+
+        // デバッグ用グローバル公開
+        if (PERF_ENABLED) {
+            window.PerfLogger = PerfLogger;
+            window.FPSMonitor = FPSMonitor;
+        }
+
+        // ============================================================================
         // 状態管理
         // ============================================================================
         let layoutData = null;
@@ -654,6 +776,10 @@
         // セル要素キャッシュ（querySelectorを避けるため）
         let cellElementCache = new Map(); // key: "row-col", value: DOM element
         
+        // 空間インデックス（セルデータの O(1) 検索用）
+        let cellSpatialIndex = new Map(); // key: "row-col" -> cellData
+        let mergedCellsIndex = new Set(); // マージされた子セルの位置（key: "row-col"）
+        
         // ズーム・パン関連
         let zoomLevel = 1;
         let panX = 0;
@@ -673,6 +799,12 @@
         // ============================================================================
         
         async function init() {
+            // パフォーマンスモニター起動
+            if (PERF_ENABLED) {
+                FPSMonitor.start();
+                console.log('[PERF] Performance monitoring enabled. Use PerfLogger.report() to view stats.');
+            }
+            
             // 店舗一覧を取得
             await loadHoleList();
             
@@ -681,6 +813,61 @@
             
             // ズーム・パン機能
             setupZoomPan();
+        }
+        
+        // ============================================================================
+        // 空間インデックス管理
+        // ============================================================================
+        
+        function rebuildSpatialIndex() {
+            cellSpatialIndex.clear();
+            mergedCellsIndex.clear();
+            if (!layoutData) return;
+            
+            layoutData.cells.forEach(cell => {
+                cellSpatialIndex.set(`${cell.row}-${cell.col}`, cell);
+                if (cell.mergeRows > 1 || cell.mergeCols > 1) {
+                    const mr = cell.mergeRows || 1;
+                    const mc = cell.mergeCols || 1;
+                    for (let r = 0; r < mr; r++) {
+                        for (let c = 0; c < mc; c++) {
+                            if (r !== 0 || c !== 0) {
+                                mergedCellsIndex.add(`${cell.row + r}-${cell.col + c}`);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function addCellToIndex(cell) {
+            cellSpatialIndex.set(`${cell.row}-${cell.col}`, cell);
+            if (cell.mergeRows > 1 || cell.mergeCols > 1) {
+                const mr = cell.mergeRows || 1;
+                const mc = cell.mergeCols || 1;
+                for (let r = 0; r < mr; r++) {
+                    for (let c = 0; c < mc; c++) {
+                        if (r !== 0 || c !== 0) {
+                            mergedCellsIndex.add(`${cell.row + r}-${cell.col + c}`);
+                        }
+                    }
+                }
+            }
+        }
+        
+        function removeCellFromIndex(cell) {
+            cellSpatialIndex.delete(`${cell.row}-${cell.col}`);
+            if (cell.mergeRows > 1 || cell.mergeCols > 1) {
+                const mr = cell.mergeRows || 1;
+                const mc = cell.mergeCols || 1;
+                for (let r = 0; r < mr; r++) {
+                    for (let c = 0; c < mc; c++) {
+                        if (r !== 0 || c !== 0) {
+                            mergedCellsIndex.delete(`${cell.row + r}-${cell.col + c}`);
+                        }
+                    }
+                }
+            }
         }
         
         async function loadHoleList() {
@@ -773,13 +960,7 @@
                 const col = parseInt(cell.dataset.col);
                 handleCellMouseUp(e, row, col);
             });
-            grid.addEventListener('mouseover', (e) => {
-                const cell = e.target.closest('.editor-cell');
-                if (!cell) return;
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                handleCellMouseEnter(e, row, col);
-            });
+            // mouseover は mouseenter (capture) と重複するため削除
         }
         
         // ============================================================================
@@ -910,7 +1091,18 @@
             }, { passive: false });
         }
         
+        let zoomPanPending = false;
+        
         function applyZoomPan() {
+            if (zoomPanPending) return;
+            zoomPanPending = true;
+            requestAnimationFrame(() => {
+                zoomPanPending = false;
+                applyZoomPanImmediate();
+            });
+        }
+        
+        function applyZoomPanImmediate() {
             const container = document.getElementById('gridContainer');
             const grid = document.getElementById('editorGrid');
             
@@ -981,6 +1173,7 @@
                 redoStack = [];
                 isDirty = false;
                 
+                rebuildSpatialIndex();
                 renderGrid();
                 updateStatus();
                 setMessage(`レイアウトを読み込みました（${layoutSource}）`);
@@ -1021,83 +1214,113 @@
         // ============================================================================
         
         function renderGrid() {
-            const grid = document.getElementById('editorGrid');
-            grid.innerHTML = '';
-            cellElementCache.clear(); // キャッシュをクリア
-            
-            if (!layoutData) return;
-            
-            const { rows, cols } = layoutData.grid;
-            grid.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
-            grid.style.gridTemplateRows = `repeat(${rows}, var(--cell-size))`;
-            
-            // セルマップを作成
-            const cellMap = new Map();
-            const mergedCells = new Set(); // マージされた子セルの位置
-            
-            layoutData.cells.forEach(cell => {
-                cellMap.set(`${cell.row}-${cell.col}`, cell);
+            PerfLogger.measure('renderGrid', () => {
+                const grid = document.getElementById('editorGrid');
+                grid.innerHTML = '';
+                cellElementCache.clear();
                 
-                // マージされたセルをマーク
-                if (cell.mergeRows > 1 || cell.mergeCols > 1) {
-                    const mr = cell.mergeRows || 1;
-                    const mc = cell.mergeCols || 1;
-                    for (let r = 0; r < mr; r++) {
-                        for (let c = 0; c < mc; c++) {
-                            if (r !== 0 || c !== 0) {
-                                mergedCells.add(`${cell.row + r}-${cell.col + c}`);
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // グリッドを生成
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    const key = `${row}-${col}`;
-                    const cellData = cellMap.get(key);
-                    
-                    // マージされた子セルはスキップ（親セルがspanで覆う）
-                    if (mergedCells.has(key)) {
-                        continue;
-                    }
-                    
-                    const cellElement = document.createElement('div');
-                    cellElement.className = 'editor-cell';
-                    cellElement.dataset.row = row;
-                    cellElement.dataset.col = col;
-                    
-                    if (cellData) {
-                        renderCellContent(cellElement, cellData);
+                if (!layoutData) return;
+                
+                // 空間インデックスを再構築（undo/redo等でlayoutData自体が置き換わる場合）
+                rebuildSpatialIndex();
+                
+                const { rows, cols } = layoutData.grid;
+                grid.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
+                grid.style.gridTemplateRows = `repeat(${rows}, var(--cell-size))`;
+                
+                // DocumentFragmentで一括追加（DOM操作回数を削減）
+                const fragment = document.createDocumentFragment();
+                
+                // グリッドを生成
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const key = `${row}-${col}`;
+                        const cellData = cellSpatialIndex.get(key);
                         
-                        // マージされたセル（親）は大きく表示
-                        if (cellData.mergeRows > 1 || cellData.mergeCols > 1) {
-                            const mr = cellData.mergeRows || 1;
-                            const mc = cellData.mergeCols || 1;
-                            cellElement.style.gridRow = `${row + 1} / span ${mr}`;
-                            cellElement.style.gridColumn = `${col + 1} / span ${mc}`;
-                            cellElement.classList.add('merged-parent');
+                        // マージされた子セルはスキップ（親セルがspanで覆う）
+                        if (mergedCellsIndex.has(key)) {
+                            continue;
+                        }
+                        
+                        const cellElement = document.createElement('div');
+                        cellElement.className = 'editor-cell';
+                        cellElement.dataset.row = row;
+                        cellElement.dataset.col = col;
+                        
+                        if (cellData) {
+                            renderCellContent(cellElement, cellData);
+                            
+                            // マージされたセル（親）は大きく表示
+                            if (cellData.mergeRows > 1 || cellData.mergeCols > 1) {
+                                const mr = cellData.mergeRows || 1;
+                                const mc = cellData.mergeCols || 1;
+                                cellElement.style.gridRow = `${row + 1} / span ${mr}`;
+                                cellElement.style.gridColumn = `${col + 1} / span ${mc}`;
+                                cellElement.classList.add('merged-parent');
+                            } else {
+                                cellElement.style.gridRow = String(row + 1);
+                                cellElement.style.gridColumn = String(col + 1);
+                            }
                         } else {
                             cellElement.style.gridRow = String(row + 1);
                             cellElement.style.gridColumn = String(col + 1);
                         }
-                    } else {
-                        cellElement.style.gridRow = String(row + 1);
-                        cellElement.style.gridColumn = String(col + 1);
+                        
+                        // 選択状態
+                        if (selectedCells.has(key)) {
+                            cellElement.classList.add('selected');
+                        }
+                        
+                        fragment.appendChild(cellElement);
+                        cellElementCache.set(key, cellElement);
                     }
-                    
-                    // 選択状態
-                    if (selectedCells.has(key)) {
-                        cellElement.classList.add('selected');
-                    }
-                    
-                    // イベントリスナーはイベント委譲で処理（setupEventListeners参照）
-                    
-                    grid.appendChild(cellElement);
-                    cellElementCache.set(key, cellElement); // キャッシュに保存
                 }
-            }
+                
+                grid.appendChild(fragment);
+            });
+        }
+        
+        // 変更されたセルのみDOMを更新（インクリメンタル更新）
+        function updateCells(changedKeys) {
+            PerfLogger.measure('updateCells', () => {
+                changedKeys.forEach(key => {
+                    const el = cellElementCache.get(key);
+                    if (!el) return;
+                    
+                    const cellData = cellSpatialIndex.get(key);
+                    
+                    // クラスをリセット（selected は別途管理）
+                    const isSelected = selectedCells.has(key);
+                    el.className = 'editor-cell';
+                    el.textContent = '';
+                    
+                    if (cellData) {
+                        renderCellContent(el, cellData);
+                    }
+                    
+                    if (isSelected) {
+                        el.classList.add('selected');
+                    }
+                });
+            });
+        }
+        
+        // 選択状態の差分更新（classList のみ操作）
+        function updateSelection(oldSelected, newSelected) {
+            PerfLogger.measure('updateSelection', () => {
+                oldSelected.forEach(key => {
+                    if (!newSelected.has(key)) {
+                        const el = cellElementCache.get(key);
+                        if (el) el.classList.remove('selected');
+                    }
+                });
+                newSelected.forEach(key => {
+                    if (!oldSelected.has(key)) {
+                        const el = cellElementCache.get(key);
+                        if (el) el.classList.add('selected');
+                    }
+                });
+            });
         }
         
         // キャッシュからセル要素を取得（querySelectorの代わり）
@@ -1113,7 +1336,6 @@
                 element.textContent = number;
             } else if (type === 'structure') {
                 element.classList.add('structure', subtype || '');
-                // ラベルがある場合のみ表示（デフォルトは空）
                 element.textContent = label || '';
             } else if (type === 'label') {
                 element.classList.add('label');
@@ -1138,6 +1360,7 @@
         
         function handleCellClick(e, row, col) {
             const key = `${row}-${col}`;
+            const oldSelected = new Set(selectedCells);
             
             // クリックで選択（空でも既存でも）
             if (e.shiftKey) {
@@ -1152,13 +1375,14 @@
                 selectedCells.clear();
                 selectedCells.add(key);
             }
-            renderGrid();
+            updateSelection(oldSelected, selectedCells);
             updatePropertyPanel();
         }
         
         // 選択したオブジェクトタイプをセルに配置
         function placeObjectAtCell(row, col) {
-            const existingCell = layoutData.cells.find(c => c.row === row && c.col === col);
+            const key = `${row}-${col}`;
+            const existingCell = cellSpatialIndex.get(key);
             
             // 既存のセルがある場合は上書き確認
             if (existingCell) {
@@ -1168,6 +1392,7 @@
                 }
                 // 構造物やラベルは上書き
                 saveState();
+                removeCellFromIndex(existingCell);
                 const index = layoutData.cells.indexOf(existingCell);
                 if (index >= 0) layoutData.cells.splice(index, 1);
             } else {
@@ -1189,13 +1414,15 @@
                 document.getElementById('labelInput').focus();
             } else {
                 // 構造物を追加（ラベル入力なし）
-                layoutData.cells.push({
+                const newCell = {
                     row, col,
                     type: 'structure',
                     subtype: selectedObjectType,
-                });
+                };
+                layoutData.cells.push(newCell);
+                addCellToIndex(newCell);
                 markDirty();
-                renderGrid();
+                updateCells([key]);
             }
         }
         
@@ -1226,7 +1453,7 @@
             let hasMachine = false;
             for (let r = minRow; r <= maxRow; r++) {
                 for (let c = minCol; c <= maxCol; c++) {
-                    const cell = layoutData.cells.find(cell => cell.row === r && cell.col === c);
+                    const cell = cellSpatialIndex.get(`${r}-${c}`);
                     if (cell && cell.type === 'machine') {
                         hasMachine = true;
                         break;
@@ -1273,15 +1500,14 @@
         
         function handleCellMouseDown(e, row, col) {
             const key = `${row}-${col}`;
-            const cellData = layoutData.cells.find(c => c.row === row && c.col === col);
+            const cellData = cellSpatialIndex.get(key);
             
             if (cellData && selectedCells.has(key) && !e.shiftKey) {
                 // 選択済みセルをドラッグ移動
                 isDragging = true;
                 dragStartCell = { row, col };
                 draggedCells = Array.from(selectedCells).map(k => {
-                    const [r, c] = k.split('-').map(Number);
-                    return layoutData.cells.find(cell => cell.row === r && cell.col === c);
+                    return cellSpatialIndex.get(k);
                 }).filter(Boolean);
                 e.preventDefault();
             } else {
@@ -1412,21 +1638,27 @@
                     }
                     
                     // 移動先に他のセルがあるかチェック（自分自身は除く）
-                    const existingCell = layoutData.cells.find(c => 
-                        c.row === pos.row && c.col === pos.col &&
-                        !draggedCells.includes(c)
-                    );
-                    if (existingCell) {
+                    const existingCell = cellSpatialIndex.get(`${pos.row}-${pos.col}`);
+                    if (existingCell && !draggedCells.includes(existingCell)) {
                         canMove = false;
                     }
                 });
                 
                 if (canMove) {
                     saveState();
+                    const oldKeys = draggedCells.map(cell => `${cell.row}-${cell.col}`);
+                    
+                    // 空間インデックスから旧位置を削除
+                    draggedCells.forEach(cell => removeCellFromIndex(cell));
+                    
+                    // セルを移動
                     draggedCells.forEach((cell, i) => {
                         cell.row = newPositions[i].row;
                         cell.col = newPositions[i].col;
                     });
+                    
+                    // 空間インデックスに新位置を追加
+                    draggedCells.forEach(cell => addCellToIndex(cell));
                     
                     // 選択状態を更新
                     selectedCells.clear();
@@ -1435,10 +1667,32 @@
                     });
                     
                     markDirty();
+                    
+                    // マージされたセルがあるかチェック
+                    const hasMerges = draggedCells.some(c => (c.mergeRows || 1) > 1 || (c.mergeCols || 1) > 1);
+                    
+                    // ドラッグオーバーを解除
+                    dragOverCells.forEach(key => {
+                        const el = cellElementCache.get(key);
+                        if (el) el.classList.remove('drag-over');
+                    });
+                    dragOverCells.clear();
+                    
+                    isDragging = false;
+                    dragStartCell = null;
+                    draggedCells = [];
+                    
+                    if (hasMerges) {
+                        renderGrid(); // マージセルの移動はフルリビルド
+                    } else {
+                        const newKeys = newPositions.map(p => `${p.row}-${p.col}`);
+                        updateCells([...oldKeys, ...newKeys]);
+                    }
+                    return;
                 }
             }
             
-            // ドラッグ終了
+            // ドラッグ終了（移動なし or 移動不可）
             isDragging = false;
             dragStartCell = null;
             draggedCells = [];
@@ -1449,8 +1703,6 @@
                 if (el) el.classList.remove('drag-over');
             });
             dragOverCells.clear();
-            
-            renderGrid();
         }
         
         // グローバルのmouseup（グリッド外でのマウスアップ対応）
@@ -1488,16 +1740,19 @@
             }
             
             saveState();
-            layoutData.cells.push({
+            const newCell = {
                 row: pendingCellPosition.row,
                 col: pendingCellPosition.col,
                 type: 'machine',
                 number,
-            });
+            };
+            layoutData.cells.push(newCell);
+            addCellToIndex(newCell);
             
+            const key = `${newCell.row}-${newCell.col}`;
             markDirty();
             closeModal('machineModal');
-            renderGrid();
+            updateCells([key]);
         }
         
         function addLabelFromModal() {
@@ -1515,23 +1770,28 @@
                 // 範囲内の既存セルを削除
                 for (let r = minRow; r <= maxRow; r++) {
                     for (let c = minCol; c <= maxCol; c++) {
-                        const index = layoutData.cells.findIndex(cell => cell.row === r && cell.col === c);
-                        if (index >= 0) layoutData.cells.splice(index, 1);
+                        const existing = cellSpatialIndex.get(`${r}-${c}`);
+                        if (existing) {
+                            removeCellFromIndex(existing);
+                            const index = layoutData.cells.indexOf(existing);
+                            if (index >= 0) layoutData.cells.splice(index, 1);
+                        }
                     }
                 }
                 
                 // 結合された構造物を追加（左上のセルに配置）
+                let newCell;
                 if (objectType === 'label') {
-                    layoutData.cells.push({
+                    newCell = {
                         row: minRow,
                         col: minCol,
                         type: 'label',
                         text: text || '',
                         mergeRows,
                         mergeCols,
-                    });
+                    };
                 } else {
-                    layoutData.cells.push({
+                    newCell = {
                         row: minRow,
                         col: minCol,
                         type: 'structure',
@@ -1539,15 +1799,17 @@
                         label: text || '',
                         mergeRows,
                         mergeCols,
-                    });
+                    };
                 }
+                layoutData.cells.push(newCell);
+                addCellToIndex(newCell);
                 
                 pendingRangeSelection = null;
                 selectedCells.clear();
                 markDirty();
                 closeModal('labelModal');
                 document.getElementById('labelModalTitle').textContent = 'ラベルを入力';
-                renderGrid();
+                renderGrid(); // マージセルの追加はフルリビルド
                 return;
             }
             
@@ -1558,16 +1820,19 @@
             }
             
             saveState();
-            layoutData.cells.push({
+            const labelCell = {
                 row: pendingCellPosition.row,
                 col: pendingCellPosition.col,
                 type: 'label',
                 text,
-            });
+            };
+            layoutData.cells.push(labelCell);
+            addCellToIndex(labelCell);
             
+            const labelKey = `${labelCell.row}-${labelCell.col}`;
             markDirty();
             closeModal('labelModal');
-            renderGrid();
+            updateCells([labelKey]);
         }
         
         function showGridSettings() {
@@ -1638,7 +1903,7 @@
             if (selectedCells.size === 1) {
                 const key = Array.from(selectedCells)[0];
                 const [row, col] = key.split('-').map(Number);
-                const cellData = layoutData.cells.find(c => c.row === row && c.col === col);
+                const cellData = cellSpatialIndex.get(key);
                 
                 if (cellData) {
                     content.innerHTML = renderCellProperties(cellData, row, col);
@@ -1748,13 +2013,20 @@
         
         function setupPropertyEvents(cellData) {
             document.getElementById('deleteCellBtn')?.addEventListener('click', () => {
-                saveState(); // 削除は即時保存
+                saveState();
+                const key = `${cellData.row}-${cellData.col}`;
+                const needsFullRebuild = (cellData.mergeRows || 1) > 1 || (cellData.mergeCols || 1) > 1;
+                removeCellFromIndex(cellData);
                 const index = layoutData.cells.indexOf(cellData);
                 if (index >= 0) {
                     layoutData.cells.splice(index, 1);
                     selectedCells.clear();
                     markDirty();
-                    renderGrid();
+                    if (needsFullRebuild) {
+                        renderGrid(); // マージセル削除はフルリビルド
+                    } else {
+                        updateCells([key]);
+                    }
                     updatePropertyPanel();
                 }
             });
@@ -1764,29 +2036,28 @@
                 saveStateDebounced();
                 cellData.number = parseInt(e.target.value);
                 markDirty();
-                renderGrid();
+                updateCells([`${cellData.row}-${cellData.col}`]);
             });
             
             document.getElementById('propLabel')?.addEventListener('change', (e) => {
                 saveStateDebounced();
                 cellData.label = e.target.value;
                 markDirty();
-                renderGrid();
+                updateCells([`${cellData.row}-${cellData.col}`]);
             });
             
             document.getElementById('propText')?.addEventListener('change', (e) => {
                 saveStateDebounced();
                 cellData.text = e.target.value;
                 markDirty();
-                renderGrid();
+                updateCells([`${cellData.row}-${cellData.col}`]);
             });
             
-            // 構造物サイズ変更
+            // 構造物サイズ変更（マージ変更はフルリビルドが必要）
             document.getElementById('propMergeRows')?.addEventListener('change', (e) => {
                 const newRows = parseInt(e.target.value) || 1;
                 if (newRows < 1) return;
                 
-                // 新しいサイズで既存の台や構造物と重複しないかチェック
                 const row = cellData.row;
                 const col = cellData.col;
                 const newMergeCols = cellData.mergeCols || 1;
@@ -1798,13 +2069,16 @@
                 }
                 
                 saveState();
+                // インデックスから旧状態を削除してから変更
+                removeCellFromIndex(cellData);
                 cellData.mergeRows = newRows;
                 if (cellData.mergeRows === 1 && (cellData.mergeCols || 1) === 1) {
                     delete cellData.mergeRows;
                     delete cellData.mergeCols;
                 }
+                addCellToIndex(cellData);
                 markDirty();
-                renderGrid();
+                renderGrid(); // マージ変更はフルリビルド
                 updatePropertyPanel();
             });
             
@@ -1823,32 +2097,42 @@
                 }
                 
                 saveState();
+                removeCellFromIndex(cellData);
                 cellData.mergeCols = newCols;
                 if ((cellData.mergeRows || 1) === 1 && cellData.mergeCols === 1) {
                     delete cellData.mergeRows;
                     delete cellData.mergeCols;
                 }
+                addCellToIndex(cellData);
                 markDirty();
-                renderGrid();
+                renderGrid(); // マージ変更はフルリビルド
                 updatePropertyPanel();
             });
         }
         
-        // 重複チェック（自身を除く）
+        // 重複チェック（自身を除く） - 空間インデックスで O(mergeArea) に最適化
         function checkOverlap(row, col, mergeRows, mergeCols, excludeCell) {
+            const excludeRowEnd = excludeCell ? excludeCell.row + (excludeCell.mergeRows || 1) : -1;
+            const excludeColEnd = excludeCell ? excludeCell.col + (excludeCell.mergeCols || 1) : -1;
+            
             for (let r = row; r < row + mergeRows; r++) {
                 for (let c = col; c < col + mergeCols; c++) {
-                    const existing = layoutData.cells.find(cell => {
-                        if (cell === excludeCell) return false;
-                        
-                        const cellRows = cell.mergeRows || 1;
-                        const cellCols = cell.mergeCols || 1;
-                        
-                        return r >= cell.row && r < cell.row + cellRows &&
-                               c >= cell.col && c < cell.col + cellCols;
-                    });
+                    const key = `${r}-${c}`;
                     
-                    if (existing) return true;
+                    // この位置にセルがあるか（直接配置）
+                    const existing = cellSpatialIndex.get(key);
+                    if (existing && existing !== excludeCell) return true;
+                    
+                    // この位置がマージされた子セルか
+                    if (mergedCellsIndex.has(key)) {
+                        // excludeCell のマージ範囲内なら無視
+                        if (excludeCell &&
+                            r >= excludeCell.row && r < excludeRowEnd &&
+                            c >= excludeCell.col && c < excludeColEnd) {
+                            continue;
+                        }
+                        return true;
+                    }
                 }
             }
             return false;
@@ -1858,17 +2142,32 @@
             if (selectedCells.size === 0) return;
             
             saveState();
+            const changedKeys = [];
+            let needsFullRebuild = false;
+            
             selectedCells.forEach(key => {
-                const [row, col] = key.split('-').map(Number);
-                const index = layoutData.cells.findIndex(c => c.row === row && c.col === col);
-                if (index >= 0) {
-                    layoutData.cells.splice(index, 1);
+                const cellData = cellSpatialIndex.get(key);
+                if (cellData) {
+                    if ((cellData.mergeRows || 1) > 1 || (cellData.mergeCols || 1) > 1) {
+                        needsFullRebuild = true;
+                    }
+                    removeCellFromIndex(cellData);
+                    const index = layoutData.cells.indexOf(cellData);
+                    if (index >= 0) {
+                        layoutData.cells.splice(index, 1);
+                    }
+                    changedKeys.push(key);
                 }
             });
             
             selectedCells.clear();
             markDirty();
-            renderGrid();
+            
+            if (needsFullRebuild) {
+                renderGrid(); // マージセル削除はフルリビルド
+            } else {
+                updateCells(changedKeys);
+            }
             updatePropertyPanel();
         }
         
@@ -1878,18 +2177,20 @@
         
         // 即時保存（クリック操作など）
         function saveState() {
-            // デバウンス中のタイマーがあればキャンセル
-            if (saveStateTimer) {
-                clearTimeout(saveStateTimer);
-                saveStateTimer = null;
-            }
-            undoStack.push(JSON.stringify(layoutData));
-            redoStack = [];
-            
-            // スタックサイズを制限
-            if (undoStack.length > 50) {
-                undoStack.shift();
-            }
+            PerfLogger.measure('saveState', () => {
+                // デバウンス中のタイマーがあればキャンセル
+                if (saveStateTimer) {
+                    clearTimeout(saveStateTimer);
+                    saveStateTimer = null;
+                }
+                undoStack.push(structuredClone(layoutData));
+                redoStack = [];
+                
+                // スタックサイズを制限
+                if (undoStack.length > 50) {
+                    undoStack.shift();
+                }
+            });
         }
         
         // デバウンス保存（プロパティ変更など連続入力時）
@@ -1898,7 +2199,7 @@
             if (saveStateTimer) clearTimeout(saveStateTimer);
             saveStateTimer = setTimeout(() => {
                 saveStateTimer = null;
-                undoStack.push(JSON.stringify(layoutData));
+                undoStack.push(structuredClone(layoutData));
                 redoStack = [];
                 if (undoStack.length > 50) undoStack.shift();
             }, 300);
@@ -1907,22 +2208,22 @@
         function undo() {
             if (undoStack.length === 0) return;
             
-            redoStack.push(JSON.stringify(layoutData));
-            layoutData = JSON.parse(undoStack.pop());
+            redoStack.push(structuredClone(layoutData));
+            layoutData = undoStack.pop();
             selectedCells.clear();
             markDirty();
-            renderGrid();
+            renderGrid(); // undo はフルリビルド（構造が大きく変わりうる）
             updatePropertyPanel();
         }
         
         function redo() {
             if (redoStack.length === 0) return;
             
-            undoStack.push(JSON.stringify(layoutData));
-            layoutData = JSON.parse(redoStack.pop());
+            undoStack.push(structuredClone(layoutData));
+            layoutData = redoStack.pop();
             selectedCells.clear();
             markDirty();
-            renderGrid();
+            renderGrid(); // redo はフルリビルド
             updatePropertyPanel();
         }
         
@@ -1956,9 +2257,12 @@
                         }
                         break;
                     case 'Escape':
-                        selectedCells.clear();
-                        renderGrid();
-                        updatePropertyPanel();
+                        {
+                            const oldSel = new Set(selectedCells);
+                            selectedCells.clear();
+                            updateSelection(oldSel, selectedCells);
+                            updatePropertyPanel();
+                        }
                         break;
                 }
             }

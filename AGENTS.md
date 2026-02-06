@@ -82,6 +82,9 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 - **データ可視化**: 台別統計データをフロアレイアウト上に表示
 - **レイアウト管理**: GCSに保存、ローカルファイルをfallbackとして使用
 - **レイアウトエディタ**: セルのマージ・分割、台番号配置
+  - **パフォーマンス最適化**: インクリメンタルDOM更新、空間インデックス（`cellSpatialIndex`）による O(1) セル検索
+  - **描画戦略**: セル選択・プロパティ変更・ドラッグ等は差分更新（`updateCells` / `updateSelection`）、マージ変更・Undo/Redo 等はフルリビルド（`renderGrid`）
+  - **計測基盤**: `?perf=true` で PerfLogger（実行時間）/ FPSMonitor / Long Task Observer を有効化
 - API: `src/api/routes/heatmap.js`
 - レイアウト: `src/config/heatmap-layouts/storage.js`
 - UI: `public/heatmap.html`, `public/heatmap-editor.html`

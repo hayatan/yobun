@@ -228,7 +228,7 @@ alwaysApply: true
   - **データマート**: `GET/DELETE/POST /api/datamart/*`
   - **イベント管理**: `GET/POST/PATCH/DELETE /api/events/*`
   - **イベントタイプ**: `GET/POST/PATCH/DELETE /api/event-types/*`
-  - **ヒートマップ**: `GET/PUT /api/heatmap/*`
+  - **ヒートマップ**: `GET/PUT /api/heatmap/*`（エディタは `?perf=true` でパフォーマンス計測モード有効）
   - **ヘルスチェック**: `GET /health`
 
 ### 7.3 データベース管理
