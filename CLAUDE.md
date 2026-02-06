@@ -70,6 +70,11 @@
   - `machine_summary/`: 機種サマリークエリ
   - `heatmap/`: ヒートマップクエリ
   - `analysis/`: 分析クエリ
+- `scripts/`: ユーティリティスクリプト
+  - `parse-layout-csv.js`: 汎用CSV→ヒートマップレイアウトJSON変換
+  - `parse-layout-excel.js`: Excel→ヒートマップレイアウトJSON変換
+- `docs/`: ドキュメント
+  - `csv-layout-format.md`: ヒートマップレイアウトCSVフォーマット仕様
 - `public/`: 静的ファイル（HTML）
 
 ### ファイル命名規則
@@ -219,6 +224,7 @@
 | `sql/datamart/machine_stats/create_table.sql` | データマートテーブル定義 |
 | `sql/machine_summary/machine_summary.sql` | 機種サマリークエリ |
 | `sql/heatmap/heatmap_query.sql` | ヒートマップデータクエリ |
+| `docs/csv-layout-format.md` | ヒートマップレイアウトCSVフォーマット仕様 |
 
 ## 変更時の注意
 
@@ -234,3 +240,4 @@
 | [README.md](README.md) | プロジェクト詳細・API仕様・機能一覧 |
 | [sql/AGENTS.md](sql/AGENTS.md) | SQL開発ガイドライン |
 | [deploy/README.md](deploy/README.md) | デプロイ手順 |
+| [docs/csv-layout-format.md](docs/csv-layout-format.md) | ヒートマップCSVフォーマット仕様 |
