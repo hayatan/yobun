@@ -528,6 +528,12 @@
                     </select>
                 </div>
                 <div class="setting-group">
+                    <label for="floorSelect">フロア</label>
+                    <select id="floorSelect">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="setting-group">
                     <label for="dateSelect">日付</label>
                     <input type="date" id="dateSelect">
                 </div>
@@ -708,34 +714,60 @@
         // UI初期化
         // ============================================================================
         
+        let holeFloorsMap = {};
+        
         async function init() {
-            // 店舗一覧を取得
             try {
                 const response = await fetch('/api/heatmap/layouts');
                 const data = await response.json();
+                const layouts = data.layouts || [];
                 
-                const select = document.getElementById('holeSelect');
-                data.layouts.forEach(layout => {
+                const holes = [...new Set(layouts.map((l) => l.hole))].filter(Boolean).sort();
+                holeFloorsMap = {};
+                layouts.forEach((l) => {
+                    if (!l.hole || !l.floor) return;
+                    if (!holeFloorsMap[l.hole]) holeFloorsMap[l.hole] = [];
+                    if (!holeFloorsMap[l.hole].includes(l.floor)) holeFloorsMap[l.hole].push(l.floor);
+                });
+                Object.keys(holeFloorsMap).forEach((h) => holeFloorsMap[h].sort());
+                
+                const holeSelect = document.getElementById('holeSelect');
+                holeSelect.innerHTML = '<option value="">選択してください</option>';
+                holes.forEach((hole) => {
                     const option = document.createElement('option');
-                    option.value = layout.hole;
-                    option.textContent = layout.hole;
-                    select.appendChild(option);
+                    option.value = hole;
+                    option.textContent = hole;
+                    holeSelect.appendChild(option);
                 });
                 
-                // デフォルト選択
-                if (data.layouts.length > 0) {
-                    select.value = data.layouts[0].hole;
+                function updateFloorSelect() {
+                    const hole = holeSelect.value;
+                    const floorSelect = document.getElementById('floorSelect');
+                    floorSelect.innerHTML = '<option value="">選択してください</option>';
+                    (holeFloorsMap[hole] || []).forEach((floor) => {
+                        const option = document.createElement('option');
+                        option.value = floor;
+                        option.textContent = floor;
+                        floorSelect.appendChild(option);
+                    });
+                }
+                
+                holeSelect.addEventListener('change', updateFloorSelect);
+                
+                if (holes.length > 0) {
+                    holeSelect.value = holes[0];
+                    updateFloorSelect();
+                    const floorSelect = document.getElementById('floorSelect');
+                    if (floorSelect.options.length > 1) floorSelect.selectedIndex = 1;
                 }
             } catch (error) {
                 console.error('レイアウト一覧取得エラー:', error);
             }
             
-            // 日付をデフォルト設定（昨日）
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             document.getElementById('dateSelect').value = yesterday.toISOString().split('T')[0];
             
-            // イベントリスナー
             document.getElementById('loadBtn').addEventListener('click', loadHeatmap);
             document.getElementById('compareModeCheck').addEventListener('change', toggleCompareMode);
             document.getElementById('period3Check').addEventListener('change', togglePeriod3);
@@ -770,12 +802,13 @@
         
         function updateCurrentInfo() {
             const hole = document.getElementById('holeSelect').value;
+            const floor = document.getElementById('floorSelect').value;
             const date = document.getElementById('dateSelect').value;
             const period = document.getElementById('period1Select');
             const periodText = period.options[period.selectedIndex]?.text || '';
             
-            if (hole && date) {
-                document.getElementById('currentInfo').textContent = `${hole} | ${date} | ${periodText}`;
+            if (hole && floor && date) {
+                document.getElementById('currentInfo').textContent = `${hole} | ${floor} | ${date} | ${periodText}`;
             } else {
                 document.getElementById('currentInfo').textContent = 'データを読み込んでください';
             }
@@ -1080,10 +1113,11 @@
         
         async function loadHeatmap() {
             const hole = document.getElementById('holeSelect').value;
+            const floor = document.getElementById('floorSelect').value;
             const targetDate = document.getElementById('dateSelect').value;
             
-            if (!hole) {
-                alert('店舗を選択してください');
+            if (!hole || !floor) {
+                alert('店舗とフロアを選択してください');
                 return;
             }
             
@@ -1094,9 +1128,8 @@
             container.innerHTML = '<div class="loading">読み込み中...</div>';
             
             try {
-                // レイアウトとデータを並列で取得
                 const [layoutRes, dataRes] = await Promise.all([
-                    fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}`),
+                    fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}/${encodeURIComponent(floor)}`),
                     fetch(`/api/heatmap/data?hole=${encodeURIComponent(hole)}&targetDate=${targetDate}`)
                 ]);
                 

@@ -1,16 +1,19 @@
 // ============================================================================
 // ヒートマップ ルーター
 // ============================================================================
-// 
+//
 // /api/heatmap/data - 台別統計データを取得（BigQuery machine_stats）
-// /api/heatmap/layouts - レイアウト一覧を取得
-// /api/heatmap/layouts/:hole - 特定店舗のレイアウトを取得/保存
-// 
-// ストレージ: GCS優先、ローカルファイルをfallbackとして使用
+// /api/heatmap/holes - 店舗一覧（slorepo-config）
+// /api/heatmap/layouts - レイアウト一覧（hole + floor 付き）
+// /api/heatmap/layouts/:hole - 特定店舗のフロア一覧
+// /api/heatmap/layouts/:hole/:floor - レイアウト取得/保存/作成/削除
+//
+// ストレージ: GCS のみ（layouts/{hole-slug}/{floor-slug}.json）
 // ============================================================================
 
 import { Router } from 'express';
 import layoutStorage from '../../config/heatmap-layouts/storage.js';
+import slorepoConfig from '../../config/slorepo-config.js';
 
 const createHeatmapRouter = (bigquery) => {
     const router = Router();
@@ -209,10 +212,25 @@ const createHeatmapRouter = (bigquery) => {
     });
 
     /**
-     * レイアウト一覧を取得
+     * 店舗一覧を取得（レイアウト新規作成時の店舗選択用）
+     * GET /api/heatmap/holes
+     */
+    router.get('/holes', async (req, res) => {
+        try {
+            const holes = (slorepoConfig.holes || []).map((h) => h.name);
+            res.json({ holes });
+        } catch (error) {
+            console.error('店舗一覧取得中にエラーが発生しました:', error);
+            res.status(500).json({
+                error: '店舗一覧の取得中にエラーが発生しました',
+                message: error.message,
+            });
+        }
+    });
+
+    /**
+     * レイアウト一覧を取得（GCSのみ、各要素に floor を含む）
      * GET /api/heatmap/layouts
-     * 
-     * GCSとローカルの両方からレイアウトを取得し、マージして返す（GCS優先）
      */
     router.get('/layouts', async (req, res) => {
         try {
@@ -228,26 +246,39 @@ const createHeatmapRouter = (bigquery) => {
     });
 
     /**
-     * 特定店舗のレイアウトを取得
+     * 特定店舗のフロア一覧を取得
      * GET /api/heatmap/layouts/:hole
-     * 
-     * GCS優先、ローカルファイルをfallbackとして使用
      */
     router.get('/layouts/:hole', async (req, res) => {
         try {
             const hole = decodeURIComponent(req.params.hole);
-            const { layout, source } = await layoutStorage.loadLayout(hole);
-            
+            const floors = await layoutStorage.listFloors(hole);
+            res.json({ hole, floors });
+        } catch (error) {
+            console.error('フロア一覧取得中にエラーが発生しました:', error);
+            res.status(500).json({
+                error: 'フロア一覧の取得中にエラーが発生しました',
+                message: error.message,
+            });
+        }
+    });
+
+    /**
+     * 特定店舗・フロアのレイアウトを取得
+     * GET /api/heatmap/layouts/:hole/:floor
+     */
+    router.get('/layouts/:hole/:floor', async (req, res) => {
+        try {
+            const hole = decodeURIComponent(req.params.hole);
+            const floor = decodeURIComponent(req.params.floor);
+            const { layout } = await layoutStorage.loadLayout(hole, floor);
+
             if (!layout) {
-                const filename = layoutStorage.holeToFilename(hole);
                 return res.status(404).json({
-                    error: `店舗「${hole}」のレイアウトが見つかりません`,
-                    filename,
+                    error: `店舗「${hole}」のフロア「${floor}」のレイアウトが見つかりません`,
                 });
             }
-            
-            // ソース情報をヘッダーに追加
-            res.set('X-Layout-Source', source);
+
             res.json(layout);
         } catch (error) {
             console.error('レイアウト取得中にエラーが発生しました:', error);
@@ -260,45 +291,117 @@ const createHeatmapRouter = (bigquery) => {
 
     /**
      * レイアウトを保存
-     * PUT /api/heatmap/layouts/:hole
+     * PUT /api/heatmap/layouts/:hole/:floor
      * Body: レイアウトJSON
-     * 
-     * GCSに保存
      */
-    router.put('/layouts/:hole', async (req, res) => {
+    router.put('/layouts/:hole/:floor', async (req, res) => {
         try {
             const hole = decodeURIComponent(req.params.hole);
+            const floor = decodeURIComponent(req.params.floor);
             const layout = req.body;
 
-            // バリデーション
             if (!layout.version || !layout.hole || !layout.grid || !Array.isArray(layout.cells)) {
                 return res.status(400).json({
-                    error: '無効なレイアウトデータです。version, hole, grid, cellsが必要です。'
+                    error: '無効なレイアウトデータです。version, hole, grid, cellsが必要です。',
                 });
             }
-
-            // 店舗名の整合性チェック
             if (layout.hole !== hole) {
                 return res.status(400).json({
-                    error: 'URLの店舗名とレイアウトデータの店舗名が一致しません'
+                    error: 'URLの店舗名とレイアウトデータの店舗名が一致しません',
+                });
+            }
+            if (layout.floor !== floor) {
+                return res.status(400).json({
+                    error: 'URLのフロア名とレイアウトデータのフロア名が一致しません',
                 });
             }
 
-            const result = await layoutStorage.saveLayout(hole, layout);
+            const result = await layoutStorage.saveLayout(hole, floor, layout);
 
             res.json({
                 success: true,
-                message: 'レイアウトを保存しました（GCS）',
+                message: 'レイアウトを保存しました',
                 ...result,
                 hole,
+                floor,
                 updated: layout.updated,
                 cellCount: layout.cells.length,
             });
-
         } catch (error) {
             console.error('レイアウト保存中にエラーが発生しました:', error);
             res.status(500).json({
                 error: 'レイアウトの保存中にエラーが発生しました',
+                message: error.message,
+            });
+        }
+    });
+
+    /**
+     * 新規レイアウト作成（空テンプレートをGCSに保存）
+     * POST /api/heatmap/layouts/:hole/:floor
+     * Body: { rows?, cols? } 省略時は 30x30
+     */
+    router.post('/layouts/:hole/:floor', async (req, res) => {
+        try {
+            const hole = decodeURIComponent(req.params.hole);
+            const floor = decodeURIComponent(req.params.floor);
+            const { rows = 30, cols = 30 } = req.body || {};
+
+            const exists = await layoutStorage.layoutExists(hole, floor);
+            if (exists) {
+                return res.status(409).json({
+                    error: `店舗「${hole}」のフロア「${floor}」のレイアウトは既に存在します`,
+                });
+            }
+
+            const layout = {
+                version: '2.0',
+                hole,
+                floor,
+                updated: new Date().toISOString().split('T')[0],
+                description: '',
+                grid: { rows: Number(rows) || 30, cols: Number(cols) || 30 },
+                walls: [],
+                cells: [],
+            };
+
+            await layoutStorage.saveLayout(hole, floor, layout);
+
+            res.status(201).json({
+                success: true,
+                message: 'レイアウトを作成しました',
+                hole,
+                floor,
+                layout,
+            });
+        } catch (error) {
+            console.error('レイアウト作成中にエラーが発生しました:', error);
+            res.status(500).json({
+                error: 'レイアウトの作成中にエラーが発生しました',
+                message: error.message,
+            });
+        }
+    });
+
+    /**
+     * レイアウトを削除
+     * DELETE /api/heatmap/layouts/:hole/:floor
+     */
+    router.delete('/layouts/:hole/:floor', async (req, res) => {
+        try {
+            const hole = decodeURIComponent(req.params.hole);
+            const floor = decodeURIComponent(req.params.floor);
+            const result = await layoutStorage.deleteLayout(hole, floor);
+
+            if (!result.success) {
+                return res.status(404).json({ error: result.error || 'レイアウトが存在しません' });
+            }
+
+            res.json({ success: true, message: 'レイアウトを削除しました', hole, floor });
+        } catch (error) {
+            console.error('レイアウト削除中にエラーが発生しました:', error);
+            res.status(500).json({
+                error: 'レイアウトの削除中にエラーが発生しました',
                 message: error.message,
             });
         }

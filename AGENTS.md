@@ -79,13 +79,15 @@ AIエージェント向けの開発ガイドライン。コーディング規約
 
 ### ヒートマップ
 
-- **データ可視化**: 台別統計データをフロアレイアウト上に表示
-- **レイアウト管理**: GCSに保存、ローカルファイルをfallbackとして使用
-- **レイアウトエディタ**: セルのマージ・分割、台番号配置
+- **ストレージ**: GCS のみ。`layouts/{hole-slug}/{floor-slug}.json`（ローカルレイアウトファイルは廃止）
+- **マルチフロア**: 1店舗で複数レイアウト（1F / 2F 等）を管理。識別子は `hole` + `floor`
+- **データ可視化**: 台別統計データをフロアレイアウト上に表示（店舗・フロア選択）
+- **レイアウトエディタ**: 店舗・フロア選択、新規作成（POST）、セルのマージ・分割、台番号配置
   - **パフォーマンス最適化**: インクリメンタルDOM更新、空間インデックス（`cellSpatialIndex`）による O(1) セル検索
-  - **描画戦略**: セル選択・プロパティ変更・ドラッグ等は差分更新（`updateCells` / `updateSelection`）、マージ変更・Undo/Redo 等はフルリビルド（`renderGrid`）
-  - **計測基盤**: `?perf=true` で PerfLogger（実行時間）/ FPSMonitor / Long Task Observer を有効化
-- API: `src/api/routes/heatmap.js`
+  - **描画戦略**: セル選択・プロパティ変更・ドラッグ等は差分更新、マージ変更・Undo/Redo 等はフルリビルド
+  - **計測基盤**: `?perf=true` で PerfLogger / FPSMonitor を有効化
+- **レイアウト JSON v2.0**: `version`, `hole`, `floor`, `grid`, `cells`。既存移行は `scripts/migrate-layouts-to-floors.js`
+- API: `src/api/routes/heatmap.js`（GET/PUT/POST/DELETE `/api/heatmap/layouts/:hole/:floor`、GET `/api/heatmap/holes`）
 - レイアウト: `src/config/heatmap-layouts/storage.js`
 - UI: `public/heatmap.html`, `public/heatmap-editor.html`
 

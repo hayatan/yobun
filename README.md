@@ -159,16 +159,19 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
 
 店舗のフロアレイアウトにデータを重ねて可視化する機能。
 
-- **ヒートマップ表示**: 台別統計データをフロアマップ上に表示
+- **ストレージ**: GCS のみ（`gs://youbun-sqlite/layouts/{hole-slug}/{floor-slug}.json`）。ローカルレイアウトファイルは廃止。
+- **マルチフロア**: 1店舗で複数レイアウト（1F / 2F / B1F 等）を管理可能。
+- **ヒートマップ表示**: 店舗・フロアを選択して台別統計を表示
   - 差枚数・勝率・出玉率などの指標で色分け
   - 期間選択（1日〜全期間）
   - ズーム・パン操作対応
 - **レイアウトエディタ**: フロアマップの編集
-  - セルのマージ・分割
-  - 台番号の配置
+  - 店舗・フロア選択、新規レイアウト作成（店舗・フロア名・グリッドサイズ指定）
+  - セルのマージ・分割、台番号の配置
   - GCSへの保存
   - インクリメンタルDOM更新による高速描画（空間インデックス使用）
   - パフォーマンス計測モード（`?perf=true` でFPS・実行時間を表示）
+- **レイアウト JSON v2.0**: `version`, `hole`, `floor`, `grid`, `cells` 等。既存データの移行は `scripts/migrate-layouts-to-floors.js` を参照。
 
 ### データマート管理
 
@@ -192,7 +195,7 @@ yobun/
 │   ├── config/           # 設定ファイル
 │   │   ├── constants.js
 │   │   ├── slorepo-config.js  # 店舗設定
-│   │   ├── heatmap-layouts/   # ヒートマップレイアウト
+│   │   ├── heatmap-layouts/   # ヒートマップレイアウト（storage.js のみ、実体はGCS）
 │   │   └── sources/      # データソース設定
 │   ├── db/               # データベース操作
 │   │   ├── bigquery/
@@ -304,9 +307,13 @@ yobun/
 | `/api/event-types/:id` | PATCH | イベントタイプ更新 |
 | `/api/event-types/:id` | DELETE | イベントタイプ削除 |
 | `/api/heatmap/data` | GET | ヒートマップデータ取得 |
-| `/api/heatmap/layouts` | GET | レイアウト一覧取得 |
-| `/api/heatmap/layouts/:hole` | GET | 特定店舗レイアウト取得 |
-| `/api/heatmap/layouts/:hole` | PUT | レイアウト保存 |
+| `/api/heatmap/holes` | GET | 店舗一覧（レイアウト新規作成用） |
+| `/api/heatmap/layouts` | GET | レイアウト一覧（hole+floor 付き） |
+| `/api/heatmap/layouts/:hole` | GET | 特定店舗のフロア一覧 |
+| `/api/heatmap/layouts/:hole/:floor` | GET | レイアウト取得 |
+| `/api/heatmap/layouts/:hole/:floor` | PUT | レイアウト保存 |
+| `/api/heatmap/layouts/:hole/:floor` | POST | 新規レイアウト作成 |
+| `/api/heatmap/layouts/:hole/:floor` | DELETE | レイアウト削除 |
 | `/health` | GET | ヘルスチェック |
 
 ### API パラメータ詳細

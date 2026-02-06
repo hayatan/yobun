@@ -456,7 +456,11 @@
                     <select id="holeSelect">
                         <option value="">店舗を選択</option>
                     </select>
+                    <select id="floorSelect">
+                        <option value="">フロアを選択</option>
+                    </select>
                     <button class="tool-btn" id="loadBtn">読み込み</button>
+                    <button class="tool-btn" id="newLayoutBtn">新規作成</button>
                 </div>
             </div>
             <nav>
@@ -557,9 +561,9 @@
         <div class="status-bar">
             <div class="status-info">
                 <span id="statusHole">店舗: 未選択</span>
+                <span id="statusFloor">フロア: -</span>
                 <span id="statusGrid">グリッド: -</span>
                 <span id="statusCells">セル数: -</span>
-                <span id="statusSource">ソース: -</span>
             </div>
             <div id="statusMessage">レイアウトを選択してください</div>
         </div>
@@ -626,6 +630,35 @@
             <div class="modal-buttons">
                 <button class="modal-btn secondary" id="gridModalCancel">キャンセル</button>
                 <button class="modal-btn primary" id="gridModalOk">適用</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 新規レイアウト作成モーダル -->
+    <div id="newLayoutModal" class="modal-overlay">
+        <div class="modal">
+            <h3>新規レイアウト作成</h3>
+            <div class="property-row">
+                <label class="property-label">店舗</label>
+                <select id="newLayoutHoleSelect" class="property-input">
+                    <option value="">店舗を選択</option>
+                </select>
+            </div>
+            <div class="property-row">
+                <label class="property-label">フロア名</label>
+                <input type="text" id="newLayoutFloorInput" class="property-input" placeholder="例: 1F, 2F, B1F">
+            </div>
+            <div class="property-row">
+                <label class="property-label">グリッド行数</label>
+                <input type="number" id="newLayoutRowsInput" class="property-input" min="1" max="200" value="30">
+            </div>
+            <div class="property-row">
+                <label class="property-label">グリッド列数</label>
+                <input type="number" id="newLayoutColsInput" class="property-input" min="1" max="200" value="30">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="newLayoutModalCancel">キャンセル</button>
+                <button class="modal-btn primary" id="newLayoutModalOk">作成</button>
             </div>
         </div>
     </div>
@@ -761,7 +794,6 @@
         let undoStack = [];
         let redoStack = [];
         let isDirty = false;
-        let layoutSource = null;
         
         // ドラッグ関連
         let isDragging = false;
@@ -874,22 +906,49 @@
             try {
                 const response = await fetch('/api/heatmap/layouts');
                 const data = await response.json();
+                const holes = [...new Set((data.layouts || []).map((l) => l.hole))].filter(Boolean).sort();
                 
                 const select = document.getElementById('holeSelect');
-                data.layouts.forEach(layout => {
+                select.innerHTML = '<option value="">店舗を選択</option>';
+                holes.forEach((hole) => {
                     const option = document.createElement('option');
-                    option.value = layout.hole;
-                    option.textContent = `${layout.hole} (${layout.source || 'local'})`;
+                    option.value = hole;
+                    option.textContent = hole;
                     select.appendChild(option);
                 });
+                
+                document.getElementById('floorSelect').innerHTML = '<option value="">フロアを選択</option>';
             } catch (error) {
                 console.error('店舗一覧取得エラー:', error);
             }
         }
         
+        async function loadFloorList(hole) {
+            const floorSelect = document.getElementById('floorSelect');
+            floorSelect.innerHTML = '<option value="">フロアを選択</option>';
+            if (!hole) return;
+            try {
+                const response = await fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}`);
+                const data = await response.json();
+                (data.floors || []).forEach((floor) => {
+                    const option = document.createElement('option');
+                    option.value = floor;
+                    option.textContent = floor;
+                    floorSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('フロア一覧取得エラー:', error);
+            }
+        }
+        
         function setupEventListeners() {
-            // 読み込みボタン
+            document.getElementById('holeSelect').addEventListener('change', () => {
+                const hole = document.getElementById('holeSelect').value;
+                loadFloorList(hole);
+            });
+            
             document.getElementById('loadBtn').addEventListener('click', loadLayout);
+            document.getElementById('newLayoutBtn').addEventListener('click', showNewLayoutModal);
             
             // 保存ボタン
             document.getElementById('saveBtn').addEventListener('click', saveLayout);
@@ -912,6 +971,9 @@
             document.getElementById('gridSettingsBtn').addEventListener('click', showGridSettings);
             document.getElementById('gridModalCancel').addEventListener('click', () => closeModal('gridModal'));
             document.getElementById('gridModalOk').addEventListener('click', applyGridSettings);
+            
+            document.getElementById('newLayoutModalCancel').addEventListener('click', () => closeModal('newLayoutModal'));
+            document.getElementById('newLayoutModalOk').addEventListener('click', createNewLayout);
             
             // 台番号モーダル
             document.getElementById('machineModalCancel').addEventListener('click', () => closeModal('machineModal'));
@@ -1155,19 +1217,19 @@
         
         async function loadLayout() {
             const hole = document.getElementById('holeSelect').value;
-            if (!hole) {
-                alert('店舗を選択してください');
+            const floor = document.getElementById('floorSelect').value;
+            if (!hole || !floor) {
+                alert('店舗とフロアを選択してください');
                 return;
             }
             
             try {
-                const response = await fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}`);
+                const response = await fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}/${encodeURIComponent(floor)}`);
                 if (!response.ok) throw new Error('レイアウトの読み込みに失敗しました');
                 
                 layoutData = await response.json();
-                layoutSource = response.headers.get('X-Layout-Source') || 'unknown';
+                if (!layoutData.floor) layoutData.floor = floor;
                 
-                // 状態リセット
                 selectedCells.clear();
                 undoStack = [];
                 redoStack = [];
@@ -1176,7 +1238,7 @@
                 rebuildSpatialIndex();
                 renderGrid();
                 updateStatus();
-                setMessage(`レイアウトを読み込みました（${layoutSource}）`);
+                setMessage('レイアウトを読み込みました');
             } catch (error) {
                 console.error('読み込みエラー:', error);
                 alert('レイアウトの読み込みに失敗しました: ' + error.message);
@@ -1188,9 +1250,11 @@
                 alert('レイアウトが読み込まれていません');
                 return;
             }
+            const hole = layoutData.hole;
+            const floor = layoutData.floor || '1F';
             
             try {
-                const response = await fetch(`/api/heatmap/layouts/${encodeURIComponent(layoutData.hole)}`, {
+                const response = await fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}/${encodeURIComponent(floor)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(layoutData),
@@ -1200,12 +1264,97 @@
                 
                 const result = await response.json();
                 isDirty = false;
-                layoutSource = 'gcs';
                 updateStatus();
                 setMessage(`保存しました（${result.cellCount}セル）`);
             } catch (error) {
                 console.error('保存エラー:', error);
                 alert('保存に失敗しました: ' + error.message);
+            }
+        }
+        
+        async function showNewLayoutModal() {
+            try {
+                const response = await fetch('/api/heatmap/holes');
+                const data = await response.json();
+                const select = document.getElementById('newLayoutHoleSelect');
+                select.innerHTML = '<option value="">店舗を選択</option>';
+                (data.holes || []).forEach((hole) => {
+                    const option = document.createElement('option');
+                    option.value = hole;
+                    option.textContent = hole;
+                    select.appendChild(option);
+                });
+                document.getElementById('newLayoutFloorInput').value = '1F';
+                document.getElementById('newLayoutRowsInput').value = 30;
+                document.getElementById('newLayoutColsInput').value = 30;
+                openModal('newLayoutModal');
+            } catch (error) {
+                console.error('店舗一覧取得エラー:', error);
+                alert('店舗一覧の取得に失敗しました');
+            }
+        }
+        
+        async function createNewLayout() {
+            const hole = document.getElementById('newLayoutHoleSelect').value;
+            const floorInput = document.getElementById('newLayoutFloorInput').value.trim();
+            const floor = floorInput || '1F';
+            const rows = parseInt(document.getElementById('newLayoutRowsInput').value, 10) || 30;
+            const cols = parseInt(document.getElementById('newLayoutColsInput').value, 10) || 30;
+            
+            if (!hole) {
+                alert('店舗を選択してください');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/heatmap/layouts/${encodeURIComponent(hole)}/${encodeURIComponent(floor)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rows, cols }),
+                });
+                
+                const result = await response.json();
+                if (!response.ok) {
+                    if (response.status === 409) {
+                        alert(`フロア「${floor}」は既に存在します。別のフロア名を指定してください。`);
+                    } else {
+                        throw new Error(result.error || '作成に失敗しました');
+                    }
+                    return;
+                }
+                
+                closeModal('newLayoutModal');
+                layoutData = result.layout;
+                selectedCells.clear();
+                undoStack = [];
+                redoStack = [];
+                isDirty = false;
+                
+                const holeSelect = document.getElementById('holeSelect');
+                const floorSelect = document.getElementById('floorSelect');
+                if (holeSelect.querySelector(`option[value="${hole}"]`) === null) {
+                    const opt = document.createElement('option');
+                    opt.value = hole;
+                    opt.textContent = hole;
+                    holeSelect.appendChild(opt);
+                }
+                holeSelect.value = hole;
+                await loadFloorList(hole);
+                if (floorSelect.querySelector(`option[value="${floor}"]`) === null) {
+                    const opt = document.createElement('option');
+                    opt.value = floor;
+                    opt.textContent = floor;
+                    floorSelect.appendChild(opt);
+                }
+                floorSelect.value = floor;
+                
+                rebuildSpatialIndex();
+                renderGrid();
+                updateStatus();
+                setMessage('新規レイアウトを作成しました');
+            } catch (error) {
+                console.error('作成エラー:', error);
+                alert('レイアウトの作成に失敗しました: ' + error.message);
             }
         }
         
@@ -2280,16 +2429,16 @@
         function updateStatus() {
             if (!layoutData) {
                 document.getElementById('statusHole').textContent = '店舗: 未選択';
+                document.getElementById('statusFloor').textContent = 'フロア: -';
                 document.getElementById('statusGrid').textContent = 'グリッド: -';
                 document.getElementById('statusCells').textContent = 'セル数: -';
-                document.getElementById('statusSource').textContent = 'ソース: -';
                 return;
             }
             
             document.getElementById('statusHole').textContent = `店舗: ${layoutData.hole}`;
+            document.getElementById('statusFloor').textContent = `フロア: ${layoutData.floor || '1F'}`;
             document.getElementById('statusGrid').textContent = `グリッド: ${layoutData.grid.rows}×${layoutData.grid.cols}`;
             document.getElementById('statusCells').textContent = `セル数: ${layoutData.cells.length}`;
-            document.getElementById('statusSource').textContent = `ソース: ${layoutSource || 'unknown'}`;
             
             if (isDirty) {
                 document.getElementById('statusMessage').textContent = '未保存の変更があります';

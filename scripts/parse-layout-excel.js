@@ -1,11 +1,15 @@
 /**
  * Excelファイルからヒートマップレイアウトを生成するスクリプト
- * 
+ *
  * 使い方:
- *   node scripts/parse-layout-excel.js <excelファイル> <出力JSONファイル>
- * 
+ *   node scripts/parse-layout-excel.js <excelファイル> [出力JSONファイル]
+ *
  * 例:
- *   node scripts/parse-layout-excel.js .temporaly/アイランド秋葉原_台番島図251103.xlsx src/config/heatmap-layouts/island-akihabara.json
+ *   node scripts/parse-layout-excel.js .temporaly/台番島図.xlsx ./layout-output.json
+ *
+ * 出力JSONはレイアウト v2.0 形式（hole, floor 含む）。GCS にはエディタの「新規作成」で
+ * フロアを作成したあと、API PUT /api/heatmap/layouts/:hole/:floor でアップロードするか、
+ * エディタで手動配置してください。
  */
 
 import XLSX from 'xlsx';
@@ -165,10 +169,11 @@ if (cells.length > 0) {
     console.log(`台番号範囲: ${numbers[0]} - ${numbers[numbers.length - 1]}`);
 }
 
-// レイアウトJSONを作成
+// レイアウトJSONを作成（v2.0: floor 対応）
 const layout = {
-    version: '1.0',
+    version: '2.0',
     hole: 'アイランド秋葉原店',
+    floor: '1F',
     updated: new Date().toISOString().split('T')[0],
     description: `${path.basename(excelPath)}から自動生成`,
     grid: {

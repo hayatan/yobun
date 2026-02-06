@@ -19,7 +19,7 @@ alwaysApply: true
     - `constants.js`: 定数定義
     - `sources/`: データソース別設定
     - `slorepo-config.js`: 店舗設定
-    - `heatmap-layouts/`: ヒートマップレイアウト設定
+    - `heatmap-layouts/`: ヒートマップレイアウト（storage.js のみ、実体はGCS `layouts/{hole-slug}/{floor-slug}.json`）
   - `db/`: データベース関連の処理
     - `sqlite/`: SQLite関連（プライマリストレージ）
     - `bigquery/`: BigQuery関連（分析用DB）
@@ -228,7 +228,7 @@ alwaysApply: true
   - **データマート**: `GET/DELETE/POST /api/datamart/*`
   - **イベント管理**: `GET/POST/PATCH/DELETE /api/events/*`
   - **イベントタイプ**: `GET/POST/PATCH/DELETE /api/event-types/*`
-  - **ヒートマップ**: `GET/PUT /api/heatmap/*`（エディタは `?perf=true` でパフォーマンス計測モード有効）
+  - **ヒートマップ**: `GET /api/heatmap/data`, `GET /api/heatmap/holes`, `GET/PUT/POST/DELETE /api/heatmap/layouts/:hole/:floor`（レイアウトはGCSのみ、マルチフロア対応。エディタは `?perf=true` で計測モード有効）
   - **ヘルスチェック**: `GET /health`
 
 ### 7.3 データベース管理
