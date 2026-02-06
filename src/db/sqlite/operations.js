@@ -100,26 +100,6 @@ const getDiffData = async (db, date, hole) => {
     });
 };
 
-const getDiffDataDate = async (db, date) => {
-    await createScrapedDataTableIfNotExists(db);
-    return new Promise((resolve, reject) => {
-        const query = `
-            SELECT *
-            FROM scraped_data
-            WHERE date = ?
-        `;
-        db.all(query, [date], (err, rows) => {
-            if (err) {
-                console.error(`データ取得中にエラーが発生しました: ${err.message}`);
-                reject(err);
-            } else {
-                console.log(`[${date}] データ取得結果: ${rows.length} 件`);
-                resolve(util.formatDiffData(rows));
-            }
-        });
-    });
-};
-
 // 特定の日付とホールのデータを削除
 const deleteDiffData = async (db, date, hole) => {
     await createScrapedDataTableIfNotExists(db);
@@ -174,32 +154,6 @@ const deleteDiffDataRange = async (db, startDate, endDate, hole = null) => {
 };
 
 /**
- * 特定の日付・店舗・機種のデータを取得
- * @param {object} db - SQLiteデータベース接続
- * @param {string} date - 日付
- * @param {string} hole - 店舗名
- * @param {string} machine - 機種名
- * @returns {Promise<Array>} データ配列
- */
-const getMachineData = async (db, date, hole, machine) => {
-    await createScrapedDataTableIfNotExists(db);
-    return new Promise((resolve, reject) => {
-        const query = `
-            SELECT * FROM scraped_data
-            WHERE date = ? AND hole = ? AND machine = ?
-        `;
-        db.all(query, [date, hole, machine], (err, rows) => {
-            if (err) {
-                console.error(`[${date}][${hole}][${machine}] 機種データ取得中にエラーが発生しました: ${err.message}`);
-                reject(err);
-            } else {
-                resolve(rows || []);
-            }
-        });
-    });
-};
-
-/**
  * 特定の日付・店舗の機種数（ユニーク数）を取得
  * @param {object} db - SQLiteデータベース接続
  * @param {string} date - 日付
@@ -221,35 +175,6 @@ const getMachineCount = async (db, date, hole) => {
             } else {
                 console.log(`[${date}][${hole}] 保存済み機種数: ${row.count}`);
                 resolve(row.count);
-            }
-        });
-    });
-};
-
-/**
- * 期間内のユニークな日付リストを取得
- * @param {object} db - SQLiteデータベース接続
- * @param {string} startDate - 開始日付 (YYYY-MM-DD)
- * @param {string} endDate - 終了日付 (YYYY-MM-DD)
- * @returns {Promise<string[]>} 日付リスト（昇順）
- */
-const getUniqueDatesInRange = async (db, startDate, endDate) => {
-    await createScrapedDataTableIfNotExists(db);
-    return new Promise((resolve, reject) => {
-        const query = `
-            SELECT DISTINCT date
-            FROM scraped_data
-            WHERE date >= ? AND date <= ?
-            ORDER BY date ASC
-        `;
-        db.all(query, [startDate, endDate], (err, rows) => {
-            if (err) {
-                console.error(`[${startDate}〜${endDate}] 日付リスト取得中にエラーが発生しました: ${err.message}`);
-                reject(err);
-            } else {
-                const dates = rows.map(row => row.date);
-                console.log(`[${startDate}〜${endDate}] ユニーク日付数: ${dates.length} 件`);
-                resolve(dates);
             }
         });
     });
@@ -305,12 +230,9 @@ const sqlite = {
     saveDiffData,
     isDiffDataExists,
     getDiffData,
-    getDiffDataDate,
-    getMachineData,
     deleteDiffData,
     deleteDiffDataRange,
     getMachineCount,
-    getUniqueDatesInRange,
     getDiffDataRange,
 };
 

@@ -64,7 +64,12 @@
   - `raw_data/`: 生データスキーマ
   - `scrape_failures/`: 失敗記録スキーマ
   - `manual_corrections/`: 手動補正スキーマ
+  - `events/`: イベントスキーマ
+  - `event_types/`: イベントタイプスキーマ
   - `datamart/`: データマートSQL
+  - `machine_summary/`: 機種サマリークエリ
+  - `heatmap/`: ヒートマップクエリ
+  - `analysis/`: 分析クエリ
 - `public/`: 静的ファイル（HTML）
 
 ### ファイル命名規則
@@ -184,10 +189,13 @@
 
 ### 環境変数
 - `NODE_ENV`: 実行環境
+- `PORT`: サーバーポート（デフォルト: `8080`）
 - `SQLITE_DB_PATH`: SQLiteデータベースパス
 - `GOOGLE_CLOUD_PROJECT`: GCPプロジェクトID
 - `GOOGLE_APPLICATION_CREDENTIALS`: 認証情報パス
+- `BQ_DATASET_ID`: BigQueryデータセットID（デフォルト: `scraped_data`）
 - `ENABLE_SCHEDULER`: スケジューラーの有効化
+- `READONLY_MODE`: 読み取り専用モード（Cloud Run用、`true` で書き込みAPI無効化）
 
 ## スキーマ管理
 
@@ -207,6 +215,10 @@
 | `sql/manual_corrections/schema.js` | 手動補正スキーマ |
 | `sql/events/schema.js` | イベントスキーマ（SQLite/BigQuery両対応） |
 | `sql/event_types/schema.js` | イベントタイプスキーマ（SQLiteのみ） |
+| `sql/datamart/machine_stats/query.sql` | データマート生成クエリ |
+| `sql/datamart/machine_stats/create_table.sql` | データマートテーブル定義 |
+| `sql/machine_summary/machine_summary.sql` | 機種サマリークエリ |
+| `sql/heatmap/heatmap_query.sql` | ヒートマップデータクエリ |
 
 ## 変更時の注意
 

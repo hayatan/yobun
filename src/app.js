@@ -1,6 +1,6 @@
 import scrape from './services/slorepo/index.js';
 import { BIGQUERY, DEFAULT_SCRAPE_DAYS } from './config/constants.js';
-import { getJSTDate, generateDateRange } from './util/date.js';
+import { getJSTDate } from './util/date.js';
 
 /**
  * スクレイピング実行処理

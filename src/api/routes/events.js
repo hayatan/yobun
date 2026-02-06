@@ -50,6 +50,31 @@ const createEventsRouter = (bigquery, db) => {
     });
 
     /**
+     * メタ情報取得（イベント種類・店舗一覧）
+     * GET /api/events/meta/info
+     */
+    router.get('/meta/info', async (req, res) => {
+        try {
+            const [eventTypes, holes] = await Promise.all([
+                events.getDistinctEventTypes(db),
+                events.getDistinctHoles(db),
+            ]);
+
+            res.json({
+                success: true,
+                eventTypes,
+                holes,
+            });
+        } catch (error) {
+            console.error('イベントメタ情報取得エラー:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    });
+
+    /**
      * イベント詳細取得
      * GET /api/events/:id
      */
@@ -302,31 +327,6 @@ const createEventsRouter = (bigquery, db) => {
             });
         } catch (error) {
             console.error('イベントBigQuery同期エラー:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message,
-            });
-        }
-    });
-
-    /**
-     * メタ情報取得（イベント種類・店舗一覧）
-     * GET /api/events/meta
-     */
-    router.get('/meta/info', async (req, res) => {
-        try {
-            const [eventTypes, holes] = await Promise.all([
-                events.getDistinctEventTypes(db),
-                events.getDistinctHoles(db),
-            ]);
-            
-            res.json({
-                success: true,
-                eventTypes,
-                holes,
-            });
-        } catch (error) {
-            console.error('イベントメタ情報取得エラー:', error);
             res.status(500).json({
                 success: false,
                 error: error.message,

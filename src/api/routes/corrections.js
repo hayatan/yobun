@@ -191,27 +191,30 @@ const createCorrectionsRouter = (bigquery, db) => {
     });
 
     /**
-     * 手動補正削除（単一）
-     * DELETE /api/corrections/:id
+     * 一括削除
+     * DELETE /api/corrections/bulk
+     * Body: { date: string, hole: string, machine?: string }
      */
-    router.delete('/:id', async (req, res) => {
+    router.delete('/bulk', async (req, res) => {
         try {
-            const { id } = req.params;
-            const deleted = await corrections.deleteCorrection(db, id);
-            
-            if (!deleted) {
-                return res.status(404).json({
+            const { date, hole, machine } = req.body;
+
+            if (!date || !hole) {
+                return res.status(400).json({
                     success: false,
-                    error: '指定されたIDの補正データが見つかりません',
+                    error: 'dateとholeは必須です',
                 });
             }
-            
+
+            const count = await corrections.deleteCorrections(db, date, hole, machine);
+
             res.json({
                 success: true,
-                message: '補正データを削除しました',
+                message: `${count}件の補正データを削除しました`,
+                count,
             });
         } catch (error) {
-            console.error('補正データ削除エラー:', error);
+            console.error('補正データ一括削除エラー:', error);
             res.status(500).json({
                 success: false,
                 error: error.message,
@@ -220,30 +223,27 @@ const createCorrectionsRouter = (bigquery, db) => {
     });
 
     /**
-     * 一括削除
-     * DELETE /api/corrections/bulk
-     * Body: { date: string, hole: string, machine?: string }
+     * 手動補正削除（単一）
+     * DELETE /api/corrections/:id
      */
-    router.delete('/bulk', async (req, res) => {
+    router.delete('/:id', async (req, res) => {
         try {
-            const { date, hole, machine } = req.body;
-            
-            if (!date || !hole) {
-                return res.status(400).json({
+            const { id } = req.params;
+            const deleted = await corrections.deleteCorrection(db, id);
+
+            if (!deleted) {
+                return res.status(404).json({
                     success: false,
-                    error: 'dateとholeは必須です',
+                    error: '指定されたIDの補正データが見つかりません',
                 });
             }
-            
-            const count = await corrections.deleteCorrections(db, date, hole, machine);
-            
+
             res.json({
                 success: true,
-                message: `${count}件の補正データを削除しました`,
-                count,
+                message: '補正データを削除しました',
             });
         } catch (error) {
-            console.error('補正データ一括削除エラー:', error);
+            console.error('補正データ削除エラー:', error);
             res.status(500).json({
                 success: false,
                 error: error.message,

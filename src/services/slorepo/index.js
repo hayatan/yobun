@@ -1,7 +1,7 @@
 import scrapeSlotDataByMachine, { scrapeMachineList, classifyError } from './scraper.js';
 import config, { getHoles, getHolesSortedByPriority } from '../../config/slorepo-config.js';
 import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
-import util from '../../util/common.js';
+import { generateDateRange, formatUrlDate } from '../../util/date.js';
 import sqlite from '../../db/sqlite/operations.js';
 import failures from '../../db/sqlite/failures.js';
 import corrections from '../../db/sqlite/corrections.js';
@@ -55,7 +55,7 @@ const scrape = async (
         priorityFilter = null, // 'high', 'normal', 'low' または null（全て）
     } = options;
 
-    const dateRange = util.generateDateRange(startDate, endDate);
+    const dateRange = generateDateRange(startDate, endDate);
     console.log(`処理開始: ${dateRange[0]} - ${dateRange[dateRange.length - 1]}`);
     console.log(`オプション: continueOnError=${continueOnError}, force=${force}, priorityFilter=${priorityFilter}`);
 
@@ -84,7 +84,7 @@ const scrape = async (
     };
 
     for (const date of dateRange) {
-        const tableId = `${tableIdPrefix}${util.formatUrlDate(date)}`;
+        const tableId = `${tableIdPrefix}${formatUrlDate(date)}`;
         // テーブルの存在を確認（なければ作成）
         const dateTable = await ensureTableExists(bigquery, datasetId, tableId);
         

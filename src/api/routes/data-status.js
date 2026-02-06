@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import config, { getHoles } from '../../config/slorepo-config.js';
 import sqlite from '../../db/sqlite/operations.js';
-import util from '../../util/common.js';
+import { generateDateRange } from '../../util/date.js';
 import { deleteBigQueryTable } from '../../db/bigquery/operations.js';
 import { BIGQUERY } from '../../config/constants.js';
 
@@ -200,7 +200,7 @@ const createDataStatusRouter = (bigquery, db) => {
             const bqErrors = [];
             
             // 日付範囲を生成してテーブルごとに削除
-            const dateRange = util.generateDateRange(new Date(startDate), new Date(endDate));
+            const dateRange = generateDateRange(new Date(startDate), new Date(endDate));
             
             for (const date of dateRange) {
                 const tableId = `data_${date.replace(/-/g, '')}`;

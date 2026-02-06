@@ -7,8 +7,6 @@
 ```
 sql/
 ├── AGENTS.md                          # このファイル（修正ガイドライン）
-├── create_datamart_table.sql         # データマートテーブル作成DDL
-├── datamart_machine_stats.sql        # データマート生成クエリ
 ├── raw_data/                          # 元データ管理ディレクトリ
 │   ├── README.md                      # 元データのドキュメント
 │   ├── schema.js                      # 共通スキーマ定義（SQLite/BQ両対応）
@@ -16,12 +14,40 @@ sql/
 │   └── migrations/                    # マイグレーションファイル
 │       ├── README.md                  # マイグレーション手順書
 │       └── 001_add_source_column.*.sql
+├── datamart/                          # データマートディレクトリ
+│   └── machine_stats/
+│       ├── query.sql                  # データマート生成クエリ
+│       ├── create_table.sql           # データマートテーブル作成DDL
+│       ├── README.md                  # データマートのドキュメント
+│       ├── MIGRATION_GUIDE.md         # マイグレーションガイド
+│       └── CHANGELOG_v2.md            # 変更履歴
+├── machine_summary/                   # 機種サマリークエリ
+│   ├── machine_summary.sql
+│   └── README.md
+├── heatmap/                           # ヒートマップクエリ
+│   ├── heatmap_query.sql
+│   └── README.md
+├── scrape_failures/                   # 失敗記録スキーマ
+│   └── schema.js
+├── manual_corrections/                # 手動補正スキーマ
+│   └── schema.js
+├── events/                            # イベントスキーマ
+│   └── schema.js
+├── event_types/                       # イベントタイプスキーマ
+│   └── schema.js
 └── analysis/                          # 分析クエリディレクトリ
     ├── README.md                      # 分析システムのドキュメント
-    ├── recommendation_output.sql     # 狙い台一覧出力（複数店舗・機種対応）
-    ├── recommendation_evaluation.sql # 狙い台選定方法の評価
-    ├── scripts/                       # 分析スクリプト
-    └── results/                       # 評価結果
+    ├── simple_prediction/             # シンプル予測クエリ
+    │   ├── 01_day_category_effect.sql
+    │   ├── 02_streak_effect.sql
+    │   ├── 03_combined_strategy.sql
+    │   ├── 04_recommendation_output.sql
+    │   └── README.md
+    └── strategy_matching/             # 戦略マッチングクエリ
+        ├── recommendation_output.sql
+        ├── recommendation_evaluation.sql
+        ├── scripts/
+        └── results/
 ```
 
 ---
@@ -36,8 +62,8 @@ sql/
   - 定義: `sql/raw_data/schema.js`
   - 格納先: SQLite（scraped_data）、BigQuery（data_YYYYMMDD）
 - **データマート**: 元データを集計した分析用データ
-  - 定義: `sql/create_datamart_table.sql`
-  - 生成: `sql/datamart_machine_stats.sql`
+  - 定義: `sql/datamart/machine_stats/create_table.sql`
+  - 生成: `sql/datamart/machine_stats/query.sql`
 - **分析クエリ**: データマートを参照する分析SQL
   - 配置: `sql/analysis/`
 
@@ -47,7 +73,7 @@ sql/
 
 ### 1. 整合性の維持
 
-- **データマートの変更時**: `datamart_machine_stats.sql` を変更したら、必ず `analysis/README.md` の「1. データマート」セクションを更新する
+- **データマートの変更時**: `datamart/machine_stats/query.sql` を変更したら、必ず `analysis/README.md` の「1. データマート」セクションを更新する
 - **分析クエリの変更時**: `analysis/*.sql` を変更したら、必ず `analysis/README.md` の該当セクションを更新する
 - **新規クエリ追加時**: `analysis/README.md` の「4. クエリファイル一覧」に追加する
 
@@ -106,25 +132,25 @@ sql/
 - [ ] `migrations/README.md` に実行方法が記載されているか
 - [ ] `raw_data/README.md` が最新か
 - [ ] アプリケーションコード（`src/db/*/operations.js`）が更新されているか
-- [ ] データマート生成クエリ（`datamart_machine_stats.sql`）が影響を受けないか
+- [ ] データマート生成クエリ（`datamart/machine_stats/query.sql`）が影響を受けないか
 
 ---
 
 ## データマートの修正方法
 
-### `datamart_machine_stats.sql` を修正する場合
+### `datamart/machine_stats/query.sql` を修正する場合
 
 #### 1. 集計期間の追加
 
 新しい集計期間（例: `d14`、`prev_d14`）を追加する場合：
 
-1. **`datamart_machine_stats.sql` の修正**
+1. **`datamart/machine_stats/query.sql` の修正**
    - `stats_d14` CTE を追加（`stats_d3` などを参考）
    - `stats_prev_d14` CTE を追加（`stats_prev_d3` などを参考）
    - 最終SELECT文に `d14_*` と `prev_d14_*` カラムを追加
    - MERGE文のUPDATEとINSERTにカラムを追加
 
-2. **`create_datamart_table.sql` の修正**
+2. **`datamart/machine_stats/create_table.sql` の修正**
    - テーブル定義に `d14_*` と `prev_d14_*` カラムを追加
 
 3. **`analysis/README.md` の更新**
@@ -135,12 +161,12 @@ sql/
 
 新しい集計項目（例: `big_count`、`reg_count`）を追加する場合：
 
-1. **`datamart_machine_stats.sql` の修正**
+1. **`datamart/machine_stats/query.sql` の修正**
    - 各 `stats_*` CTE で新しい項目を集計
    - 最終SELECT文にカラムを追加
    - MERGE文のUPDATEとINSERTにカラムを追加
 
-2. **`create_datamart_table.sql` の修正**
+2. **`datamart/machine_stats/create_table.sql` の修正**
    - テーブル定義に新しいカラムを追加
 
 3. **`analysis/README.md` の更新**
@@ -151,7 +177,7 @@ sql/
 
 新しい店舗の台番マッピングを追加する場合：
 
-1. **`datamart_machine_stats.sql` の修正**
+1. **`datamart/machine_stats/query.sql` の修正**
    - `machine_number_mapping` CTE に新しい店舗のマッピングを追加
    - `normalized_data` CTE のCASE文に新しい店舗の条件を追加
 
@@ -162,8 +188,8 @@ sql/
 
 データマートを修正したら、以下を確認：
 
-- [ ] `datamart_machine_stats.sql` が正しく動作するか（構文エラーがないか）
-- [ ] `create_datamart_table.sql` のテーブル定義と一致しているか
+- [ ] `datamart/machine_stats/query.sql` が正しく動作するか（構文エラーがないか）
+- [ ] `datamart/machine_stats/create_table.sql` のテーブル定義と一致しているか
 - [ ] `analysis/README.md` の「1. データマート」セクションが最新か
 - [ ] 既存の分析クエリ（`analysis/*.sql`）が影響を受けないか
 
@@ -175,7 +201,7 @@ sql/
 
 #### 1. ファイルの配置
 
-- 分析クエリは `sql/analysis/` ディレクトリに配置する
+- 分析クエリは `sql/analysis/` ディレクトリ配下のサブディレクトリに配置する
 - ファイル名は `snake_case` で、機能を表す明確な名前を使用する
 - 例: `trend_analysis.sql`、`machine_comparison.sql`
 
@@ -185,7 +211,7 @@ sql/
 -- ============================================================================
 -- [クエリ名]
 -- ============================================================================
--- 
+--
 -- 【パラメータ定義】
 --   以下のDECLARE文で定義した値を使用
 -- ============================================================================
@@ -200,7 +226,7 @@ DECLARE target_machine STRING DEFAULT 'L+ToLOVEるダークネス';
 
 -- ============================================================================
 
-WITH 
+WITH
 -- 基本データの取得
 base_data AS (
   SELECT ...
@@ -299,7 +325,7 @@ ORDER BY ...
 #### 1. データマート関連の更新
 
 - **セクション**: 「1. データマート」
-- **更新タイミング**: `datamart_machine_stats.sql` または `create_datamart_table.sql` を変更した時
+- **更新タイミング**: `datamart/machine_stats/query.sql` または `datamart/machine_stats/create_table.sql` を変更した時
 - **確認項目**:
   - 集計期間の説明が最新か
   - 集計項目の説明が最新か
@@ -375,12 +401,12 @@ README を更新したら、以下を確認：
 #### 1. データマートのカラムが見つからない
 
 - **原因**: テーブル定義とクエリのカラム名が不一致
-- **対処**: `create_datamart_table.sql` のテーブル定義を確認し、正しいカラム名を使用する
+- **対処**: `datamart/machine_stats/create_table.sql` のテーブル定義を確認し、正しいカラム名を使用する
 
 #### 2. 分析クエリがエラーになる
 
 - **原因**: データマートのカラム名が変更された、または存在しない
-- **対処**: `datamart_machine_stats.sql` の最新のカラム定義を確認する
+- **対処**: `datamart/machine_stats/query.sql` の最新のカラム定義を確認する
 
 #### 3. README と実際の動作が違う
 
@@ -400,8 +426,8 @@ README を更新したら、以下を確認：
 
 ### データマートの変更時
 
-- [ ] `datamart_machine_stats.sql` が正しく動作する
-- [ ] `create_datamart_table.sql` のテーブル定義と一致している
+- [ ] `datamart/machine_stats/query.sql` が正しく動作する
+- [ ] `datamart/machine_stats/create_table.sql` のテーブル定義と一致している
 - [ ] `analysis/README.md` の「1. データマート」セクションが最新
 - [ ] 既存の分析クエリが影響を受けない
 
@@ -426,6 +452,6 @@ README を更新したら、以下を確認：
 ## 参考資料
 
 - `analysis/README.md`: 分析システムの詳細ドキュメント
-- `datamart_machine_stats.sql`: データマート生成クエリの実装例
-- `recommendation.sql`: 分析クエリの実装例
-
+- `datamart/machine_stats/query.sql`: データマート生成クエリの実装例
+- `analysis/strategy_matching/recommendation_output.sql`: 分析クエリの実装例
+- `analysis/strategy_matching/recommendation_evaluation.sql`: 評価クエリの実装例

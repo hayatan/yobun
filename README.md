@@ -270,7 +270,7 @@ yobun/
 | `/api/schedules/:jobId/run` | POST | ジョブ手動実行 |
 | `/api/schedules/stop` | POST | ジョブ停止 |
 | `/api/schedules/:jobId/schedules` | POST | スケジュール追加 |
-| `/api/schedules/:jobId/schedules/:id` | PUT/DELETE | スケジュール更新/削除 |
+| `/api/schedules/:jobId/schedules/:scheduleId` | PUT/DELETE | スケジュール更新/削除 |
 | `/api/datamart/status` | GET | データマート状態 |
 | `/api/datamart/status/job` | GET | データマートジョブ状態 |
 | `/api/datamart/delete` | DELETE | データマート削除 |

@@ -17,7 +17,7 @@ import config, { findHoleByName, getHoles, getHolesSortedByPriority } from '../.
 import { SLOREPO_SOURCE } from '../../config/sources/slorepo.js';
 import { BIGQUERY } from '../../config/constants.js';
 import { acquireLock, releaseLock, getLockStatus } from '../../util/lock.js';
-import util from '../../util/common.js';
+import { generateDateRange } from '../../util/date.js';
 
 const JOB_TYPE = 'forceRescrape';
 const SOURCE = 'slorepo';
@@ -89,7 +89,7 @@ const createForceRescrapeRouter = (bigquery, db) => {
             }
 
             // 日付範囲を生成
-            const dateRange = util.generateDateRange(new Date(actualStartDate), new Date(actualEndDate));
+            const dateRange = generateDateRange(new Date(actualStartDate), new Date(actualEndDate));
             const totalTasks = dateRange.length * holes.length;
 
             stateManager.startJob(JOB_TYPE);
