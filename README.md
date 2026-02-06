@@ -168,10 +168,11 @@ SQLiteからBigQueryへの同期はGCS経由のLoad Jobを使用し、重複が�
 - **レイアウトエディタ**: フロアマップの編集
   - 店舗・フロア選択、新規レイアウト作成（店舗・フロア名・グリッドサイズ指定）
   - セルのマージ・分割、台番号の配置
+  - JSONで直接編集（ツールバー「{} JSON」でレイアウトJSONを編集・適用）
   - GCSへの保存
   - インクリメンタルDOM更新による高速描画（空間インデックス使用）
   - パフォーマンス計測モード（`?perf=true` でFPS・実行時間を表示）
-- **レイアウト JSON v2.0**: `version`, `hole`, `floor`, `grid`, `cells` 等。既存データの移行は `scripts/migrate-layouts-to-floors.js` を参照。
+- **レイアウト JSON v2.0**: `version`, `hole`, `floor`, `grid`, `cells` 等。既存データの移行は `scripts/migrate-layouts-to-floors.js` を参照。エスパス秋葉原のCSVフロアマップからレイアウトを生成する場合は `scripts/parse-layout-csv-espace.js`（ALL/2F/3F/4F の4ファイル出力）を使用。
 
 ### データマート管理
 

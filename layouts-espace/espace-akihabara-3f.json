@@ -1,0 +1,1286 @@
+{
+  "version": "2.0",
+  "hole": "エスパス秋葉原駅前店",
+  "floor": "3F",
+  "updated": "2026-02-06",
+  "description": "CSV「YoBun_エスパス秋葉原_直近28日 - HM補正 のコピー.csv」から自動生成（3F）",
+  "grid": {
+    "rows": 64,
+    "cols": 6
+  },
+  "walls": [],
+  "cells": [
+    {
+      "row": 0,
+      "col": 2,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 0,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 1,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 2,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 3,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 4,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 5,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 10,
+      "col": 2,
+      "type": "machine",
+      "number": 3116
+    },
+    {
+      "row": 10,
+      "col": 3,
+      "type": "machine",
+      "number": 3032
+    },
+    {
+      "row": 11,
+      "col": 2,
+      "type": "machine",
+      "number": 3115
+    },
+    {
+      "row": 11,
+      "col": 3,
+      "type": "machine",
+      "number": 3033
+    },
+    {
+      "row": 12,
+      "col": 0,
+      "type": "machine",
+      "number": 3117
+    },
+    {
+      "row": 12,
+      "col": 2,
+      "type": "machine",
+      "number": 3114
+    },
+    {
+      "row": 12,
+      "col": 3,
+      "type": "machine",
+      "number": 3034
+    },
+    {
+      "row": 12,
+      "col": 5,
+      "type": "machine",
+      "number": 3031
+    },
+    {
+      "row": 13,
+      "col": 0,
+      "type": "machine",
+      "number": 3118
+    },
+    {
+      "row": 13,
+      "col": 2,
+      "type": "machine",
+      "number": 3113
+    },
+    {
+      "row": 13,
+      "col": 3,
+      "type": "machine",
+      "number": 3035
+    },
+    {
+      "row": 13,
+      "col": 5,
+      "type": "machine",
+      "number": 3030
+    },
+    {
+      "row": 14,
+      "col": 0,
+      "type": "machine",
+      "number": 3119
+    },
+    {
+      "row": 14,
+      "col": 2,
+      "type": "machine",
+      "number": 3112
+    },
+    {
+      "row": 14,
+      "col": 3,
+      "type": "machine",
+      "number": 3036
+    },
+    {
+      "row": 14,
+      "col": 5,
+      "type": "machine",
+      "number": 3029
+    },
+    {
+      "row": 15,
+      "col": 0,
+      "type": "machine",
+      "number": 3120
+    },
+    {
+      "row": 15,
+      "col": 2,
+      "type": "machine",
+      "number": 3111
+    },
+    {
+      "row": 15,
+      "col": 3,
+      "type": "machine",
+      "number": 3037
+    },
+    {
+      "row": 15,
+      "col": 5,
+      "type": "machine",
+      "number": 3028
+    },
+    {
+      "row": 16,
+      "col": 0,
+      "type": "machine",
+      "number": 3121
+    },
+    {
+      "row": 16,
+      "col": 2,
+      "type": "machine",
+      "number": 3110
+    },
+    {
+      "row": 16,
+      "col": 3,
+      "type": "machine",
+      "number": 3038
+    },
+    {
+      "row": 16,
+      "col": 5,
+      "type": "machine",
+      "number": 3027
+    },
+    {
+      "row": 17,
+      "col": 0,
+      "type": "machine",
+      "number": 3122
+    },
+    {
+      "row": 17,
+      "col": 2,
+      "type": "machine",
+      "number": 3109
+    },
+    {
+      "row": 17,
+      "col": 3,
+      "type": "machine",
+      "number": 3039
+    },
+    {
+      "row": 17,
+      "col": 5,
+      "type": "machine",
+      "number": 3026
+    },
+    {
+      "row": 18,
+      "col": 0,
+      "type": "machine",
+      "number": 3123
+    },
+    {
+      "row": 18,
+      "col": 2,
+      "type": "machine",
+      "number": 3108
+    },
+    {
+      "row": 18,
+      "col": 3,
+      "type": "machine",
+      "number": 3040
+    },
+    {
+      "row": 19,
+      "col": 0,
+      "type": "machine",
+      "number": 3124
+    },
+    {
+      "row": 19,
+      "col": 2,
+      "type": "machine",
+      "number": 3107
+    },
+    {
+      "row": 19,
+      "col": 3,
+      "type": "machine",
+      "number": 3041
+    },
+    {
+      "row": 20,
+      "col": 0,
+      "type": "machine",
+      "number": 3125
+    },
+    {
+      "row": 20,
+      "col": 2,
+      "type": "machine",
+      "number": 3106
+    },
+    {
+      "row": 20,
+      "col": 3,
+      "type": "machine",
+      "number": 3042
+    },
+    {
+      "row": 20,
+      "col": 5,
+      "type": "machine",
+      "number": 3025
+    },
+    {
+      "row": 21,
+      "col": 0,
+      "type": "machine",
+      "number": 3126
+    },
+    {
+      "row": 21,
+      "col": 2,
+      "type": "machine",
+      "number": 3105
+    },
+    {
+      "row": 21,
+      "col": 3,
+      "type": "machine",
+      "number": 3043
+    },
+    {
+      "row": 21,
+      "col": 5,
+      "type": "machine",
+      "number": 3024
+    },
+    {
+      "row": 22,
+      "col": 0,
+      "type": "machine",
+      "number": 3127
+    },
+    {
+      "row": 22,
+      "col": 2,
+      "type": "machine",
+      "number": 3104
+    },
+    {
+      "row": 22,
+      "col": 3,
+      "type": "machine",
+      "number": 3044
+    },
+    {
+      "row": 22,
+      "col": 5,
+      "type": "machine",
+      "number": 3023
+    },
+    {
+      "row": 23,
+      "col": 0,
+      "type": "machine",
+      "number": 3128
+    },
+    {
+      "row": 23,
+      "col": 2,
+      "type": "machine",
+      "number": 3103
+    },
+    {
+      "row": 23,
+      "col": 3,
+      "type": "machine",
+      "number": 3045
+    },
+    {
+      "row": 23,
+      "col": 5,
+      "type": "machine",
+      "number": 3022
+    },
+    {
+      "row": 24,
+      "col": 0,
+      "type": "machine",
+      "number": 3129
+    },
+    {
+      "row": 24,
+      "col": 2,
+      "type": "machine",
+      "number": 3102
+    },
+    {
+      "row": 24,
+      "col": 3,
+      "type": "machine",
+      "number": 3046
+    },
+    {
+      "row": 24,
+      "col": 5,
+      "type": "machine",
+      "number": 3021
+    },
+    {
+      "row": 25,
+      "col": 0,
+      "type": "machine",
+      "number": 3130
+    },
+    {
+      "row": 25,
+      "col": 2,
+      "type": "machine",
+      "number": 3101
+    },
+    {
+      "row": 25,
+      "col": 3,
+      "type": "machine",
+      "number": 3047
+    },
+    {
+      "row": 25,
+      "col": 5,
+      "type": "machine",
+      "number": 3020
+    },
+    {
+      "row": 26,
+      "col": 0,
+      "type": "machine",
+      "number": 3131
+    },
+    {
+      "row": 26,
+      "col": 2,
+      "type": "machine",
+      "number": 3100
+    },
+    {
+      "row": 26,
+      "col": 3,
+      "type": "machine",
+      "number": 3048
+    },
+    {
+      "row": 27,
+      "col": 0,
+      "type": "machine",
+      "number": 3132
+    },
+    {
+      "row": 27,
+      "col": 2,
+      "type": "machine",
+      "number": 3099
+    },
+    {
+      "row": 27,
+      "col": 3,
+      "type": "machine",
+      "number": 3049
+    },
+    {
+      "row": 28,
+      "col": 0,
+      "type": "machine",
+      "number": 3133
+    },
+    {
+      "row": 28,
+      "col": 2,
+      "type": "machine",
+      "number": 3098
+    },
+    {
+      "row": 28,
+      "col": 3,
+      "type": "machine",
+      "number": 3050
+    },
+    {
+      "row": 32,
+      "col": 0,
+      "type": "machine",
+      "number": 3134
+    },
+    {
+      "row": 32,
+      "col": 2,
+      "type": "machine",
+      "number": 3097
+    },
+    {
+      "row": 32,
+      "col": 3,
+      "type": "machine",
+      "number": 3051
+    },
+    {
+      "row": 32,
+      "col": 5,
+      "type": "machine",
+      "number": 3019
+    },
+    {
+      "row": 33,
+      "col": 0,
+      "type": "machine",
+      "number": 3135
+    },
+    {
+      "row": 33,
+      "col": 2,
+      "type": "machine",
+      "number": 3096
+    },
+    {
+      "row": 33,
+      "col": 3,
+      "type": "machine",
+      "number": 3052
+    },
+    {
+      "row": 33,
+      "col": 5,
+      "type": "machine",
+      "number": 3018
+    },
+    {
+      "row": 34,
+      "col": 0,
+      "type": "machine",
+      "number": 3136
+    },
+    {
+      "row": 34,
+      "col": 2,
+      "type": "machine",
+      "number": 3095
+    },
+    {
+      "row": 34,
+      "col": 3,
+      "type": "machine",
+      "number": 3053
+    },
+    {
+      "row": 34,
+      "col": 5,
+      "type": "machine",
+      "number": 3017
+    },
+    {
+      "row": 35,
+      "col": 0,
+      "type": "machine",
+      "number": 3137
+    },
+    {
+      "row": 35,
+      "col": 2,
+      "type": "machine",
+      "number": 3094
+    },
+    {
+      "row": 35,
+      "col": 3,
+      "type": "machine",
+      "number": 3054
+    },
+    {
+      "row": 35,
+      "col": 5,
+      "type": "machine",
+      "number": 3016
+    },
+    {
+      "row": 36,
+      "col": 0,
+      "type": "machine",
+      "number": 3138
+    },
+    {
+      "row": 36,
+      "col": 2,
+      "type": "machine",
+      "number": 3093
+    },
+    {
+      "row": 36,
+      "col": 3,
+      "type": "machine",
+      "number": 3055
+    },
+    {
+      "row": 36,
+      "col": 5,
+      "type": "machine",
+      "number": 3015
+    },
+    {
+      "row": 37,
+      "col": 0,
+      "type": "machine",
+      "number": 3139
+    },
+    {
+      "row": 37,
+      "col": 2,
+      "type": "machine",
+      "number": 3092
+    },
+    {
+      "row": 37,
+      "col": 3,
+      "type": "machine",
+      "number": 3056
+    },
+    {
+      "row": 37,
+      "col": 5,
+      "type": "machine",
+      "number": 3014
+    },
+    {
+      "row": 38,
+      "col": 0,
+      "type": "machine",
+      "number": 3140
+    },
+    {
+      "row": 38,
+      "col": 2,
+      "type": "machine",
+      "number": 3091
+    },
+    {
+      "row": 38,
+      "col": 3,
+      "type": "machine",
+      "number": 3057
+    },
+    {
+      "row": 38,
+      "col": 5,
+      "type": "machine",
+      "number": 3013
+    },
+    {
+      "row": 39,
+      "col": 0,
+      "type": "machine",
+      "number": 3141
+    },
+    {
+      "row": 39,
+      "col": 2,
+      "type": "machine",
+      "number": 3090
+    },
+    {
+      "row": 39,
+      "col": 3,
+      "type": "machine",
+      "number": 3058
+    },
+    {
+      "row": 39,
+      "col": 5,
+      "type": "machine",
+      "number": 3012
+    },
+    {
+      "row": 40,
+      "col": 0,
+      "type": "machine",
+      "number": 3142
+    },
+    {
+      "row": 40,
+      "col": 2,
+      "type": "machine",
+      "number": 3089
+    },
+    {
+      "row": 40,
+      "col": 3,
+      "type": "machine",
+      "number": 3059
+    },
+    {
+      "row": 40,
+      "col": 5,
+      "type": "machine",
+      "number": 3011
+    },
+    {
+      "row": 41,
+      "col": 0,
+      "type": "machine",
+      "number": 3143
+    },
+    {
+      "row": 41,
+      "col": 2,
+      "type": "machine",
+      "number": 3088
+    },
+    {
+      "row": 41,
+      "col": 3,
+      "type": "machine",
+      "number": 3060
+    },
+    {
+      "row": 42,
+      "col": 0,
+      "type": "machine",
+      "number": 3144
+    },
+    {
+      "row": 42,
+      "col": 2,
+      "type": "machine",
+      "number": 3087
+    },
+    {
+      "row": 42,
+      "col": 3,
+      "type": "machine",
+      "number": 3061
+    },
+    {
+      "row": 43,
+      "col": 0,
+      "type": "machine",
+      "number": 3145
+    },
+    {
+      "row": 43,
+      "col": 2,
+      "type": "machine",
+      "number": 3086
+    },
+    {
+      "row": 43,
+      "col": 3,
+      "type": "machine",
+      "number": 3062
+    },
+    {
+      "row": 43,
+      "col": 5,
+      "type": "machine",
+      "number": 3010
+    },
+    {
+      "row": 44,
+      "col": 0,
+      "type": "machine",
+      "number": 3146
+    },
+    {
+      "row": 44,
+      "col": 2,
+      "type": "machine",
+      "number": 3085
+    },
+    {
+      "row": 44,
+      "col": 3,
+      "type": "machine",
+      "number": 3063
+    },
+    {
+      "row": 44,
+      "col": 5,
+      "type": "machine",
+      "number": 3009
+    },
+    {
+      "row": 45,
+      "col": 0,
+      "type": "machine",
+      "number": 3147
+    },
+    {
+      "row": 45,
+      "col": 2,
+      "type": "machine",
+      "number": 3084
+    },
+    {
+      "row": 45,
+      "col": 3,
+      "type": "machine",
+      "number": 3064
+    },
+    {
+      "row": 45,
+      "col": 5,
+      "type": "machine",
+      "number": 3008
+    },
+    {
+      "row": 46,
+      "col": 0,
+      "type": "machine",
+      "number": 3148
+    },
+    {
+      "row": 46,
+      "col": 2,
+      "type": "machine",
+      "number": 3083
+    },
+    {
+      "row": 46,
+      "col": 3,
+      "type": "machine",
+      "number": 3065
+    },
+    {
+      "row": 46,
+      "col": 5,
+      "type": "machine",
+      "number": 3007
+    },
+    {
+      "row": 47,
+      "col": 0,
+      "type": "machine",
+      "number": 3149
+    },
+    {
+      "row": 47,
+      "col": 2,
+      "type": "machine",
+      "number": 3082
+    },
+    {
+      "row": 47,
+      "col": 3,
+      "type": "machine",
+      "number": 3066
+    },
+    {
+      "row": 47,
+      "col": 5,
+      "type": "machine",
+      "number": 3006
+    },
+    {
+      "row": 48,
+      "col": 0,
+      "type": "machine",
+      "number": 3150
+    },
+    {
+      "row": 48,
+      "col": 2,
+      "type": "machine",
+      "number": 3081
+    },
+    {
+      "row": 48,
+      "col": 3,
+      "type": "machine",
+      "number": 3067
+    },
+    {
+      "row": 48,
+      "col": 5,
+      "type": "machine",
+      "number": 3005
+    },
+    {
+      "row": 49,
+      "col": 0,
+      "type": "machine",
+      "number": 3151
+    },
+    {
+      "row": 49,
+      "col": 2,
+      "type": "machine",
+      "number": 3080
+    },
+    {
+      "row": 49,
+      "col": 3,
+      "type": "machine",
+      "number": 3068
+    },
+    {
+      "row": 49,
+      "col": 5,
+      "type": "machine",
+      "number": 3004
+    },
+    {
+      "row": 50,
+      "col": 0,
+      "type": "machine",
+      "number": 3152
+    },
+    {
+      "row": 50,
+      "col": 2,
+      "type": "machine",
+      "number": 3079
+    },
+    {
+      "row": 50,
+      "col": 3,
+      "type": "machine",
+      "number": 3069
+    },
+    {
+      "row": 50,
+      "col": 5,
+      "type": "machine",
+      "number": 3003
+    },
+    {
+      "row": 51,
+      "col": 0,
+      "type": "machine",
+      "number": 3153
+    },
+    {
+      "row": 51,
+      "col": 2,
+      "type": "machine",
+      "number": 3078
+    },
+    {
+      "row": 51,
+      "col": 3,
+      "type": "machine",
+      "number": 3070
+    },
+    {
+      "row": 51,
+      "col": 5,
+      "type": "machine",
+      "number": 3002
+    },
+    {
+      "row": 52,
+      "col": 0,
+      "type": "machine",
+      "number": 3154
+    },
+    {
+      "row": 52,
+      "col": 2,
+      "type": "machine",
+      "number": 3077
+    },
+    {
+      "row": 52,
+      "col": 3,
+      "type": "machine",
+      "number": 3071
+    },
+    {
+      "row": 52,
+      "col": 5,
+      "type": "machine",
+      "number": 3001
+    },
+    {
+      "row": 54,
+      "col": 0,
+      "type": "machine",
+      "number": 3155
+    },
+    {
+      "row": 55,
+      "col": 0,
+      "type": "machine",
+      "number": 3156
+    },
+    {
+      "row": 56,
+      "col": 0,
+      "type": "machine",
+      "number": 3157
+    },
+    {
+      "row": 57,
+      "col": 0,
+      "type": "machine",
+      "number": 3158
+    },
+    {
+      "row": 57,
+      "col": 2,
+      "type": "machine",
+      "number": 3076
+    },
+    {
+      "row": 58,
+      "col": 0,
+      "type": "machine",
+      "number": 3159
+    },
+    {
+      "row": 58,
+      "col": 2,
+      "type": "machine",
+      "number": 3075
+    },
+    {
+      "row": 58,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 58,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 58,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 59,
+      "col": 0,
+      "type": "machine",
+      "number": 3160
+    },
+    {
+      "row": 59,
+      "col": 2,
+      "type": "machine",
+      "number": 3074
+    },
+    {
+      "row": 59,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 59,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 59,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 60,
+      "col": 0,
+      "type": "machine",
+      "number": 3161
+    },
+    {
+      "row": 60,
+      "col": 2,
+      "type": "machine",
+      "number": 3073
+    },
+    {
+      "row": 60,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 60,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 60,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 61,
+      "col": 0,
+      "type": "machine",
+      "number": 3162
+    },
+    {
+      "row": 61,
+      "col": 2,
+      "type": "machine",
+      "number": 3072
+    },
+    {
+      "row": 61,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 61,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 61,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 62,
+      "col": 0,
+      "type": "machine",
+      "number": 3163
+    },
+    {
+      "row": 62,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 62,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 62,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 63,
+      "col": 3,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 63,
+      "col": 4,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    },
+    {
+      "row": 63,
+      "col": 5,
+      "type": "structure",
+      "subtype": "stairs",
+      "label": "階段"
+    }
+  ]
+}

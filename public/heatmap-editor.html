@@ -427,6 +427,40 @@
             color: var(--text-primary);
         }
         
+        .modal-json {
+            max-width: 90vw;
+            width: 720px;
+        }
+        .modal-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        .json-edit-textarea {
+            width: 100%;
+            height: 55vh;
+            min-height: 200px;
+            font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 12px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .json-edit-textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        .json-edit-error {
+            color: var(--accent-red);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        
         /* ドラッグ中のスタイル */
         .editor-cell.dragging {
             opacity: 0.5;
@@ -483,6 +517,9 @@
             </div>
             <div class="tool-group">
                 <button class="tool-btn" id="gridSettingsBtn" title="グリッド設定">⚙ グリッド</button>
+            </div>
+            <div class="tool-group">
+                <button class="tool-btn" id="jsonEditBtn" title="JSONで直接編集">{} JSON</button>
             </div>
             <div class="tool-group">
                 <button class="tool-btn save-btn" id="saveBtn" title="保存 (Ctrl+S)">💾 保存</button>
@@ -630,6 +667,20 @@
             <div class="modal-buttons">
                 <button class="modal-btn secondary" id="gridModalCancel">キャンセル</button>
                 <button class="modal-btn primary" id="gridModalOk">適用</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JSON編集モーダル -->
+    <div id="jsonEditModal" class="modal-overlay">
+        <div class="modal modal-json">
+            <h3>JSONで編集</h3>
+            <p class="modal-hint">レイアウトデータをJSONで編集できます。適用前に形式がチェックされます。</p>
+            <textarea id="jsonEditTextarea" class="json-edit-textarea" spellcheck="false" placeholder='{"version":"2.0","hole":"...","floor":"...","grid":{...},"cells":[...]}'></textarea>
+            <div id="jsonEditError" class="json-edit-error" style="display: none;"></div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="jsonEditModalCancel">キャンセル</button>
+                <button class="modal-btn primary" id="jsonEditModalOk">適用</button>
             </div>
         </div>
     </div>
@@ -971,6 +1022,11 @@
             document.getElementById('gridSettingsBtn').addEventListener('click', showGridSettings);
             document.getElementById('gridModalCancel').addEventListener('click', () => closeModal('gridModal'));
             document.getElementById('gridModalOk').addEventListener('click', applyGridSettings);
+            
+            // JSON編集
+            document.getElementById('jsonEditBtn').addEventListener('click', showJsonEditor);
+            document.getElementById('jsonEditModalCancel').addEventListener('click', () => closeModal('jsonEditModal'));
+            document.getElementById('jsonEditModalOk').addEventListener('click', applyJsonEdit);
             
             document.getElementById('newLayoutModalCancel').addEventListener('click', () => closeModal('newLayoutModal'));
             document.getElementById('newLayoutModalOk').addEventListener('click', createNewLayout);
@@ -2035,6 +2091,65 @@
             closeModal('gridModal');
             renderGrid();
             updateStatus();
+        }
+        
+        function showJsonEditor() {
+            if (!layoutData) {
+                alert('レイアウトを先に選択または作成してください');
+                return;
+            }
+            const textarea = document.getElementById('jsonEditTextarea');
+            const errEl = document.getElementById('jsonEditError');
+            errEl.style.display = 'none';
+            errEl.textContent = '';
+            textarea.value = JSON.stringify(layoutData, null, 2);
+            openModal('jsonEditModal');
+            textarea.focus();
+        }
+        
+        function validateLayout(obj) {
+            if (!obj || typeof obj !== 'object') return 'レイアウトオブジェクトが不正です';
+            if (!obj.grid || typeof obj.grid !== 'object') return 'grid がありません';
+            const r = obj.grid.rows, c = obj.grid.cols;
+            if (typeof r !== 'number' || typeof c !== 'number' || r < 1 || c < 1) return 'grid.rows / grid.cols は 1 以上の数値である必要があります';
+            if (!Array.isArray(obj.cells)) return 'cells は配列である必要があります';
+            for (let i = 0; i < obj.cells.length; i++) {
+                const cell = obj.cells[i];
+                if (!cell || typeof cell !== 'object') return `cells[${i}] が不正です`;
+                if (typeof cell.row !== 'number' || typeof cell.col !== 'number') return `cells[${i}] に row/col（数値）が必要です`;
+                if (cell.row < 0 || cell.row >= r || cell.col < 0 || cell.col >= c) return `cells[${i}] の位置がグリッド範囲外です`;
+            }
+            return null;
+        }
+        
+        function applyJsonEdit() {
+            const textarea = document.getElementById('jsonEditTextarea');
+            const errEl = document.getElementById('jsonEditError');
+            errEl.style.display = 'none';
+            errEl.textContent = '';
+            let parsed;
+            try {
+                parsed = JSON.parse(textarea.value);
+            } catch (e) {
+                errEl.textContent = 'JSONの形式が不正です: ' + e.message;
+                errEl.style.display = 'block';
+                return;
+            }
+            const err = validateLayout(parsed);
+            if (err) {
+                errEl.textContent = err;
+                errEl.style.display = 'block';
+                return;
+            }
+            if (!parsed.version) parsed.version = '2.0';
+            if (!parsed.walls) parsed.walls = [];
+            saveState();
+            layoutData = parsed;
+            markDirty();
+            closeModal('jsonEditModal');
+            renderGrid();
+            updateStatus();
+            setMessage('JSONを適用しました');
         }
         
         // ============================================================================
