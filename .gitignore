@@ -21,3 +21,7 @@
 !.tasks/templates/**
 !.tasks/AGENTS.md
 .playground/*
+
+
+.playwright/
+.playwright-mcp/
